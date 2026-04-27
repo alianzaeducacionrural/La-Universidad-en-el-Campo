@@ -33,28 +33,47 @@ export default function Estadisticas({ onVerPerfil }) {
   async function cargarKPIs() {
     setCargando(true);
     
-    let query = supabase.from('estudiantes').select('*', { count: 'exact', head: false });
-    
-    if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-    if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-    if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-    if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
-    
-    const { data, count } = await query;
-    
-    const { count: totalGrupos } = await supabase
-      .from('grupos')
-      .select('*', { count: 'exact', head: true });
-    
-    setGruposTotales(totalGrupos || 0);
-    
-    if (data) {
-      const total = count || data.length;
-      const activos = data.filter(e => e.estado === 'Activo').length;
-      const desertores = data.filter(e => e.estado === 'Desertor').length;
-      const graduados = data.filter(e => e.estado === 'Graduado').length;
-      const enRiesgo = data.filter(e => e.estado === 'En Riesgo').length;
+    // Obtener TODOS los estudiantes con paginación
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase.from('estudiantes').select('*', { count: 'exact' });
       
+      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
+      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
+      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
+      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
+      
+      const { data, error } = await query.range(from, from + limit - 1);
+
+      if (error) {
+        console.error('Error:', error);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        todosLosDatos = [...todosLosDatos, ...data];
+        from += limit;
+      }
+
+      if (!data || data.length < limit) {
+        hasMore = false;
+      }
+    }
+
+    const totalGrupos = await supabase.from('grupos').select('*', { count: 'exact', head: true });
+    setGruposTotales(totalGrupos?.count || 0);
+
+    if (todosLosDatos.length > 0) {
+      const total = todosLosDatos.length;
+      const activos = todosLosDatos.filter(e => e.estado === 'Activo').length;
+      const desertores = todosLosDatos.filter(e => e.estado === 'Desertor').length;
+      const graduados = todosLosDatos.filter(e => e.estado === 'Graduado').length;
+      const enRiesgo = todosLosDatos.filter(e => e.estado === 'En Riesgo').length;
+
       setKpis({
         total_estudiantes: total,
         activos,
@@ -67,7 +86,7 @@ export default function Estadisticas({ onVerPerfil }) {
         en_riesgo_pct: total > 0 ? Math.round((enRiesgo / total) * 100 * 10) / 10 : 0
       });
     }
-    
+
     setCargando(false);
   }
 
