@@ -27,7 +27,7 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
     if (modalAbierto) {
       cargarOpciones();
     }
-  }, [modalAbierto, tipoSeleccionado]);
+  }, [modalAbierto, tipoSeleccionado, filtrosActivos]);
 
   useEffect(() => {
     if (opciones.length > 0) {
@@ -35,41 +35,181 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
     }
   }, [busqueda, opciones]);
 
-  async function cargarOpciones() {
-    setCargando(true);
-    let data = [];
-    
-    switch (tipoSeleccionado) {
-      case 'municipios':
-        const { data: mun } = await supabase.from('estudiantes').select('municipio').order('municipio');
-        data = mun || [];
+  // ==========================================
+  // FUNCIÓN PARA TRAER TODOS LOS REGISTROS DE ESTUDIANTES CON PAGINACIÓN
+  // ==========================================
+  async function fetchAllEstudiantesConFiltros(campo, otrosFiltros) {
+    let allData = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('estudiantes')
+        .select(campo);
+
+      // Aplicar otros filtros existentes
+      if (otrosFiltros.municipios && otrosFiltros.municipios.length > 0) {
+        query = query.in('municipio', otrosFiltros.municipios);
+      }
+      if (otrosFiltros.cohortes && otrosFiltros.cohortes.length > 0) {
+        query = query.in('cohorte', otrosFiltros.cohortes);
+      }
+      if (otrosFiltros.universidades && otrosFiltros.universidades.length > 0) {
+        query = query.in('universidad', otrosFiltros.universidades);
+      }
+      if (otrosFiltros.estados && otrosFiltros.estados.length > 0) {
+        query = query.in('estado', otrosFiltros.estados);
+      }
+
+      const { data, error } = await query.range(from, from + limit - 1);
+
+      if (error) {
+        console.error('Error en fetchAllEstudiantes:', error);
         break;
-      case 'cohortes':
-        const { data: coh } = await supabase.from('estudiantes').select('cohorte').order('cohorte');
-        data = coh || [];
-        break;
-      case 'universidades':
-        const { data: uni } = await supabase.from('universidades').select('nombre').order('nombre');
-        data = uni || [];
-        break;
-      case 'estados':
-        data = ['Activo', 'Desertor', 'Graduado', 'En Riesgo'].map(e => ({ estado: e }));
-        break;
+      }
+      
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+        from += limit;
+      }
+      
+      if (!data || data.length < limit) {
+        hasMore = false;
+      }
     }
     
-    // Contar frecuencia y eliminar duplicados
-    const conteo = {};
-    data.forEach(item => {
-      const valor = item.municipio || item.cohorte || item.nombre || item.estado;
-      if (valor) conteo[valor] = (conteo[valor] || 0) + 1;
-    });
+    return allData;
+  }
+
+  async function cargarOpciones() {
+    setCargando(true);
     
-    const opcionesUnicas = Object.entries(conteo)
-      .map(([valor, count]) => ({ valor, count }))
-      .sort((a, b) => b.count - a.count);
+    try {
+      // Obtener los filtros actuales (excluyendo el tipo que estamos seleccionando)
+      const filtrosActuales = agruparFiltros(filtrosActivos);
+      const tipoActual = tipoSeleccionado;
+      
+      // Construir otros filtros (excluyendo el tipo actual)
+      const otrosFiltros = {};
+      Object.keys(filtrosActuales).forEach(key => {
+        if (key !== tipoActual) {
+          otrosFiltros[key] = filtrosActuales[key];
+        }
+      });
+
+      let opcionesConConteo = [];
+
+      switch (tipoActual) {
+        case 'municipios': {
+          // Traer TODOS los estudiantes con paginación
+          const datos = await fetchAllEstudiantesConFiltros('municipio', otrosFiltros);
+          
+          // Contar frecuencia por municipio
+          const conteo = {};
+          datos.forEach(item => {
+            const valor = item.municipio;
+            if (valor && valor.trim() !== '') {
+              conteo[valor] = (conteo[valor] || 0) + 1;
+            }
+          });
+          
+          opcionesConConteo = Object.entries(conteo)
+            .map(([valor, count]) => ({ valor, count }))
+            .sort((a, b) => b.count - a.count);
+          break;
+        }
+        
+        case 'cohortes': {
+          // Traer TODOS los estudiantes con paginación
+          const datos = await fetchAllEstudiantesConFiltros('cohorte', otrosFiltros);
+          
+          // Contar frecuencia por cohorte
+          const conteo = {};
+          datos.forEach(item => {
+            const valor = item.cohorte;
+            if (valor && valor.trim() !== '') {
+              conteo[valor] = (conteo[valor] || 0) + 1;
+            }
+          });
+          
+          opcionesConConteo = Object.entries(conteo)
+            .map(([valor, count]) => ({ valor, count }))
+            .sort((a, b) => b.count - a.count);
+          break;
+        }
+        
+        case 'universidades': {
+          // Para universidades, obtener de la tabla universidades y contar estudiantes
+          const { data: universidades, error } = await supabase
+            .from('universidades')
+            .select('nombre')
+            .order('nombre');
+          
+          if (error) throw error;
+          
+          // Para cada universidad, contar estudiantes con otros filtros aplicados
+          for (const uni of universidades) {
+            let query = supabase
+              .from('estudiantes')
+              .select('id', { count: 'exact', head: true })
+              .eq('universidad', uni.nombre);
+            
+            // Aplicar otros filtros
+            if (otrosFiltros.municipios && otrosFiltros.municipios.length > 0) {
+              query = query.in('municipio', otrosFiltros.municipios);
+            }
+            if (otrosFiltros.cohortes && otrosFiltros.cohortes.length > 0) {
+              query = query.in('cohorte', otrosFiltros.cohortes);
+            }
+            if (otrosFiltros.estados && otrosFiltros.estados.length > 0) {
+              query = query.in('estado', otrosFiltros.estados);
+            }
+            
+            const { count, error: countError } = await query;
+            if (!countError && count > 0) {
+              opcionesConConteo.push({ valor: uni.nombre, count });
+            }
+          }
+          opcionesConConteo.sort((a, b) => b.count - a.count);
+          break;
+        }
+        
+        case 'estados': {
+          // Traer TODOS los estudiantes con paginación
+          const datos = await fetchAllEstudiantesConFiltros('estado', otrosFiltros);
+          
+          // Estados predefinidos
+          const estadosBase = ['Activo', 'Desertor', 'Graduado', 'En Riesgo'];
+          const conteo = {};
+          
+          // Inicializar conteo en 0
+          estadosBase.forEach(e => conteo[e] = 0);
+          
+          // Contar frecuencias
+          datos.forEach(item => {
+            const valor = item.estado;
+            if (valor && conteo[valor] !== undefined) {
+              conteo[valor]++;
+            }
+          });
+          
+          opcionesConConteo = estadosBase
+            .map(estado => ({ valor: estado, count: conteo[estado] || 0 }))
+            .filter(op => op.count > 0)
+            .sort((a, b) => b.count - a.count);
+          break;
+        }
+      }
+      
+      setOpciones(opcionesConConteo);
+      setOpcionesFiltradas(opcionesConConteo);
+      
+    } catch (error) {
+      console.error('Error al cargar opciones:', error);
+    }
     
-    setOpciones(opcionesUnicas);
-    setOpcionesFiltradas(opcionesUnicas);
     setCargando(false);
   }
 

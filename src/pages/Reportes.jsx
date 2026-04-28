@@ -1,5 +1,5 @@
 // =============================================
-// PÁGINA: REPORTES DESCARGABLES
+// PÁGINA: REPORTES DESCARGABLES (CON PAGINACIÓN)
 // =============================================
 
 import { useState } from 'react';
@@ -73,8 +73,34 @@ export default function Reportes({ onVerPerfil }) {
   };
 
   async function obtenerEstudiantes() {
-    const { data } = await supabase.from('estudiantes').select('*').order('nombre_completo');
-    return data || [];
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('estudiantes')
+        .select('*')
+        .order('nombre_completo')
+        .range(from, from + limit - 1);
+
+      if (error) {
+        console.error('Error:', error);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        todosLosDatos = [...todosLosDatos, ...data];
+        from += limit;
+      }
+
+      if (!data || data.length < limit) {
+        hasMore = false;
+      }
+    }
+
+    return todosLosDatos;
   }
 
   function formatearEstudiantes(data) {
@@ -128,12 +154,34 @@ export default function Reportes({ onVerPerfil }) {
   };
 
   async function obtenerDeserciones() {
-    const { data } = await supabase
-      .from('registros_desercion')
-      .select(`*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`)
-      .order('fecha_reporte', { ascending: false });
-    
-    return (data || []).map(d => ({
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('registros_desercion')
+        .select(`*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`)
+        .order('fecha_reporte', { ascending: false })
+        .range(from, from + limit - 1);
+
+      if (error) {
+        console.error('Error:', error);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        todosLosDatos = [...todosLosDatos, ...data];
+        from += limit;
+      }
+
+      if (!data || data.length < limit) {
+        hasMore = false;
+      }
+    }
+
+    return todosLosDatos.map(d => ({
       ...d,
       ...d.estudiante,
       reportado_por: d.usuario?.nombre_completo || ''
@@ -189,12 +237,34 @@ export default function Reportes({ onVerPerfil }) {
   };
 
   async function obtenerInasistencias() {
-    const { data } = await supabase
-      .from('inasistencias')
-      .select(`*, estudiante:estudiante_id (*), registros_asistencia (fecha, modulo, docente_nombre)`)
-      .order('created_at', { ascending: false });
-    
-    return (data || []).map(i => ({
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('inasistencias')
+        .select(`*, estudiante:estudiante_id (*), registros_asistencia (fecha, modulo, docente_nombre)`)
+        .order('created_at', { ascending: false })
+        .range(from, from + limit - 1);
+
+      if (error) {
+        console.error('Error:', error);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        todosLosDatos = [...todosLosDatos, ...data];
+        from += limit;
+      }
+
+      if (!data || data.length < limit) {
+        hasMore = false;
+      }
+    }
+
+    return todosLosDatos.map(i => ({
       ...i,
       ...i.estudiante,
       fecha: i.registros_asistencia?.fecha || '',
@@ -254,16 +324,34 @@ export default function Reportes({ onVerPerfil }) {
   };
 
   async function obtenerSeguimientos() {
-    const { data } = await supabase
-      .from('seguimientos')
-      .select(`*, estudiante:estudiante_id (*), padrino:padrino_id (nombre_completo)`)
-      .order('created_at', { ascending: false });
-    
-    return (data || []).map(s => ({
-      ...s,
-      ...s.estudiante,
-      padrino_nombre: s.padrino?.nombre_completo || ''
-    }));
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('seguimientos')
+        .select(`*, estudiante:estudiante_id (*), padrino:padrino_id (nombre_completo)`)
+        .order('created_at', { ascending: false })
+        .range(from, from + limit - 1);
+
+      if (error) {
+        console.error('Error:', error);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        todosLosDatos = [...todosLosDatos, ...data];
+        from += limit;
+      }
+
+      if (!data || data.length < limit) {
+        hasMore = false;
+      }
+    }
+
+    return todosLosDatos;
   }
 
   function formatearSeguimientos(data) {
@@ -300,7 +388,7 @@ export default function Reportes({ onVerPerfil }) {
     {
       id: 'estudiantes',
       titulo: '👥 Listado General de Estudiantes',
-      descripcion: 'Todos los estudiantes del sistema',
+      descripcion: 'Todos los estudiantes del sistema con datos completos',
       color: 'blue',
       categorias: [
         { campo: 'municipio', label: 'Por Municipio' },
@@ -316,7 +404,7 @@ export default function Reportes({ onVerPerfil }) {
     {
       id: 'deserciones',
       titulo: '🚨 Reporte de Deserciones',
-      descripcion: 'Estudiantes desertores con tipo, motivo y documentos',
+      descripcion: 'Estudiantes desertores con tipo, motivo y fecha',
       color: 'red',
       categorias: [
         { campo: 'municipio', label: 'Por Municipio' },

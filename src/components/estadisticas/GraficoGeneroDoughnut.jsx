@@ -1,5 +1,5 @@
 // =============================================
-// GRÁFICO: ESTUDIANTES POR GÉNERO (DOUGHNUT SIN ETIQUETAS INTERNAS)
+// GRÁFICO: ESTUDIANTES POR GÉNERO (DOUGHNUT - CON FILTROS)
 // =============================================
 
 import { useState, useEffect } from 'react';
@@ -21,32 +21,48 @@ export default function GraficoGeneroDoughnut({ filtros = {} }) {
   async function cargarDatos() {
     setCargando(true);
     
-    let query = supabase.from('estudiantes').select('genero');
+    // 🔥 Obtener TODOS los estudiantes con paginación + filtros
+    let todosLosEstudiantes = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase.from('estudiantes').select('genero');
+      
+      // Aplicar filtros
+      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
+      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
+      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
+      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
+      
+      const { data, error } = await query.range(from, from + limit - 1);
+
+      if (error) { console.error('Error:', error); break; }
+      if (data && data.length > 0) { todosLosEstudiantes = [...todosLosEstudiantes, ...data]; from += limit; }
+      if (!data || data.length < limit) hasMore = false;
+    }
     
-    if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-    if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-    if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-    if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
-    
-    const { data } = await query;
-    
-    if (data && data.length > 0) {
+    if (todosLosEstudiantes.length > 0) {
       const colores = {
         'Masculino': '#3b82f6',
         'Femenino': '#ec4899',
         'Otro': '#8b5cf6',
-        'Prefiero no decir': '#6b7280'
+        'Prefiero no decir': '#6b7280',
+        'No especificado': '#9ca3af'
       };
       const iconos = {
         'Masculino': '👨',
         'Femenino': '👩',
         'Otro': '👤',
-        'Prefiero no decir': '⚪'
+        'Prefiero no decir': '⚪',
+        'No especificado': '❓'
       };
       
+      // Agrupar manualmente
       const conteo = {};
-      data.forEach(e => {
-        const genero = e.genero || 'Prefiero no decir';
+      todosLosEstudiantes.forEach(e => {
+        const genero = e.genero || 'No especificado';
         conteo[genero] = (conteo[genero] || 0) + 1;
       });
       
@@ -54,15 +70,15 @@ export default function GraficoGeneroDoughnut({ filtros = {} }) {
       setTotal(totalEstudiantes);
       
       const datosFiltrados = Object.entries(conteo)
+        .filter(([_, total]) => total > 0)
+        .sort((a, b) => b[1] - a[1])
         .map(([genero, total]) => ({
           genero,
           total,
           porcentaje: totalEstudiantes > 0 ? Math.round((total / totalEstudiantes) * 1000) / 10 : 0,
           color: colores[genero] || '#6b7280',
           icono: iconos[genero] || '👤'
-        }))
-        .filter(d => d.total > 0)
-        .sort((a, b) => b.total - a.total);
+        }));
       
       setDatos({
         labels: datosFiltrados.map(d => d.genero),
@@ -105,7 +121,7 @@ export default function GraficoGeneroDoughnut({ filtros = {} }) {
     maintainAspectRatio: false,
     cutout: '65%',
     plugins: {
-      legend: { display: false },  // Sin leyenda interna
+      legend: { display: false },
       tooltip: {
         callbacks: {
           label: (context) => {
@@ -129,7 +145,6 @@ export default function GraficoGeneroDoughnut({ filtros = {} }) {
         <Doughnut data={datos} options={options} />
       </div>
       
-      {/* LEYENDA PERSONALIZADA TIPO TAGS (EXTERNA) */}
       <div className="mt-4 flex flex-wrap gap-2">
         {datos.detalles.map((d) => (
           <div

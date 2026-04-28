@@ -1,14 +1,13 @@
 // =============================================
-// GRÁFICO: BARRAS HORIZONTALES (CON ETIQUETAS EN BARRAS)
+// GRÁFICO: BARRAS HORIZONTALES (CON FILTROS Y PAGINACIÓN)
 // =============================================
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import ChartDataLabels from 'chartjs-plugin-datalabels';  // ← IMPORTAR PLUGIN
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-// REGISTRAR EL PLUGIN
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
 export default function GraficoBarrasHorizontal({ 
@@ -32,18 +31,32 @@ export default function GraficoBarrasHorizontal({
   async function cargarDatos() {
     setCargando(true);
     
-    let query = supabase.from('estudiantes').select(campo);
+    // 🔥 Obtener TODOS los estudiantes con paginación + filtros
+    let todosLosEstudiantes = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase.from('estudiantes').select(campo);
+      
+      // Aplicar filtros
+      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
+      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
+      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
+      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
+      
+      const { data, error } = await query.range(from, from + limit - 1);
+
+      if (error) { console.error('Error:', error); break; }
+      if (data && data.length > 0) { todosLosEstudiantes = [...todosLosEstudiantes, ...data]; from += limit; }
+      if (!data || data.length < limit) hasMore = false;
+    }
     
-    if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-    if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-    if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-    if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
-    
-    const { data } = await query;
-    
-    if (data) {
+    if (todosLosEstudiantes.length > 0) {
+      // Agrupar manualmente
       const conteo = {};
-      data.forEach(e => {
+      todosLosEstudiantes.forEach(e => {
         const valor = e[campo] || 'Sin especificar';
         conteo[valor] = (conteo[valor] || 0) + 1;
       });
@@ -57,6 +70,9 @@ export default function GraficoBarrasHorizontal({
       
       setTodosLosDatos(datosOrdenados);
       actualizarDatosGrafico(datosOrdenados, limite);
+    } else {
+      setDatos(null);
+      setTotal(0);
     }
     
     setCargando(false);
@@ -123,27 +139,23 @@ export default function GraficoBarrasHorizontal({
           }
         }
       },
-      // 🔥 CONFIGURACIÓN DE ETIQUETAS EN LAS BARRAS
       datalabels: {
-        anchor: 'end',        // Posición: 'start', 'center', 'end'
-        align: 'right',       // Alineación: 'left', 'center', 'right'
-        offset: 5,            // Distancia desde el final de la barra
-        color: '#374151',     // Color del texto
-        font: {
-          weight: 'bold',
-          size: 12
-        },
-        formatter: (value) => value  // Muestra el valor numérico
+        anchor: 'end',
+        align: 'right',
+        offset: 5,
+        color: '#374151',
+        font: { weight: 'bold', size: 12 },
+        formatter: (value) => value
       }
     },
     scales: {
       x: {
         beginAtZero: true,
-        grid: { display: false },  // 🔥 SIN CUADRÍCULA VERTICAL
-        ticks: { display: false }   // Sin números abajo
+        grid: { display: false },
+        ticks: { display: false }
       },
       y: {
-        grid: { display: false },  // 🔥 SIN CUADRÍCULA HORIZONTAL
+        grid: { display: false },
         ticks: {
           font: { size: 11 },
           callback: (value) => {
@@ -153,12 +165,9 @@ export default function GraficoBarrasHorizontal({
         }
       }
     },
-    layout: {
-      padding: { right: 50 }  // Espacio para las etiquetas
-    }
+    layout: { padding: { right: 50 } }
   };
 
-  // Altura dinámica
   const alturaGrafico = Math.min(600, Math.max(300, datos.labels.length * 35));
 
   return (
@@ -166,10 +175,7 @@ export default function GraficoBarrasHorizontal({
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-semibold text-gray-800">{icono} {titulo}</h3>
         {todosLosDatos.length > limiteInicial && (
-          <button
-            onClick={toggleMostrarTodos}
-            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-          >
+          <button onClick={toggleMostrarTodos} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
             {mostrarTodos ? '▲ Ver menos' : `▼ Ver todos (${todosLosDatos.length})`}
           </button>
         )}

@@ -64,8 +64,39 @@ export default function Estadisticas({ onVerPerfil }) {
       }
     }
 
-    const totalGrupos = await supabase.from('grupos').select('*', { count: 'exact', head: true });
-    setGruposTotales(totalGrupos?.count || 0);
+    // ==========================================
+    // CORRECCIÓN: GRUPOS TOTALES CON FILTROS
+    // ==========================================
+    let totalGrupos = 0;
+    
+    if (todosLosDatos.length > 0) {
+      // Obtener IDs de grupos únicos de los estudiantes filtrados
+      const gruposIdsUnicos = [...new Set(
+        todosLosDatos
+          .map(e => e.grupo_id)
+          .filter(id => id !== null && id !== undefined)
+      )];
+      
+      if (gruposIdsUnicos.length > 0) {
+        // Contar cuántos de esos grupos existen en la tabla grupos
+        const { count, error: gruposError } = await supabase
+          .from('grupos')
+          .select('*', { count: 'exact', head: true })
+          .in('id', gruposIdsUnicos);
+        
+        if (!gruposError) {
+          totalGrupos = count || 0;
+        } else {
+          // Fallback: usar la cantidad de IDs únicos
+          totalGrupos = gruposIdsUnicos.length;
+        }
+      }
+    } else {
+      // Si no hay estudiantes con los filtros, grupos totales es 0
+      totalGrupos = 0;
+    }
+    
+    setGruposTotales(totalGrupos);
 
     if (todosLosDatos.length > 0) {
       const total = todosLosDatos.length;
