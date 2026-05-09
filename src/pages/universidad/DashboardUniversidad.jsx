@@ -397,6 +397,9 @@ export default function DashboardUniversidad() {
             <button onClick={() => setVistaActiva('notas')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'notas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
               🎓 Notas Finales
             </button>
+            <button onClick={() => setVistaActiva('estudiantes')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estudiantes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
+              👥 Estudiantes
+            </button>
           </nav>
         </div>
 
@@ -733,6 +736,111 @@ export default function DashboardUniversidad() {
           </div>
         </div>
       )}
+        {/* VISTA: ESTUDIANTES */}
+        {vistaActiva === 'estudiantes' && (() => {
+          const inasistenciasPorEst = {};
+          historial.forEach(r => (r.inasistencias || []).forEach(i => {
+            inasistenciasPorEst[i.estudiante_id] = (inasistenciasPorEst[i.estudiante_id] || 0) + 1;
+          }));
+
+          const estadoClase = (estado) => {
+            if (estado === 'Activo')    return 'bg-green-100 text-green-700';
+            if (estado === 'En Riesgo') return 'bg-yellow-100 text-yellow-700';
+            if (estado === 'Desertor')  return 'bg-red-100 text-red-600';
+            if (estado === 'Graduado')  return 'bg-blue-100 text-blue-700';
+            return 'bg-gray-100 text-gray-600';
+          };
+
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="p-4 md:p-5 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-gray-800">👥 Listado de Estudiantes</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">{estudiantes.length} estudiantes · {grupoSeleccionado?.nombre}</p>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span> Activo: {estudiantes.filter(e => e.estado === 'Activo' || !e.estado).length}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> En Riesgo: {estudiantes.filter(e => e.estado === 'En Riesgo').length}</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Desertor: {estudiantes.filter(e => e.estado === 'Desertor').length}</span>
+                </div>
+              </div>
+
+              {/* Desktop */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estudiante</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Municipio / IE</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Inasistencias</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {estudiantes.map(est => {
+                      const faltas = inasistenciasPorEst[est.id] || 0;
+                      return (
+                        <tr key={est.id} className={`hover:bg-gray-50 transition ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-gray-800 text-sm">{est.nombre_completo}</p>
+                            <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="text-sm text-gray-700">{est.municipio || '—'}</p>
+                            <p className="text-xs text-gray-400 truncate max-w-[200px]">{est.institucion_educativa || '—'}</p>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{est.telefono || '—'}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-block min-w-[28px] px-2 py-0.5 rounded-full text-sm font-semibold ${
+                              faltas === 0 ? 'text-gray-400' : faltas <= 2 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'
+                            }`}>
+                              {faltas}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${estadoClase(est.estado)}`}>
+                              {est.estado || 'Activo'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Móvil */}
+              <div className="lg:hidden divide-y divide-gray-100">
+                {estudiantes.map(est => {
+                  const faltas = inasistenciasPorEst[est.id] || 0;
+                  return (
+                    <div key={est.id} className={`p-4 ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-800 text-sm truncate">{est.nombre_completo}</p>
+                          <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${estadoClase(est.estado)}`}>
+                          {est.estado || 'Activo'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                        <span>📍 {est.municipio || '—'}</span>
+                        <span>📞 {est.telefono || '—'}</span>
+                        <span className="truncate">🏫 {est.institucion_educativa || '—'}</span>
+                        <span className={faltas > 2 ? 'text-red-600 font-semibold' : faltas > 0 ? 'text-yellow-600 font-medium' : ''}>
+                          ❌ {faltas} inasistencia{faltas !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
 
       <ModalIngresarNotas

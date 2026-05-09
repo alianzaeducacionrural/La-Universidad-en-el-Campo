@@ -38,8 +38,8 @@ export default function TablaEstudiantes({
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
 
-      {/* ── DESKTOP: tabla completa (md+) ───────────────────────────────── */}
-      <div className="hidden md:block overflow-x-auto">
+      {/* ── DESKTOP: tabla completa (lg+) ───────────────────────────────── */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -89,8 +89,8 @@ export default function TablaEstudiantes({
         </table>
       </div>
 
-      {/* ── MÓVIL: tarjetas (< md) ───────────────────────────────────────── */}
-      <div className="md:hidden divide-y divide-gray-100">
+      {/* ── MÓVIL: tarjetas (< lg) ───────────────────────────────────────── */}
+      <div className="lg:hidden divide-y divide-gray-100">
         {estudiantes.map((est) => (
           <div key={est.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
