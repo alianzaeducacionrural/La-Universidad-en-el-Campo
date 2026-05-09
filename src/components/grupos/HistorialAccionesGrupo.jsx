@@ -13,7 +13,8 @@ const LABELS_ACCION = {
   practica_academica: { label: 'Práctica Académica', icono: '🎓' },
   comite_calidad: { label: 'Comité de Calidad', icono: '📋' },
   bienestar_universitario: { label: 'Bienestar Universitario', icono: '🎯' },
-  otra: { label: 'Otra Actividad', icono: '📝' }
+  otra: { label: 'Otra Actividad', icono: '📝' },
+  asistencia_completa: { label: 'Asistencia Completa', icono: '✅' }
 };
 
 export default function HistorialAccionesGrupo({ grupo, refresh }) {
@@ -77,19 +78,21 @@ export default function HistorialAccionesGrupo({ grupo, refresh }) {
                 </div>
                 
                 <div className="ml-8 space-y-2">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">Actividad:</p>
-                    <p className="text-sm text-gray-800">{accion.actividad}</p>
-                  </div>
-                  
+                  {accion.tipo_accion !== 'asistencia_completa' && accion.actividad && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Actividad:</p>
+                      <p className="text-sm text-gray-800">{accion.actividad}</p>
+                    </div>
+                  )}
+
                   {accion.resultado && (
                     <div>
                       <p className="text-xs font-medium text-gray-500">Resultado:</p>
                       <p className="text-sm text-gray-800">{accion.resultado}</p>
                     </div>
                   )}
-                  
-                  {accion.observaciones && (
+
+                  {accion.observaciones && accion.tipo_accion !== 'asistencia_completa' && (
                     <div>
                       <p className="text-xs font-medium text-gray-500">Observaciones:</p>
                       <p className="text-sm text-gray-600 italic">{accion.observaciones}</p>

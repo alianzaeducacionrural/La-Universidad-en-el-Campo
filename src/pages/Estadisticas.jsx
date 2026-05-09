@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { useReportesNuevos } from '../hooks/useReportesNuevos';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -20,6 +21,7 @@ import GraficoInasistenciasMensual from '../components/estadisticas/GraficoInasi
 
 export default function Estadisticas({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
+  const { count: totalReportesNuevos } = useReportesNuevos();
   const [kpis, setKpis] = useState(null);
   const [gruposTotales, setGruposTotales] = useState(0);
   const [cargando, setCargando] = useState(true);
@@ -135,16 +137,17 @@ export default function Estadisticas({ onVerPerfil }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar 
-        vistaActiva={vistaActiva} 
+      <Sidebar
+        vistaActiva={vistaActiva}
         setVistaActiva={setVistaActiva}
         rol={usuario.rol}
+        totalReportesNuevos={totalReportesNuevos}
       />
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Header onVerPerfil={onVerPerfil} />
 
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800 mb-2">
               📈 Panel de Estadísticas

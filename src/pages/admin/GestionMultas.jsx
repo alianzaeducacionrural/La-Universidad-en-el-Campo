@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -17,6 +18,7 @@ export default function GestionMultas({ onVerPerfil }) {
   const notificacion = useNotificacion();
   const [multas, setMultas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('multas');
   const [modalCarta, setModalCarta] = useState(false);
   const [modalPago, setModalPago] = useState(false);
@@ -168,10 +170,10 @@ export default function GestionMultas({ onVerPerfil }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario.rol} />
-      <div className="flex-1">
+      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario.rol} totalReportesNuevos={totalReportesNuevos} />
+      <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Header onVerPerfil={onVerPerfil} />
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">💰 Gestión de Multas por Deserción</h1>
           <p className="text-gray-600 mb-6">Administra las multas de estudiantes desertores sin justificar</p>
 

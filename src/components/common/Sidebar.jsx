@@ -22,7 +22,7 @@ function useBreakpoint() {
   return bp;
 }
 
-export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendientes = 0 }) {
+export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendientes = 0, totalReportesNuevos = 0 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { perfil } = useAuth();
@@ -75,8 +75,9 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     { id: 'panel',       label: 'Panel de Control', mobileLabel: 'Panel',    icon: '📊', visible: esCoordinador, badge: 0, action: () => navigate('/panel') },
     { id: 'estadisticas',label: 'Estadísticas',     mobileLabel: 'Stats',    icon: '📈', visible: esCoordinador, badge: 0, action: () => navigate('/estadisticas') },
     { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador, badge: 0, action: () => navigate('/reportes') },
-    { id: 'grupos-admin',label: 'Grupos',            mobileLabel: 'Grupos',   icon: '📚', visible: esCoordinador, badge: 0, action: () => navigate('/grupos') },
-    { id: 'multas',      label: 'Multas',            mobileLabel: 'Multas',   icon: '💰', visible: esCoordinador, badge: 0, action: () => navigate('/multas') },
+    { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador, badge: 0,                   action: () => navigate('/grupos') },
+    { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: totalReportesNuevos, action: () => navigate('/historial-reportes') },
+    { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
   ];
 
   const allVisibleItems = [...menuPadrino, ...menuAdmin].filter(i => i.visible);

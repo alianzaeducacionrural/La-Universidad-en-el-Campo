@@ -23,6 +23,7 @@ const Estadisticas = lazy(() => import('./pages/Estadisticas'));
 const Reportes = lazy(() => import('./pages/Reportes'));
 const GestionGrupos = lazy(() => import('./pages/admin/GestionGrupos'));
 const GestionMultas = lazy(() => import('./pages/admin/GestionMultas'));
+const HistorialReportesAsistencia = lazy(() => import('./pages/coordinador/HistorialReportesAsistencia'));
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -360,6 +361,7 @@ function AppContent() {
           <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia /></ProtectedRoute>} />
           <Route path="/" element={<HomeRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

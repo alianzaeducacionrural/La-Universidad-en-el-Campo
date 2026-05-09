@@ -52,10 +52,11 @@ export default function Header({ onVerPerfil }) {
           </div>
           <button
             onClick={signOut}
-            className="text-white/80 hover:text-white font-medium transition hover:bg-white/10 px-2 md:px-3 py-1.5 rounded-lg text-sm"
+            className="text-white/80 hover:text-white font-medium transition hover:bg-white/10 px-3 py-2 md:px-3 md:py-1.5 rounded-lg text-sm flex items-center space-x-1"
           >
-            <span className="hidden md:inline">🚪 Cerrar Sesión</span>
-            <span className="md:hidden">🚪</span>
+            <span>🚪</span>
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+            <span className="sm:hidden">Salir</span>
           </button>
         </div>
 

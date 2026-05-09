@@ -13,7 +13,8 @@ const LABELS_ACCION = {
   practica_academica: { label: 'Práctica Académica', icono: '🎓' },
   comite_calidad: { label: 'Comité de Calidad', icono: '📋' },
   bienestar_universitario: { label: 'Bienestar Universitario', icono: '🎯' },
-  otra: { label: 'Otra Actividad', icono: '📝' }
+  otra: { label: 'Otra Actividad', icono: '📝' },
+  asistencia_completa: { label: 'Asistencia Completa', icono: '✅' }
 };
 
 export default function ModalHistorialAcciones({ isOpen, onClose, grupo }) {
@@ -121,10 +122,10 @@ export default function ModalHistorialAcciones({ isOpen, onClose, grupo }) {
                             </span>
                           </div>
                           
-                          {/* Contenido para "Otra Actividad" */}
-                          {accion.tipo_accion === 'otra' && (
+                          {/* Contenido para "Otra Actividad" y "Asistencia Completa" */}
+                          {(accion.tipo_accion === 'otra' || accion.tipo_accion === 'asistencia_completa') && (
                             <div className="ml-7 space-y-2">
-                              {accion.actividad && (
+                              {accion.tipo_accion === 'otra' && accion.actividad && (
                                 <div>
                                   <p className="text-xs font-medium text-gray-500">Actividad:</p>
                                   <p className="text-sm text-gray-800">{accion.actividad}</p>
