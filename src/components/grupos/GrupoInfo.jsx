@@ -76,18 +76,18 @@ export default function GrupoInfo({
       </div>
 
       {/* Fila 3: Botones de acción (WhatsApp incluido) */}
-      <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200">
+      <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200 lg:flex lg:flex-wrap lg:items-center lg:gap-2">
         {padrino && (
           <>
             <button
               onClick={() => setModalRegistrarAccion(true)}
-              className="bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
+              className="w-full lg:w-auto bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
             >
               ➕ Registrar Acción
             </button>
             <button
               onClick={() => setModalAcciones(true)}
-              className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+              className="w-full lg:w-auto bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
             >
               📋 Ver Acciones
             </button>
@@ -96,7 +96,7 @@ export default function GrupoInfo({
 
         {onVerHistorialAsistencia && (
           <button onClick={onVerHistorialAsistencia}
-            className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+            className="w-full lg:w-auto bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
           >
             📊 Historial Asistencia
           </button>
@@ -105,14 +105,14 @@ export default function GrupoInfo({
         {/* ENLACES DIRECTOS SI EXISTEN */}
         {enlaces.estudiantes && (
           <a href={enlaces.estudiantes} target="_blank" rel="noopener noreferrer"
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
+            className="w-full lg:w-auto text-center bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
           >
             💬 Grupo Estudiantes
           </a>
         )}
         {enlaces.acudientes && (
           <a href={enlaces.acudientes} target="_blank" rel="noopener noreferrer"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
+            className="w-full lg:w-auto text-center bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
           >
             👨‍👩‍👧 Grupo Acudientes
           </a>
@@ -120,7 +120,7 @@ export default function GrupoInfo({
 
         <button
           onClick={() => setModalWhatsApp(true)}
-          className="bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-green-300 shadow-sm"
+          className="w-full lg:w-auto bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-green-300 shadow-sm"
         >
           💬 Configurar WhatsApp
         </button>
