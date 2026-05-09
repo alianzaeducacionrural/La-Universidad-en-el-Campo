@@ -55,10 +55,10 @@ export default function SeguimientosRecientes({
                   
                   {/* Badges */}
                   <div className="flex flex-wrap gap-2">
-                    <span className="text-sm bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">
                       🏫 {seg.estudiante?.institucion_educativa || 'N/A'}
                     </span>
-                    <span className="text-sm bg-green-50 text-green-700 px-2.5 py-1 rounded-full border border-green-200">
+                    <span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full border border-green-200">
                       📍 {seg.estudiante?.municipio || 'N/A'}
                     </span>
                   </div>
@@ -117,7 +117,7 @@ export default function SeguimientosRecientes({
                 {/* Botón Ver Perfil */}
                 <button
                   onClick={() => onVerPerfil(seg.estudiante)}
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1 border border-indigo-200 shadow-sm"
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1 border border-indigo-200 shadow-sm"
                   title="Ver perfil completo del estudiante"
                 >
                   <span>👤</span>

@@ -408,15 +408,15 @@ export default function DashboardUniversidad() {
           <div className="space-y-6">
             <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-                <div><label className="block text-sm text-gray-600 mb-1">Módulo/Clase *</label><input type="text" value={modulo} onChange={e => setModulo(e.target.value)} placeholder="Ej: Matemáticas" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
-                <div><label className="block text-sm text-gray-600 mb-1">Fecha *</label><input type="date" value={fechaAsistencia} onChange={e => setFechaAsistencia(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
-                <div><label className="block text-sm text-gray-600 mb-1">Nombre del Docente *</label><input type="text" value={docenteNombre} onChange={e => setDocenteNombre(e.target.value)} placeholder="Nombre completo" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <div><label className="block text-xs text-gray-500 mb-1">Módulo/Clase *</label><input type="text" value={modulo} onChange={e => setModulo(e.target.value)} placeholder="Ej: Matemáticas" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <div><label className="block text-xs text-gray-500 mb-1">Fecha *</label><input type="date" value={fechaAsistencia} onChange={e => setFechaAsistencia(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <div><label className="block text-xs text-gray-500 mb-1">Nombre del Docente *</label><input type="text" value={docenteNombre} onChange={e => setDocenteNombre(e.target.value)} placeholder="Nombre completo" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-sm text-gray-600 mb-1">Teléfono</label><input type="text" value={docenteTelefono} onChange={e => setDocenteTelefono(e.target.value)} placeholder="3115551234" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
-                <div><label className="block text-sm text-gray-600 mb-1">Correo</label><input type="email" value={docenteCorreo} onChange={e => setDocenteCorreo(e.target.value)} placeholder="docente@universidad.edu.co" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <div><label className="block text-xs text-gray-500 mb-1">Teléfono</label><input type="text" value={docenteTelefono} onChange={e => setDocenteTelefono(e.target.value)} placeholder="3115551234" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <div><label className="block text-xs text-gray-500 mb-1">Correo</label><input type="email" value={docenteCorreo} onChange={e => setDocenteCorreo(e.target.value)} placeholder="docente@universidad.edu.co" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
               </div>
-              <div><label className="block text-sm text-gray-600 mb-1">Observaciones</label><textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" /></div>
+              <div><label className="block text-xs text-gray-500 mb-1">Observaciones</label><textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm resize-none" /></div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -425,8 +425,8 @@ export default function DashboardUniversidad() {
                   <div className="flex flex-wrap items-center gap-3">
                     <h3 className="font-semibold">Estudiantes ({estudiantes.length})</h3>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm"><span className="text-green-600 font-bold">{estudiantes.length - inasistencias.length}</span> <span className="text-gray-500">Presentes</span></span>
-                      <span className="text-sm"><span className="text-red-600 font-bold">{inasistencias.length}</span> <span className="text-gray-500">Ausentes</span></span>
+                      <span className="text-xs"><span className="text-green-600 font-bold">{estudiantes.length - inasistencias.length}</span> <span className="text-gray-500">Presentes</span></span>
+                      <span className="text-xs"><span className="text-red-600 font-bold">{inasistencias.length}</span> <span className="text-gray-500">Ausentes</span></span>
                     </div>
                     <div className="w-24 md:w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${estudiantes.length > 0 ? ((estudiantes.length - inasistencias.length) / estudiantes.length) * 100 : 0}%` }} />
@@ -470,7 +470,7 @@ export default function DashboardUniversidad() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-base truncate">{est.nombre_completo}</p>
+                                <p className="font-medium text-sm truncate">{est.nombre_completo}</p>
                                 <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                                   est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
                                   est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
@@ -481,7 +481,7 @@ export default function DashboardUniversidad() {
                                   {est.estado || 'Activo'}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-500 truncate">{est.municipio} • {est.institucion_educativa}</p>
+                              <p className="text-xs text-gray-500 truncate">{est.municipio} • {est.institucion_educativa}</p>
                             </div>
                             {ausente && !noSeleccionable && (
                               <span className={`text-xs px-2 py-1 rounded-full ml-2 flex-shrink-0 ${tieneNota ? 'text-amber-700 bg-amber-100' : 'text-red-600 bg-red-100'}`}>
@@ -815,17 +815,17 @@ export default function DashboardUniversidad() {
                 {estudiantes.map(est => {
                   const faltas = inasistenciasPorEst[est.id] || 0;
                   return (
-                    <div key={est.id} className={`px-4 py-5 ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                    <div key={est.id} className={`p-4 ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
                       <div className="flex items-start justify-between gap-3 mb-2.5">
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-800 text-base truncate">{est.nombre_completo}</p>
-                          <p className="text-sm text-gray-400">{est.documento || 'Sin documento'}</p>
+                          <p className="font-semibold text-gray-800 text-sm truncate">{est.nombre_completo}</p>
+                          <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-full text-sm font-medium flex-shrink-0 ${estadoClase(est.estado)}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${estadoClase(est.estado)}`}>
                           {est.estado || 'Activo'}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-500">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-500">
                         <span>📍 {est.municipio || '—'}</span>
                         <span>📞 {est.telefono || '—'}</span>
                         <span className="truncate">🏫 {est.institucion_educativa || '—'}</span>

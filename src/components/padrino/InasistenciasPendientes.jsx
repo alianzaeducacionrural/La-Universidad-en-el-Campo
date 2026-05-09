@@ -98,7 +98,7 @@ export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerP
                     <span className="text-red-600 text-lg">👤</span>
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-semibold text-gray-800 text-base truncate">{item.estudiante_nombre}</h4>
+                    <h4 className="font-semibold text-gray-800 truncate">{item.estudiante_nombre}</h4>
                     <p className="text-sm text-gray-500 truncate">
                       {item.estudiante?.municipio} • {item.estudiante?.institucion_educativa}
                     </p>
@@ -132,13 +132,13 @@ export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerP
               <div className="flex sm:flex-col gap-2 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={() => onSeguimiento(item.estudiante, item)}
-                  className="flex-1 sm:flex-none bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap"
                 >
                   📝 Seguimiento
                 </button>
                 <button
                   onClick={() => onVerPerfil(item)}
-                  className="flex-1 sm:flex-none bg-white hover:bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none bg-white hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm whitespace-nowrap"
                 >
                   👤 Ver Perfil
                 </button>

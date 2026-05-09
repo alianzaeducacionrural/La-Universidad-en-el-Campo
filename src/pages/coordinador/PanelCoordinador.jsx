@@ -12,6 +12,7 @@ import PanelReportesAsistencia from '../../components/coordinador/PanelReportesA
 import GestionPadrinos from '../../components/coordinador/GestionPadrinos';
 import GestionUniversidades from '../../components/coordinador/GestionUniversidades';
 import PanelMonitoreoAcciones from '../../components/coordinador/PanelMonitoreoAcciones';
+import HistorialAsistencias from '../../components/coordinador/HistorialAsistencias';
 
 export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
   const { perfil: usuario } = useAuth();
@@ -38,8 +39,8 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
           <h1 className="text-2xl font-bold text-gray-800 mb-6">📊 Panel de Control</h1>
           
           {/* Pestañas */}
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="flex space-x-8">
+          <div className="border-b border-gray-200 mb-6 overflow-x-auto">
+            <nav className="flex space-x-6 min-w-max">
               <button 
                 onClick={() => setVistaActiva('seguimientos')}
                 className={`pb-3 px-1 font-medium text-sm border-b-2 transition ${
@@ -80,16 +81,26 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
               >
                 🏫 Universidades
               </button>
-              <button 
-                onClick={() => setVistaActiva('monitoreo')} 
-                className={`pb-3 px-1 font-medium text-sm border-b-2 transition ${
-                  vistaActiva === 'monitoreo' 
-                    ? 'border-green-600 text-green-600' 
+              <button
+                onClick={() => setVistaActiva('historial_asistencias')}
+                className={`pb-3 px-1 font-medium text-sm border-b-2 transition whitespace-nowrap ${
+                  vistaActiva === 'historial_asistencias'
+                    ? 'border-green-600 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                📅 Historial Asistencias
+              </button>
+              <button
+                onClick={() => setVistaActiva('monitoreo')}
+                className={`pb-3 px-1 font-medium text-sm border-b-2 transition whitespace-nowrap ${
+                  vistaActiva === 'monitoreo'
+                    ? 'border-green-600 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
                 📋 Monitoreo Acciones
-                </button>
+              </button>
             </nav>
           </div>
           
@@ -112,6 +123,10 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
           {vistaActiva === 'universidades' && (
             <GestionUniversidades />
           )}
+          {vistaActiva === 'historial_asistencias' && (
+            <HistorialAsistencias />
+          )}
+
           {vistaActiva === 'monitoreo' && (
             <PanelMonitoreoAcciones />
           )}

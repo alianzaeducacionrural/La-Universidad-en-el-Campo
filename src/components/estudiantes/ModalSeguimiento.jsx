@@ -104,12 +104,12 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
           <div className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">📅 Fecha de Contacto *</label>
-              <input type="date" name="fecha_contacto" required defaultValue={fechaHoy} max={fechaHoy} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base" />
+              <input type="date" name="fecha_contacto" required defaultValue={fechaHoy} max={fechaHoy} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">📞 Tipo de Gestión *</label>
-              <select name="tipo" required className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base">
+              <select name="tipo" required className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                 <option value="">Seleccionar...</option>
                 {TIPOS_GESTION.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -117,7 +117,7 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">🔍 Causa de Ausencia</label>
-              <select name="causa" className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base">
+              <select name="causa" className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
                 <option value="">Seleccionar (opcional)...</option>
                 {CAUSAS_AUSENCIA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -185,8 +185,8 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
           </div>
 
           <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 rounded-b-xl">
-            <button type="button" onClick={onClose} className="px-4 py-2.5 text-gray-700 hover:bg-gray-100 rounded-lg">Cancelar</button>
-            <button type="submit" disabled={cargando || subiendo} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg disabled:opacity-50">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancelar</button>
+            <button type="submit" disabled={cargando || subiendo} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">
               {cargando || subiendo ? 'Guardando...' : 'Guardar Seguimiento'}
             </button>
           </div>
