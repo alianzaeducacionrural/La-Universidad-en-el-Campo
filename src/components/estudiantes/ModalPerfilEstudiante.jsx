@@ -7,7 +7,7 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
 import { getEstadoColor, formatearFecha } from '../../utils/helpers';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
-import { exportarSeguimientosExcel } from '../../utils/exportUtils';
+import { exportarSeguimientosExcel, exportarNotasEstudianteExcel } from '../../utils/exportUtils';
 import VisorImagen from '../common/VisorImagen';
 import BotonWhatsApp from '../common/BotonWhatsApp';
 import ModalEditarDesercion from './ModalEditarDesercion';
@@ -31,6 +31,31 @@ export default function ModalPerfilEstudiante({
   const [datosDesercion, setDatosDesercion] = useState(null);
   const [cargandoDesercion, setCargandoDesercion] = useState(false);
   const [modalEditarDesercion, setModalEditarDesercion] = useState(false);
+  const [notasEstudiante, setNotasEstudiante] = useState([]);
+  const [cargandoNotasEst, setCargandoNotasEst] = useState(false);
+
+  async function cargarNotasEstudiante(estudianteId) {
+    setCargandoNotasEst(true);
+    const { data } = await supabase
+      .from('notas_estudiantes')
+      .select(`
+        id, nota, observaciones,
+        notas_modulos:nota_modulo_id (
+          id, modulo, fecha_evaluacion, docente_nombre
+        )
+      `)
+      .eq('estudiante_id', estudianteId)
+      .order('created_at', { ascending: false });
+    if (data) {
+      const ordenadas = [...data].sort((a, b) => {
+        const fa = a.notas_modulos?.fecha_evaluacion || '';
+        const fb = b.notas_modulos?.fecha_evaluacion || '';
+        return fb.localeCompare(fa);
+      });
+      setNotasEstudiante(ordenadas);
+    }
+    setCargandoNotasEst(false);
+  }
 
   async function cargarDatosDesercion(estudianteId) {
     setCargandoDesercion(true);
@@ -48,6 +73,7 @@ export default function ModalPerfilEstudiante({
   useEffect(() => {
     if (isOpen && estudiante) {
       onCargarHistorial(estudiante.id);
+      cargarNotasEstudiante(estudiante.id);
       if (estudiante.estado === 'Desertor') {
         cargarDatosDesercion(estudiante.id);
       } else {
@@ -60,14 +86,14 @@ export default function ModalPerfilEstudiante({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="bg-white rounded-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl">
           
           {/* ENCABEZADO CON GRADIENTE CORPORATIVO */}
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 rounded-t-xl">
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">
+          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 rounded-t-xl">
+            <div className="flex justify-between items-start gap-3">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 leading-tight">
                   {estudiante.nombre_completo}
                 </h2>
                 <div className="flex flex-wrap items-center gap-3 mt-2">
@@ -83,9 +109,9 @@ export default function ModalPerfilEstudiante({
             </div>
           </div>
           
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* INFORMACIÓN DE CONTACTO */}
-            <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                 <h3 className="font-semibold text-gray-700 mb-3 flex items-center">
                   <span className="mr-2 text-xl">📱</span> Contacto del Estudiante
@@ -116,7 +142,7 @@ export default function ModalPerfilEstudiante({
             </div>
             
             {/* ESTADÍSTICAS RÁPIDAS */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
                 <p className="text-2xl font-bold text-blue-700">{estudiante.total_faltas || 0}</p>
                 <p className="text-xs text-blue-600">Faltas Acumuladas</p>
@@ -138,7 +164,7 @@ export default function ModalPerfilEstudiante({
             </div>
             
             {/* ACCIONES RÁPIDAS */}
-            <div className="flex flex-wrap gap-3 mb-6">
+            <div className="flex flex-wrap gap-2 mb-6">
               <button onClick={() => { onClose(); onSeguimiento(estudiante); }}
                 className="flex-1 bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm hover:shadow">
                 📝 Registrar Seguimiento
@@ -220,7 +246,7 @@ export default function ModalPerfilEstudiante({
                   </div>
                 ) : datosDesercion ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       <p><strong>Tipo:</strong> {datosDesercion.tipo_desercion}</p>
                       <p><strong>Fecha de reporte:</strong> {formatearFecha(datosDesercion.fecha_reporte)}</p>
                       <p><strong>Motivo principal:</strong> {datosDesercion.motivo_principal}</p>
@@ -249,6 +275,88 @@ export default function ModalPerfilEstudiante({
               </div>
             )}
             
+            {/* NOTAS ACADÉMICAS */}
+            <div className="mb-6">
+              <h3 className="font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                <span className="flex items-center">
+                  <span className="mr-2 text-xl">🎓</span> Notas Académicas
+                </span>
+                {notasEstudiante.length > 0 && (
+                  <button
+                    onClick={() => exportarNotasEstudianteExcel(notasEstudiante, estudiante.nombre_completo)}
+                    className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-green-200 flex items-center space-x-1"
+                  >
+                    <span>📥</span>
+                    <span>Descargar Historial Académico</span>
+                  </button>
+                )}
+              </h3>
+
+              {cargandoNotasEst ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  <p className="text-sm text-gray-500 mt-2">Cargando notas...</p>
+                </div>
+              ) : notasEstudiante.length === 0 ? (
+                <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-gray-400 text-sm">Aún no hay notas registradas para este estudiante</p>
+                </div>
+              ) : (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Módulo</th>
+                        <th className="px-4 py-2.5 text-center font-medium text-gray-600">Fecha</th>
+                        <th className="px-4 py-2.5 text-center font-medium text-gray-600">Nota</th>
+                        <th className="px-4 py-2.5 text-center font-medium text-gray-600">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {notasEstudiante.map(ne => (
+                        <tr key={ne.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2.5 font-medium text-gray-800">
+                            {ne.notas_modulos?.modulo || 'N/A'}
+                          </td>
+                          <td className="px-4 py-2.5 text-center text-gray-500 text-xs">
+                            {formatearFecha(ne.notas_modulos?.fecha_evaluacion)}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {ne.nota !== null && ne.nota !== undefined ? (
+                              <span className={`font-bold text-base ${ne.nota >= 3 ? 'text-green-600' : 'text-red-500'}`}>
+                                {Number(ne.nota).toFixed(1)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">–</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {ne.nota !== null && ne.nota !== undefined ? (
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                ne.nota >= 3 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                              }`}>
+                                {ne.nota >= 3 ? 'Aprobado' : 'Reprobado'}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-xs">Sin nota</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+                    <p className="text-xs text-gray-400">
+                      {notasEstudiante.filter(n => n.nota !== null && n.nota >= 3).length} aprobados
+                      · {notasEstudiante.filter(n => n.nota !== null && n.nota < 3).length} reprobados
+                      · {notasEstudiante.filter(n => n.nota === null).length} sin nota
+                      · {notasEstudiante.length} módulos en total
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* LÍNEA DE TIEMPO */}
             <div>
               <h3 className="font-semibold text-gray-700 mb-4 flex items-center">

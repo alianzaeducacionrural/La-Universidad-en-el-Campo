@@ -80,30 +80,25 @@ export const capitalizar = (texto) => {
   return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
 };
 
+const REEMPLAZOS_EMOJI = new Map([
+  ['📞 Llamada Telefónica', 'Llamada Telefónica'],
+  ['💬 WhatsApp', 'WhatsApp'],
+  ['✉️ Correo Electrónico', 'Correo Electrónico'],
+  ['🏫 Visita Institución', 'Visita Institución'],
+  ['📡 Conectividad / Sin Señal', 'Conectividad / Sin Señal'],
+  ['🏥 Problemas de Salud', 'Problemas de Salud'],
+  ['🌾 Labores de Cosecha', 'Labores de Cosecha'],
+  ['📚 Dificultad Académica', 'Dificultad Académica'],
+  ['💰 Situación Económica', 'Situación Económica'],
+  ['👨‍👩‍👧 Situación Familiar', 'Situación Familiar'],
+  ['📋 Otro', 'Otro'],
+]);
+
+const REGEX_EMOJIS_COMUNES = /📞|💬|✉️|🏫|📡|🏥|🌾|📚|💰|👨‍👩‍👧|📋/g;
+
 export const limpiarEmojis = (texto) => {
   if (!texto) return '';
-  
-  const reemplazos = {
-    '📞 Llamada Telefónica': 'Llamada Telefónica',
-    '💬 WhatsApp': 'WhatsApp',
-    '✉️ Correo Electrónico': 'Correo Electrónico',
-    '🏫 Visita Institución': 'Visita Institución',
-    '📡 Conectividad / Sin Señal': 'Conectividad / Sin Señal',
-    '🏥 Problemas de Salud': 'Problemas de Salud',
-    '🌾 Labores de Cosecha': 'Labores de Cosecha',
-    '📚 Dificultad Académica': 'Dificultad Académica',
-    '💰 Situación Económica': 'Situación Económica',
-    '👨‍👩‍👧 Situación Familiar': 'Situación Familiar',
-    '📋 Otro': 'Otro',
-  };
-
-  if (reemplazos[texto]) return reemplazos[texto];
-
-  let resultado = texto;
-  const emojisComunes = ['📞', '💬', '✉️', '🏫', '📡', '🏥', '🌾', '📚', '💰', '👨‍👩‍👧', '📋'];
-  emojisComunes.forEach(emoji => {
-    resultado = resultado.replace(new RegExp(emoji, 'g'), '');
-  });
-
-  return resultado.replace(/\s+/g, ' ').trim();
+  const exacto = REEMPLAZOS_EMOJI.get(texto);
+  if (exacto) return exacto;
+  return texto.replace(REGEX_EMOJIS_COMUNES, '').replace(/\s+/g, ' ').trim();
 };

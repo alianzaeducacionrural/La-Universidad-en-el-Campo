@@ -90,51 +90,55 @@ export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerP
       
       <div className="divide-y divide-gray-200">
         {inasistencias.map((item) => (
-          <div key={item.id} className="p-5 hover:bg-gray-50 transition">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
+          <div key={item.id} className="p-4 md:p-5 hover:bg-gray-50 transition">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-red-600 text-lg">👤</span>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-800">{item.estudiante_nombre}</h4>
-                    <p className="text-sm text-gray-500">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-gray-800 truncate">{item.estudiante_nombre}</h4>
+                    <p className="text-sm text-gray-500 truncate">
                       {item.estudiante?.municipio} • {item.estudiante?.institucion_educativa}
                     </p>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2 mt-3 ml-12">
-                  <div className="flex items-center text-sm">
-                    <span className="text-gray-500 w-24">📅 Fecha:</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2 ml-0 sm:ml-13">
+                  <div className="flex items-center text-sm gap-2">
+                    <span className="text-gray-400 flex-shrink-0">📅</span>
+                    <span className="text-gray-500 flex-shrink-0">Fecha:</span>
                     <span className="text-gray-700 font-medium">{formatearFecha(item.fecha_inasistencia)}</span>
                   </div>
-                  <div className="flex items-center text-sm">
-                    <span className="text-gray-500 w-24">📚 Módulo:</span>
-                    <span className="text-gray-700">{item.modulo}</span>
+                  <div className="flex items-center text-sm gap-2">
+                    <span className="text-gray-400 flex-shrink-0">📚</span>
+                    <span className="text-gray-500 flex-shrink-0">Módulo:</span>
+                    <span className="text-gray-700 truncate">{item.modulo}</span>
                   </div>
-                  <div className="flex items-center text-sm">
-                    <span className="text-gray-500 w-24">👨‍🏫 Docente:</span>
-                    <span className="text-gray-700">{item.docente_nombre}</span>
+                  <div className="flex items-center text-sm gap-2">
+                    <span className="text-gray-400 flex-shrink-0">👨‍🏫</span>
+                    <span className="text-gray-500 flex-shrink-0">Docente:</span>
+                    <span className="text-gray-700 truncate">{item.docente_nombre}</span>
                   </div>
-                  <div className="flex items-center text-sm">
-                    <span className="text-gray-500 w-24">🏫 Grupo:</span>
-                    <span className="text-gray-700">{item.grupo_nombre}</span>
+                  <div className="flex items-center text-sm gap-2">
+                    <span className="text-gray-400 flex-shrink-0">🏫</span>
+                    <span className="text-gray-500 flex-shrink-0">Grupo:</span>
+                    <span className="text-gray-700 truncate">{item.grupo_nombre}</span>
                   </div>
                 </div>
               </div>
-              
-              <div className="flex flex-col space-y-2 ml-4">
+
+              <div className="flex sm:flex-col gap-2 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={() => onSeguimiento(item.estudiante, item)}
-                  className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm whitespace-nowrap"
                 >
                   📝 Seguimiento
                 </button>
                 <button
                   onClick={() => onVerPerfil(item)}
-                  className="bg-white hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none bg-white hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm whitespace-nowrap"
                 >
                   👤 Ver Perfil
                 </button>

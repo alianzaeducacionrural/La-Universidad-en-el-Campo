@@ -3,18 +3,11 @@
 // =============================================
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
 import { supabase } from './lib/supabaseClient';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import DashboardUniversidad from './pages/universidad/DashboardUniversidad';
-import PanelCoordinador from './pages/coordinador/PanelCoordinador';
-import Estadisticas from './pages/Estadisticas';
-import Reportes from './pages/Reportes';
-import GestionGrupos from './pages/admin/GestionGrupos';
-import GestionMultas from './pages/admin/GestionMultas';
 import SplashScreen from './components/common/SplashScreen';
 import ModalSeguimiento from './components/estudiantes/ModalSeguimiento';
 import ModalPerfilEstudiante from './components/estudiantes/ModalPerfilEstudiante';
@@ -22,6 +15,14 @@ import ModalEditarEstudiante from './components/estudiantes/ModalEditarEstudiant
 import ModalReportarDesercion from './components/estudiantes/ModalReportarDesercion';
 import ModalEditarSeguimiento from './components/seguimientos/ModalEditarSeguimiento';
 import { useNotificacion } from './context/NotificacionContext';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DashboardUniversidad = lazy(() => import('./pages/universidad/DashboardUniversidad'));
+const PanelCoordinador = lazy(() => import('./pages/coordinador/PanelCoordinador'));
+const Estadisticas = lazy(() => import('./pages/Estadisticas'));
+const Reportes = lazy(() => import('./pages/Reportes'));
+const GestionGrupos = lazy(() => import('./pages/admin/GestionGrupos'));
+const GestionMultas = lazy(() => import('./pages/admin/GestionMultas'));
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -342,25 +343,27 @@ function AppContent() {
   return (
     <>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad /></ProtectedRoute>} />
-        <Route path="/panel" element={
-          <ProtectedRoute>
-            <PanelCoordinador 
-              onSeguimiento={handleSeguimientoDesdePanel}
-              onVerPerfil={handleVerPerfilDesdePanel}
-            />
-          </ProtectedRoute>
-        } />
-        <Route path="/estadisticas" element={<ProtectedRoute><Estadisticas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-        <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-        <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-        <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-        <Route path="/" element={<HomeRedirect />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad /></ProtectedRoute>} />
+          <Route path="/panel" element={
+            <ProtectedRoute>
+              <PanelCoordinador
+                onSeguimiento={handleSeguimientoDesdePanel}
+                onVerPerfil={handleVerPerfilDesdePanel}
+              />
+            </ProtectedRoute>
+          } />
+          <Route path="/estadisticas" element={<ProtectedRoute><Estadisticas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/" element={<HomeRedirect />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
 
       {/* MODALES DEL PANEL DE CONTROL */}
       <PanelModales

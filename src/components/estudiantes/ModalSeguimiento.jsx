@@ -7,11 +7,12 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { TIPOS_GESTION, CAUSAS_AUSENCIA } from '../../utils/constants';
 import { supabase } from '../../lib/supabaseClient';
 
-export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiante }) {
+export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiante, conInasistencia = false }) {
   const notificacion = useNotificacion();
   const [cargando, setCargando] = useState(false);
   const [archivos, setArchivos] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
+  const [cerrarInasistencia, setCerrarInasistencia] = useState(true);
   const fechaHoy = new Date().toISOString().split('T')[0];
 
   const subirArchivos = async (seguimientoId) => {
@@ -53,15 +54,11 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
       tipo_gestion: formData.get('tipo'),
       causa_ausencia: formData.get('causa') || null,
       resultado: formData.get('resultado'),
-      fecha_contacto: formData.get('fecha_contacto')
+      fecha_contacto: formData.get('fecha_contacto'),
+      ...(conInasistencia && { cerrarInasistencia })
     };
-    
-    console.log('📝 Enviando datos de seguimiento:', datos);
-    
-    // 🔥 CORRECCIÓN: Validar que onGuardar devuelva el formato correcto
+
     const resultado = await onGuardar(datos);
-    
-    console.log('📊 Resultado de onGuardar:', resultado);
     
     if (resultado && resultado.success) {
       // Subir archivos si hay
@@ -151,8 +148,42 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
                 </div>
               )}
             </div>
+
+            {conInasistencia && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">¿Se resolvió la situación del estudiante?</label>
+                <div className="flex flex-col space-y-2">
+                  <label className={`flex items-start space-x-3 p-3 rounded-lg border-2 cursor-pointer transition ${cerrarInasistencia ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <input
+                      type="radio"
+                      name="cerrar_inasistencia"
+                      checked={cerrarInasistencia}
+                      onChange={() => setCerrarInasistencia(true)}
+                      className="mt-0.5 accent-green-600"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-800">Sí, cerrar esta inasistencia</span>
+                      <p className="text-xs text-gray-500">Se marcará como resuelta y saldrá de las pendientes</p>
+                    </div>
+                  </label>
+                  <label className={`flex items-start space-x-3 p-3 rounded-lg border-2 cursor-pointer transition ${!cerrarInasistencia ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <input
+                      type="radio"
+                      name="cerrar_inasistencia"
+                      checked={!cerrarInasistencia}
+                      onChange={() => setCerrarInasistencia(false)}
+                      className="mt-0.5 accent-amber-500"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-800">No, mantener como pendiente</span>
+                      <p className="text-xs text-gray-500">Ej: no pude comunicarme, sigue en seguimiento</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
-          
+
           <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 rounded-b-xl">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancelar</button>
             <button type="submit" disabled={cargando || subiendo} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg disabled:opacity-50">

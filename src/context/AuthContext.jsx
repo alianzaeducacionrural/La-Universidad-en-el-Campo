@@ -21,10 +21,7 @@ export function AuthProvider({ children }) {
     if (isInitialized.current) return;
     isInitialized.current = true;
     
-    console.log('🔧 [AuthProvider] Inicializando...');
-    
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('📦 [AuthProvider] Sesión inicial:', session?.user?.email || 'No hay sesión');
       if (session?.user) {
         setUser(session.user);
         cargarPerfil(session.user);
@@ -34,8 +31,6 @@ export function AuthProvider({ children }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔄 [AuthProvider] Evento Auth:', event, session?.user?.email);
-      
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
         cargarPerfil(session.user);
@@ -51,53 +46,44 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function cargarPerfil(authUser) {
-    console.log('👤 [cargarPerfil] Iniciando para:', authUser.email);
-    
-    // 🔥 CORRECCIÓN CRÍTICA: Asegurar que el user esté guardado
     setUser(authUser);
-    
+
     try {
-      // Buscar en padrinos
       const { data: padrino } = await supabase
         .from('padrinos')
         .select('*')
         .eq('auth_id', authUser.id)
         .maybeSingle();
-      
+
       if (padrino) {
-        console.log('✅ [cargarPerfil] Es PADRINO:', padrino.nombre_completo);
         setPerfil(padrino);
         setTipoUsuario('padrino');
         setLoading(false);
         return;
       }
-      
-      // Buscar en universidad
+
       const { data: universidad } = await supabase
         .from('usuarios_universidad')
         .select('*')
         .eq('auth_id', authUser.id)
         .maybeSingle();
-      
+
       if (universidad) {
-        console.log('✅ [cargarPerfil] Es UNIVERSIDAD:', universidad.nombre_completo);
         setPerfil(universidad);
         setTipoUsuario('universidad');
         setLoading(false);
         return;
       }
-      
-      console.warn('⚠️ [cargarPerfil] Usuario sin perfil');
+
       await supabase.auth.signOut();
       setLoading(false);
     } catch (error) {
-      console.error('❌ [cargarPerfil] Error:', error.message);
+      console.error('Error cargando perfil:', error.message);
       setLoading(false);
     }
   }
 
   async function signIn(email, password) {
-    console.log('🔑 [signIn] Intentando login:', email);
     setLoading(true);
     
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -115,7 +101,6 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
-    console.log('🚪 [signOut] Cerrando sesión...');
     setUser(null);
     setPerfil(null);
     setTipoUsuario(null);
@@ -124,13 +109,6 @@ export function AuthProvider({ children }) {
   }
 
   const value = { user, perfil, tipoUsuario, loading, signIn, signOut };
-
-  console.log('🎨 [AuthProvider] Renderizando:', {
-    hasUser: !!user,
-    tipoUsuario,
-    loading,
-    perfilNombre: perfil?.nombre_completo || 'N/A'
-  });
 
   if (loading) {
     return (

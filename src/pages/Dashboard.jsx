@@ -2,7 +2,7 @@
 // DASHBOARD PRINCIPAL - VERSIÓN COMPLETA
 // =============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useGrupos } from '../hooks/useGrupos';
@@ -36,6 +36,7 @@ import ModalEditarSeguimiento from '../components/seguimientos/ModalEditarSeguim
 
 // Componentes Padrino
 import InasistenciasPendientes from '../components/padrino/InasistenciasPendientes';
+import NotasGrupoResumen from '../components/notas/NotasGrupoResumen';
 
 export default function Dashboard() {
   // =============================================
@@ -136,76 +137,76 @@ export default function Dashboard() {
   // =============================================
   // MANEJADORES
   // =============================================
-  const handleSeguimiento = (est, inasistencia = null) => {
+  const puedeGestionarGrupo = puedeGestionar(padrino?.rol);
+
+  const handleSeguimiento = useCallback((est, inasistencia = null) => {
     setEstudianteSeleccionado(est);
     setInasistenciaActual(inasistencia);
     setModalSeguimiento(true);
-  };
+  }, []);
 
-  const handleVerPerfil = (est) => {
+  const handleVerPerfil = useCallback((est) => {
     setEstudianteSeleccionado(est);
     setModalPerfil(true);
-  };
+  }, []);
 
-  const handleVerPerfilDesdeInasistencia = (inasistencia) => {
+  const handleVerPerfilDesdeInasistencia = useCallback((inasistencia) => {
     if (inasistencia?.estudiante) {
       setEstudianteSeleccionado(inasistencia.estudiante);
       setModalPerfil(true);
     }
-  };
+  }, []);
 
-  const handleVerPerfilDesdeSeguimiento = (estudiante) => {
+  const handleVerPerfilDesdeSeguimiento = useCallback((estudiante) => {
     if (estudiante) {
       setEstudianteSeleccionado(estudiante);
       setModalPerfil(true);
     }
-  };
+  }, []);
 
-  const handleEditar = (est) => {
+  const handleEditar = useCallback((est) => {
     setModalPerfil(false);
     setTimeout(() => {
       setEstudianteSeleccionado(est);
       setModalEditar(true);
     }, 150);
-  };
+  }, []);
 
-  const handleGuardarSeguimiento = async (datos) => {
-    const datosCompletos = {
-      ...datos,
-      padrino_id: padrino.id
-    };
-    
+  const handleGuardarSeguimiento = useCallback(async (datos) => {
+    const { cerrarInasistencia = true, ...datosSeguimiento } = datos;
+    const datosCompletos = { ...datosSeguimiento, padrino_id: padrino.id };
     const resultado = await registrarSeguimiento(datosCompletos);
-    
+
     if (resultado.success && inasistenciaActual) {
+      const actualizacion = cerrarInasistencia
+        ? { estado_seguimiento: 'realizado', seguimiento_id: resultado.data?.id }
+        : { seguimiento_id: resultado.data?.id };
+
       await supabase
         .from('inasistencias')
-        .update({ 
-          estado_seguimiento: 'realizado',
-          seguimiento_id: resultado.data?.id 
-        })
+        .update(actualizacion)
         .eq('id', inasistenciaActual.id);
-      
+
       setRefreshInasistencias(prev => prev + 1);
     }
-    
+
     return resultado;
-  };
+  }, [padrino?.id, inasistenciaActual, registrarSeguimiento]);
 
-  const handleCambiarEstado = async (id, nuevoEstado) => {
-    return await cambiarEstado(id, nuevoEstado);
-  };
+  const handleCambiarEstado = useCallback(async (id, nuevoEstado) => {
+    return cambiarEstado(id, nuevoEstado);
+  }, [cambiarEstado]);
 
-  const handleEditarSeguimiento = (seg) => {
+  const handleEditarSeguimiento = useCallback((seg) => {
     setSeguimientoSeleccionado(seg);
     setModalEditarSeguimiento(true);
-  };
+  }, []);
 
-  const handleReportarDesercion = (est) => {
+  const handleReportarDesercion = useCallback((est) => {
     setEstudianteParaDesercion(est);
     setModalPerfil(false);
     setModalReportarDesercion(true);
-  };
+  }, []);
 
   // =============================================
   // RENDERIZADO
@@ -225,10 +226,10 @@ export default function Dashboard() {
       />
 
       {/* CONTENIDO PRINCIPAL */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 pb-20 md:pb-0">
         <Header onVerPerfil={handleVerPerfil} />
 
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           {vistaActiva === 'grupos' && (
             <>
               <GrupoSelector
@@ -237,26 +238,26 @@ export default function Dashboard() {
                 setGrupoSeleccionado={setGrupoSeleccionado}
               />
 
-              <GrupoInfo 
-                grupo={grupoSeleccionado} 
+              <GrupoInfo
+                grupo={grupoSeleccionado}
                 totalEstudiantes={estudiantes.length}
                 estudiantes={estudiantes}
                 onVerHistorialAsistencia={() => setModalHistorialAsistencia(true)}
                 padrino={padrino}
               />
-            </>
-          )}
 
-          {vistaActiva === 'grupos' && (
-            <TablaEstudiantes
-              estudiantes={estudiantes}
-              cargando={cargandoEstudiantes}
-              grupoSeleccionado={grupoSeleccionado}
-              puedeGestionar={puedeGestionar(padrino.rol)}
-              onSeguimiento={(est) => handleSeguimiento(est)}
-              onVerPerfil={handleVerPerfil}
-              onImportar={() => setModalImportar(true)}
-            />
+              <TablaEstudiantes
+                estudiantes={estudiantes}
+                cargando={cargandoEstudiantes}
+                grupoSeleccionado={grupoSeleccionado}
+                puedeGestionar={puedeGestionarGrupo}
+                onSeguimiento={handleSeguimiento}
+                onVerPerfil={handleVerPerfil}
+                onImportar={() => setModalImportar(true)}
+              />
+
+              <NotasGrupoResumen grupo={grupoSeleccionado} />
+            </>
           )}
 
           {vistaActiva === 'inasistencias' && (
@@ -326,6 +327,7 @@ export default function Dashboard() {
         }}
         onGuardar={handleGuardarSeguimiento}
         estudiante={estudianteSeleccionado}
+        conInasistencia={!!inasistenciaActual}
       />
 
       <ModalEditarEstudiante
@@ -336,7 +338,7 @@ export default function Dashboard() {
         }}
         onGuardar={actualizarEstudiante}
         estudiante={estudianteSeleccionado}
-        puedeGestionar={puedeGestionar(padrino.rol)}
+        puedeGestionar={puedeGestionarGrupo}
       />
 
       <ModalPerfilEstudiante
@@ -353,7 +355,7 @@ export default function Dashboard() {
         onEditar={handleEditar}
         onEditarSeguimiento={handleEditarSeguimiento}
         onReportarDesercion={handleReportarDesercion}
-        puedeGestionar={puedeGestionar(padrino.rol)}
+        puedeGestionar={puedeGestionarGrupo}
         onEstadoChange={async (id, estado) => {
         const result = await handleCambiarEstado(id, estado);
         // 🔥 Recargar lista de estudiantes del grupo actual

@@ -135,6 +135,92 @@ export function exportarEstudiantesPDF(estudiantes, grupoNombre) {
 }
 
 /**
+ * Exporta notas finales de un grupo a Excel (hoja resumen + una hoja por módulo)
+ */
+export function exportarNotasGrupoExcel(notasModulos, grupoNombre) {
+  const wb = XLSX.utils.book_new();
+
+  // Hoja 1: Matriz resumen (estudiantes × módulos)
+  if (notasModulos.length > 0) {
+    const estudiantesMap = {};
+    notasModulos.forEach(nm => {
+      (nm.notas_estudiantes || []).forEach(ne => {
+        if (ne.estudiante && !estudiantesMap[ne.estudiante_id]) {
+          estudiantesMap[ne.estudiante_id] = ne.estudiante.nombre_completo;
+        }
+      });
+    });
+
+    const estudiantes = Object.entries(estudiantesMap)
+      .sort((a, b) => a[1].localeCompare(b[1]));
+
+    const cabeceras = [
+      'Estudiante',
+      ...notasModulos.map(nm => `${nm.modulo} (${formatearFecha(nm.fecha_evaluacion)})`),
+      'Promedio'
+    ];
+
+    const filas = estudiantes.map(([estId, nombre]) => {
+      const notasFila = notasModulos.map(nm => {
+        const ne = nm.notas_estudiantes?.find(n => n.estudiante_id === estId);
+        return ne?.nota ?? '';
+      });
+      const numericas = notasFila.filter(n => n !== '');
+      const promedio = numericas.length > 0
+        ? parseFloat((numericas.reduce((s, n) => s + n, 0) / numericas.length).toFixed(1))
+        : '';
+      return [nombre, ...notasFila, promedio];
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([cabeceras, ...filas]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+  }
+
+  // Una hoja por módulo
+  notasModulos.forEach(nm => {
+    const datos = (nm.notas_estudiantes || [])
+      .filter(ne => ne.estudiante)
+      .sort((a, b) => a.estudiante.nombre_completo.localeCompare(b.estudiante.nombre_completo))
+      .map(ne => ({
+        'Estudiante': ne.estudiante.nombre_completo,
+        'Nota': ne.nota ?? 'N/R',
+        'Estado': ne.nota !== null && ne.nota !== undefined
+          ? (ne.nota >= 3.0 ? 'Aprobado' : 'Reprobado')
+          : 'Sin nota',
+        'Observaciones': ne.observaciones || ''
+      }));
+
+    if (datos.length > 0) {
+      const ws = XLSX.utils.json_to_sheet(datos);
+      XLSX.utils.book_append_sheet(wb, ws, nm.modulo.substring(0, 31));
+    }
+  });
+
+  XLSX.writeFile(wb, `Notas_${grupoNombre?.replace(/\s+/g, '_') || 'grupo'}.xlsx`);
+}
+
+/**
+ * Exporta historial académico de un estudiante a Excel
+ */
+export function exportarNotasEstudianteExcel(notas, estudianteNombre) {
+  const datos = notas.map(ne => ({
+    'Módulo': ne.notas_modulos?.modulo || 'N/A',
+    'Fecha Evaluación': formatearFecha(ne.notas_modulos?.fecha_evaluacion),
+    'Docente': ne.notas_modulos?.docente_nombre || 'N/A',
+    'Nota': ne.nota ?? 'No registrada',
+    'Estado': ne.nota !== null && ne.nota !== undefined
+      ? (ne.nota >= 3.0 ? 'Aprobado' : 'Reprobado')
+      : 'Sin nota',
+    'Observaciones': ne.observaciones || ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(datos);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Historial Académico');
+  XLSX.writeFile(wb, `Notas_${estudianteNombre?.replace(/\s+/g, '_') || 'estudiante'}.xlsx`);
+}
+
+/**
  * Exporta historial de seguimientos a PDF
  */
 export function exportarSeguimientosPDF(seguimientos, estudianteNombre) {
