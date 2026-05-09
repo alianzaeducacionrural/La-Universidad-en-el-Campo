@@ -7,6 +7,20 @@
   html {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+
+  /* Fuente base más grande en móvil para mejor legibilidad */
+  @media (max-width: 1023px) {
+    html {
+      font-size: 17px;
+    }
+
+    /* Previene zoom automático en iOS al enfocar inputs y garantiza legibilidad */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 1rem !important;
+    }
+  }
 }
 
 @layer components {
