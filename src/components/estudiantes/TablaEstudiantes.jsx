@@ -92,46 +92,46 @@ export default function TablaEstudiantes({
       {/* ── MÓVIL: tarjetas (< lg) ───────────────────────────────────────── */}
       <div className="lg:hidden divide-y divide-gray-100">
         {estudiantes.map((est) => (
-          <div key={est.id} className="p-4">
+          <div key={est.id} className="px-4 py-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 truncate">{est.nombre_completo}</p>
-                <p className="text-xs text-gray-400 mb-1">{est.documento || 'Sin documento'}</p>
+                <p className="font-semibold text-gray-800 text-base truncate">{est.nombre_completo}</p>
+                <p className="text-sm text-gray-400 mb-1.5">{est.documento || 'Sin documento'}</p>
 
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500 mb-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500 mb-2.5">
                   <span>{est.municipio}</span>
                   {est.institucion_educativa && (
                     <>
                       <span className="text-gray-300">·</span>
-                      <span className="truncate max-w-[150px]">{est.institucion_educativa}</span>
+                      <span className="truncate max-w-[180px]">{est.institucion_educativa}</span>
                     </>
                   )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${getEstadoColor(est.estado)}`}>
                     {est.estado || 'Activo'}
                   </span>
-                  <span className={`text-xs font-semibold ${est.total_faltas > 3 ? 'text-red-600' : 'text-gray-500'}`}>
+                  <span className={`text-sm font-semibold ${est.total_faltas > 3 ? 'text-red-600' : 'text-gray-500'}`}>
                     {est.total_faltas || 0} falta{(est.total_faltas || 0) !== 1 ? 's' : ''}
                   </span>
                   {est.telefono && (
-                    <span className="text-xs text-gray-400">📞 {est.telefono}</span>
+                    <span className="text-sm text-gray-400">📞 {est.telefono}</span>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5 flex-shrink-0">
+              <div className="flex flex-col gap-2 flex-shrink-0">
                 <button
                   onClick={() => onSeguimiento(est)}
-                  className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white w-9 h-9 rounded-lg flex items-center justify-center text-lg transition"
+                  className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white w-11 h-11 rounded-xl flex items-center justify-center text-xl transition"
                   title="Registrar seguimiento"
                 >
                   📝
                 </button>
                 <button
                   onClick={() => onVerPerfil(est)}
-                  className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white w-9 h-9 rounded-lg flex items-center justify-center text-lg transition"
+                  className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white w-11 h-11 rounded-xl flex items-center justify-center text-xl transition"
                   title="Ver perfil"
                 >
                   👤

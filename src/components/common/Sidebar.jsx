@@ -138,7 +138,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
                   }`}
                 >
                   <span className="text-2xl leading-none">{item.icon}</span>
-                  <span className={`text-[10px] mt-0.5 font-medium leading-tight ${isActive ? 'text-primary' : 'text-gray-500'}`}>
+                  <span className={`text-xs mt-0.5 font-medium leading-tight ${isActive ? 'text-primary' : 'text-gray-500'}`}>
                     {item.mobileLabel}
                   </span>
                   {item.badge > 0 && (
@@ -158,7 +158,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
                 }`}
               >
                 <span className="text-2xl leading-none">{masVisible ? '✕' : '⋯'}</span>
-                <span className={`text-[10px] mt-0.5 font-medium leading-tight ${masVisible || anyExtraActive ? 'text-primary' : 'text-gray-500'}`}>
+                <span className={`text-xs mt-0.5 font-medium leading-tight ${masVisible || anyExtraActive ? 'text-primary' : 'text-gray-500'}`}>
                   Más
                 </span>
                 {anyExtraActive && !masVisible && (

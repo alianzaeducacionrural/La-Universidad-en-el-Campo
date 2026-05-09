@@ -61,16 +61,16 @@ export default function GrupoInfo({
 
       {/* Fila 2: Tags de información */}
       <div className="flex flex-wrap gap-2 mb-3">
-        <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1.5 rounded-full border border-blue-100">
+        <span className="text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100">
           🎓 {grupo.universidad}
         </span>
-        <span className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1.5 rounded-full border border-purple-100">
+        <span className="text-sm bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100">
           📚 {grupo.programa}
         </span>
-        <span className="text-xs bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-full border border-amber-100">
+        <span className="text-sm bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-100">
           📅 Cohorte {grupo.cohorte}
         </span>
-        <span className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1.5 rounded-full border border-gray-200">
+        <span className="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full border border-gray-200">
           👥 {totalEstudiantes} estudiantes
         </span>
       </div>
@@ -81,13 +81,13 @@ export default function GrupoInfo({
           <>
             <button
               onClick={() => setModalRegistrarAccion(true)}
-              className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
+              className="bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
             >
               ➕ Registrar Acción
             </button>
             <button
               onClick={() => setModalAcciones(true)}
-              className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+              className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
             >
               📋 Ver Acciones
             </button>
@@ -96,23 +96,23 @@ export default function GrupoInfo({
 
         {onVerHistorialAsistencia && (
           <button onClick={onVerHistorialAsistencia}
-            className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+            className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
           >
             📊 Historial Asistencia
           </button>
         )}
-        
+
         {/* ENLACES DIRECTOS SI EXISTEN */}
         {enlaces.estudiantes && (
           <a href={enlaces.estudiantes} target="_blank" rel="noopener noreferrer"
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
           >
             💬 Grupo Estudiantes
           </a>
         )}
         {enlaces.acudientes && (
           <a href={enlaces.acudientes} target="_blank" rel="noopener noreferrer"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
           >
             👨‍👩‍👧 Grupo Acudientes
           </a>
@@ -120,7 +120,7 @@ export default function GrupoInfo({
 
         <button
           onClick={() => setModalWhatsApp(true)}
-          className="bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-medium transition border-2 border-green-300 shadow-sm"
+          className="bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-green-300 shadow-sm"
         >
           💬 Configurar WhatsApp
         </button>
