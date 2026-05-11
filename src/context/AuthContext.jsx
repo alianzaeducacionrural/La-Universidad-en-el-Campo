@@ -16,11 +16,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   
   const isInitialized = useRef(false);
+  const currentUserIdRef = useRef(null);
 
   useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
-    
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
@@ -32,6 +33,7 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
+        if (currentUserIdRef.current === session.user.id) return;
         setUser(session.user);
         cargarPerfil(session.user);
       } else if (event === 'SIGNED_OUT') {
@@ -46,6 +48,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function cargarPerfil(authUser) {
+    currentUserIdRef.current = authUser.id;
     setUser(authUser);
 
     try {

@@ -16,7 +16,7 @@ export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerP
 
   useEffect(() => {
     if (padrino) cargarDatos();
-  }, [padrino, refresh]);
+  }, [padrino?.id, refresh]);
 
   async function cargarDatos() {
     setCargando(true);
