@@ -4,7 +4,9 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\alejo\\\\Documents\\\\Comité de cafeteros\\\\2026\\\\Plataformas\\\\La Universidad en el Campo\\\\app-padrinos\" -Force)",
       "Bash(Select-Object Name, FullName)",
       "Bash(Remove-Item \"c:\\\\Users\\\\alejo\\\\Documents\\\\Comité de cafeteros\\\\2026\\\\Plataformas\\\\La Universidad en el Campo\\\\app-padrinos\\\\src\\\\data\\\\caldas.geo.json\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Recurse -Depth 3)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

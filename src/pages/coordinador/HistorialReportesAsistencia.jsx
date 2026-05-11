@@ -14,6 +14,8 @@ export default function HistorialReportesAsistencia() {
   const [cargando, setCargando] = useState(true);
   const [filtroUniversidad, setFiltroUniversidad] = useState('');
   const [busqueda, setBusqueda] = useState('');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
   const [expandido, setExpandido] = useState(null);
   const prevLastSeen = useRef(null);
   const cantidadNuevos = useRef(0);
@@ -50,6 +52,8 @@ export default function HistorialReportesAsistencia() {
   const reportesFiltrados = useMemo(() => {
     return reportes.filter(r => {
       if (filtroUniversidad && r.grupo?.universidad !== filtroUniversidad) return false;
+      if (fechaInicio && r.fecha < fechaInicio) return false;
+      if (fechaFin && r.fecha > fechaFin) return false;
       if (busqueda) {
         const q = busqueda.toLowerCase();
         return (
@@ -61,7 +65,7 @@ export default function HistorialReportesAsistencia() {
       }
       return true;
     });
-  }, [reportes, filtroUniversidad, busqueda]);
+  }, [reportes, filtroUniversidad, fechaInicio, fechaFin, busqueda]);
 
   if (!usuario) return <LoadingSpinner mensaje="Cargando..." />;
 
@@ -95,24 +99,56 @@ export default function HistorialReportesAsistencia() {
           )}
 
           {/* Filtros */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <select
-              value={filtroUniversidad}
-              onChange={e => setFiltroUniversidad(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Todas las universidades</option>
-              {universidades.map(u => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
-            <input
-              type="text"
-              placeholder="Buscar por grupo, módulo, docente..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select
+                value={filtroUniversidad}
+                onChange={e => setFiltroUniversidad(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">Todas las universidades</option>
+                {universidades.map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Buscar por grupo, módulo, docente..."
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-xs font-medium text-gray-500 whitespace-nowrap">Fecha inicio</label>
+                <input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={e => setFechaInicio(e.target.value)}
+                  max={fechaFin || undefined}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-xs font-medium text-gray-500 whitespace-nowrap">Fecha fin</label>
+                <input
+                  type="date"
+                  value={fechaFin}
+                  onChange={e => setFechaFin(e.target.value)}
+                  min={fechaInicio || undefined}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              {(fechaInicio || fechaFin) && (
+                <button
+                  onClick={() => { setFechaInicio(''); setFechaFin(''); }}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline whitespace-nowrap"
+                >
+                  Limpiar fechas
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Lista */}
