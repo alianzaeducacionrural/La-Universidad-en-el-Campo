@@ -32,9 +32,7 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
       />
       
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
-        <Header onVerPerfil={(estudiante) => {
-          console.log('Estudiante seleccionado:', estudiante);
-        }} />
+        <Header onVerPerfil={onVerPerfil} />
 
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">📊 Panel de Control</h1>

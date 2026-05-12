@@ -7,7 +7,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import { formatearFecha } from '../../utils/helpers';
 
-export default function HistorialReportesAsistencia() {
+export default function HistorialReportesAsistencia({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const { marcarComoVisto, getLastSeen } = useReportesNuevos();
   const [reportes, setReportes] = useState([]);
@@ -79,7 +79,7 @@ export default function HistorialReportesAsistencia() {
       />
 
       <div className="flex-1 min-w-0">
-        <Header onVerPerfil={() => {}} />
+        <Header onVerPerfil={onVerPerfil} />
 
         <div className="max-w-4xl mx-auto px-4 lg:px-6 py-6 pb-24 lg:pb-8">
           {/* Encabezado */}
