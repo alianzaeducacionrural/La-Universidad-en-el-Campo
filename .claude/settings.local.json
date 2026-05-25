@@ -6,7 +6,12 @@
       "Bash(Remove-Item \"c:\\\\Users\\\\alejo\\\\Documents\\\\Comité de cafeteros\\\\2026\\\\Plataformas\\\\La Universidad en el Campo\\\\app-padrinos\\\\src\\\\data\\\\caldas.geo.json\")",
       "Bash(npm run *)",
       "Bash(Get-ChildItem -Recurse -Depth 3)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Skill(find-skills)",
+      "Skill(find-skills:*)",
+      "Bash(npx skills *)",
+      "Skill(karpathy-guidelines)",
+      "Skill(karpathy-guidelines:*)"
     ]
   }
 }

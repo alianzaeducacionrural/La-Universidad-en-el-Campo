@@ -102,3 +102,19 @@ export const limpiarEmojis = (texto) => {
   if (exacto) return exacto;
   return texto.replace(REGEX_EMOJIS_COMUNES, '').replace(/\s+/g, ' ').trim();
 };
+
+export const interpretarError = (error) => {
+  if (!error) return 'Ocurrió un error inesperado. Intenta de nuevo.';
+  const msg = typeof error === 'string' ? error : error.message || '';
+  if (msg.includes('duplicate key') || msg.includes('unique constraint') || msg.includes('already exists'))
+    return 'Ya existe un registro con esos datos (correo o documento duplicado).';
+  if (msg.includes('foreign key') || msg.includes('violates foreign key'))
+    return 'Error de referencia: uno de los valores seleccionados ya no existe.';
+  if (msg.includes('null value') || msg.includes('not-null constraint'))
+    return 'Faltan campos obligatorios. Revisa el formulario e intenta de nuevo.';
+  if (msg.includes('network') || msg.includes('fetch') || msg.includes('Failed to fetch'))
+    return 'Error de conexión. Verifica tu internet e intenta de nuevo.';
+  if (msg.includes('JWT') || msg.includes('session') || msg.includes('token'))
+    return 'Tu sesión expiró. Recarga la página e inicia sesión nuevamente.';
+  return 'No se pudo completar la operación. Intenta de nuevo.';
+};

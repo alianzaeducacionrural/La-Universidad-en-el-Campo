@@ -42,14 +42,19 @@ export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!modulo.trim()) return notificacion.warning('Ingresa el nombre del módulo');
-    if (!docente.trim()) return notificacion.warning('Ingresa el nombre del docente');
+    if (!modulo.trim()) return notificacion.warning('Ingresa el nombre del módulo o materia.', 'Campo requerido');
+    if (!fecha) return notificacion.warning('Selecciona la fecha de evaluación.', 'Campo requerido');
+    if (!docente.trim()) return notificacion.warning('Ingresa el nombre completo del docente.', 'Campo requerido');
 
-    for (const [, valor] of Object.entries(notas)) {
+    for (const [estId, valor] of Object.entries(notas)) {
       if (valor !== '') {
         const num = parseFloat(valor);
         if (isNaN(num) || num < 0 || num > 5) {
-          notificacion.warning('Las notas deben estar entre 0.0 y 5.0');
+          const est = estudiantes.find(e => e.id === estId);
+          notificacion.warning(
+            `La nota "${valor}" de ${est?.nombre_completo || 'un estudiante'} no es válida. Ingresa un valor entre 0.0 y 5.0.`,
+            'Nota inválida'
+          );
           return;
         }
       }

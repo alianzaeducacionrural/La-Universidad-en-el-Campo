@@ -31,20 +31,52 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setCargando(true);
     const formData = new FormData(e.target);
+
+    const nombre = formData.get('nombre_completo')?.trim();
+    const correo = formData.get('correo')?.trim();
+    const telefono = formData.get('telefono')?.replace(/\s/g, '') || '';
+    const acudienteTel = formData.get('acudiente_telefono')?.replace(/\s/g, '') || '';
+    const institucion = formData.get('institucion_educativa');
+
+    if (!nombre) {
+      notificacion.warning('El nombre completo del estudiante es obligatorio.', 'Campo requerido');
+      return;
+    }
+    if (!municipioSeleccionado) {
+      notificacion.warning('Debes seleccionar el municipio del estudiante.', 'Municipio requerido');
+      return;
+    }
+    if (!institucion) {
+      notificacion.warning('Selecciona la institución educativa del municipio elegido.', 'Institución requerida');
+      return;
+    }
+    if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      notificacion.warning('El correo no tiene un formato válido (ej: nombre@gmail.com).', 'Correo inválido');
+      return;
+    }
+    if (telefono && !/^\d{10}$/.test(telefono)) {
+      notificacion.warning('El teléfono debe tener exactamente 10 dígitos numéricos.', 'Teléfono inválido');
+      return;
+    }
+    if (acudienteTel && !/^\d{10}$/.test(acudienteTel)) {
+      notificacion.warning('El teléfono del acudiente debe tener exactamente 10 dígitos numéricos.', 'Teléfono del acudiente inválido');
+      return;
+    }
+
+    setCargando(true);
     const municipioNombre = municipios.find(m => m.id === municipioSeleccionado)?.nombre || '';
-    
+
     const datos = {
-      nombre_completo: formData.get('nombre_completo'),
+      nombre_completo: nombre,
       documento: formData.get('documento') || null,
       genero: formData.get('genero') || null,
-      telefono: formData.get('telefono') || null,
-      correo: formData.get('correo') || null,
+      telefono: telefono || null,
+      correo: correo || null,
       acudiente_nombre: formData.get('acudiente_nombre') || null,
-      acudiente_telefono: formData.get('acudiente_telefono') || null,
+      acudiente_telefono: acudienteTel || null,
       municipio: municipioNombre,
-      institucion_educativa: formData.get('institucion_educativa'),
+      institucion_educativa: institucion,
       cohorte: grupoSeleccionado.cohorte,
       programa: grupoSeleccionado.programa,
       universidad: grupoSeleccionado.universidad,
@@ -52,16 +84,21 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
       estado: formData.get('estado') || 'Activo',
       total_faltas: parseInt(formData.get('total_faltas')) || 0
     };
-    
+
     const resultado = await onGuardar(datos);
     setCargando(false);
-    
+
     if (resultado.success) {
       notificacion.success(`Estudiante "${datos.nombre_completo}" agregado correctamente`);
       setMunicipioSeleccionado('');
       onClose();
     } else {
-      notificacion.error(resultado.error, 'Error al agregar');
+      notificacion.error(
+        resultado.error?.includes('duplicate') || resultado.error?.includes('unique')
+          ? 'Ya existe un estudiante con ese número de documento.'
+          : 'No se pudo agregar el estudiante. Verifica los datos e intenta de nuevo.',
+        'Error al agregar'
+      );
     }
   }
 

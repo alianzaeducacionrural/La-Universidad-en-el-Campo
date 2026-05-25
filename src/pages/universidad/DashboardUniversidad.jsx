@@ -2,7 +2,7 @@
 // DASHBOARD PARA UNIVERSIDADES (CON HISTORIAL COMPLETO)
 // =============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -29,6 +29,8 @@ export default function DashboardUniversidad() {
   const [cargando, setCargando] = useState(false);
   const [vistaActiva, setVistaActiva] = useState('asistencia');
   const [busqueda, setBusqueda] = useState('');
+
+  const grupoIdCargadoRef = useRef(null);
 
   const [enlacesGrupo, setEnlacesGrupo] = useState({ estudiantes: null, acudientes: null });
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
@@ -72,7 +74,15 @@ export default function DashboardUniversidad() {
   async function cargarEstudiantes(grupoId) {
     setCargando(true);
     const { data } = await supabase.from('estudiantes').select('*').eq('grupo_id', grupoId).order('nombre_completo');
-    if (data) { setEstudiantes(data); setInasistencias([]); }
+    if (data) {
+      setEstudiantes(data);
+      // Solo resetear selecciones cuando el grupo cambia, no cuando recarga el mismo grupo
+      if (grupoId !== grupoIdCargadoRef.current) {
+        setInasistencias([]);
+        setObservacionesInd({});
+        grupoIdCargadoRef.current = grupoId;
+      }
+    }
     setCargando(false);
   }
 
@@ -175,13 +185,24 @@ export default function DashboardUniversidad() {
         })
         .eq('id', reporteEditando.id);
 
-      // Eliminar inasistencias anteriores
-      await supabase.from('inasistencias').delete().eq('registro_id', reporteEditando.id);
+      // Diff de inasistencias: preservar las existentes para no romper seguimientos ya registrados
+      const inasistenciasActuales = reporteEditando.inasistencias || [];
+      const idsActuales = inasistenciasActuales.map(i => i.estudiante_id);
+      const idsNuevos = inasistenciasEditando;
 
-      // Insertar nuevas inasistencias
-      if (inasistenciasEditando.length > 0) {
+      // Eliminar solo las que ya no están en la nueva lista
+      const aEliminar = inasistenciasActuales
+        .filter(i => !idsNuevos.includes(i.estudiante_id))
+        .map(i => i.id);
+      if (aEliminar.length > 0) {
+        await supabase.from('inasistencias').delete().in('id', aEliminar);
+      }
+
+      // Insertar solo las nuevas (que no existían antes)
+      const aInsertar = idsNuevos.filter(id => !idsActuales.includes(id));
+      if (aInsertar.length > 0) {
         await supabase.from('inasistencias').insert(
-          inasistenciasEditando.map(estudianteId => ({
+          aInsertar.map(estudianteId => ({
             registro_id: reporteEditando.id,
             estudiante_id: estudianteId,
             estado_seguimiento: 'pendiente'
@@ -268,7 +289,7 @@ export default function DashboardUniversidad() {
       if (errorRegistro) throw errorRegistro;
       
       if (inasistencias.length > 0 && registro) {
-        await supabase.from('inasistencias').insert(
+        const { error: errorInasistencias } = await supabase.from('inasistencias').insert(
           inasistencias.map(estudianteId => ({
             registro_id: registro.id,
             estudiante_id: estudianteId,
@@ -276,6 +297,11 @@ export default function DashboardUniversidad() {
             observacion_docente: observacionesInd[estudianteId] || null
           }))
         );
+        if (errorInasistencias) {
+          // Revertir el registro si no se pudieron guardar las inasistencias
+          await supabase.from('registros_asistencia').delete().eq('id', registro.id);
+          throw errorInasistencias;
+        }
       }
 
       // Armar resumen para el modal

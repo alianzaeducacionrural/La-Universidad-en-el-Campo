@@ -40,9 +40,27 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setCargando(true);
     const formData = new FormData(e.target);
-    const datos = { tipo_gestion: formData.get('tipo'), causa_ausencia: formData.get('causa') || null, resultado: formData.get('resultado'), fecha_contacto: formData.get('fecha_contacto') };
+
+    const tipo = formData.get('tipo');
+    const resultado_texto = formData.get('resultado')?.trim();
+    const fecha = formData.get('fecha_contacto');
+
+    if (!fecha) {
+      notificacion.warning('Selecciona la fecha en que se realizó el contacto.', 'Fecha requerida');
+      return;
+    }
+    if (!tipo) {
+      notificacion.warning('Selecciona el tipo de gestión (llamada, WhatsApp, correo, etc.).', 'Tipo de gestión requerido');
+      return;
+    }
+    if (!resultado_texto) {
+      notificacion.warning('El campo Resultado no puede estar vacío. Describe lo ocurrido en el contacto.', 'Resultado requerido');
+      return;
+    }
+
+    setCargando(true);
+    const datos = { tipo_gestion: tipo, causa_ausencia: formData.get('causa') || null, resultado: resultado_texto, fecha_contacto: fecha };
     for (const url of evidenciasEliminadas) await eliminarArchivoStorage(url);
     const urlsNuevas = nuevosArchivos.length > 0 ? await subirArchivos(seguimiento.id) : [];
     datos.evidencias = [...evidenciasExistentes.filter(url => !evidenciasEliminadas.includes(url)), ...urlsNuevas];

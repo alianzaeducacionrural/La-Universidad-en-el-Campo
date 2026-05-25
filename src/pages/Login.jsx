@@ -27,12 +27,25 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+
+    if (!email.trim()) {
+      setError('Ingresa tu correo electrónico.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('El correo no tiene un formato válido (ej: nombre@gmail.com).');
+      return;
+    }
+    if (!password) {
+      setError('Ingresa tu contraseña.');
+      return;
+    }
+
     setLoggingIn(true);
-    
     try {
       await signIn(email, password);
     } catch (err) {
-      setError('Correo o contraseña incorrectos');
+      setError('Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.');
     } finally {
       setLoggingIn(false);
     }

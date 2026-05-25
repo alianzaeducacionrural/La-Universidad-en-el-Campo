@@ -4,8 +4,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useNotificacion } from '../../context/NotificacionContext';
 
 export default function ModalAsignarGrupo({ isOpen, onClose, padrino, gruposActuales, onAsignado }) {
+  const notificacion = useNotificacion();
   const [gruposDisponibles, setGruposDisponibles] = useState([]);
   const [gruposSeleccionados, setGruposSeleccionados] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -35,25 +37,25 @@ export default function ModalAsignarGrupo({ isOpen, onClose, padrino, gruposActu
 
   async function handleAsignar() {
     if (gruposSeleccionados.length === 0) {
-      alert('Selecciona al menos un grupo');
+      notificacion.warning('Selecciona al menos un grupo para asignar.', 'Sin grupos seleccionados');
       return;
     }
-    
+
     setCargando(true);
-    
+
     const asignaciones = gruposSeleccionados.map(grupoId => ({
       grupo_id: grupoId,
       padrino_id: padrino.padrino_id
     }));
-    
+
     const { error } = await supabase
       .from('grupo_padrino')
       .insert(asignaciones);
-    
+
     setCargando(false);
-    
+
     if (error) {
-      alert('Error al asignar: ' + error.message);
+      notificacion.error('No se pudo asignar el grupo. Verifica tu conexión e intenta de nuevo.', 'Error al asignar');
     } else {
       onAsignado();
       onClose();

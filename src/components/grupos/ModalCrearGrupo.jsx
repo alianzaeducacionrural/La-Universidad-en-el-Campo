@@ -34,13 +34,35 @@ export default function ModalCrearGrupo({ isOpen, onClose, onCrear, padrinoActua
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setCargando(true);
     const formData = new FormData(e.target);
+
+    const nombre = formData.get('nombre')?.trim();
+    const cohorte = formData.get('cohorte');
+    const programa = formData.get('programa');
+
+    if (!nombre) {
+      notificacion.warning('El nombre del grupo es obligatorio.', 'Campo requerido');
+      return;
+    }
+    if (!cohorte) {
+      notificacion.warning('Debes seleccionar la cohorte del grupo.', 'Campo requerido');
+      return;
+    }
+    if (!universidadSeleccionada) {
+      notificacion.warning('Debes seleccionar la universidad.', 'Campo requerido');
+      return;
+    }
+    if (!programa) {
+      notificacion.warning('Debes seleccionar el programa académico. Si no aparece ninguno, primero agrega programas a la universidad.', 'Campo requerido');
+      return;
+    }
+
+    setCargando(true);
     const datosGrupo = {
-      nombre: formData.get('nombre'),
-      cohorte: formData.get('cohorte'),
+      nombre,
+      cohorte,
       universidad: universidades.find(u => u.id === universidadSeleccionada)?.nombre || '',
-      programa: formData.get('programa')
+      programa
     };
     const resultado = await onCrear(datosGrupo, padrinosSeleccionados);
     if (resultado.success) {
@@ -49,7 +71,12 @@ export default function ModalCrearGrupo({ isOpen, onClose, onCrear, padrinoActua
       setPadrinosSeleccionados([]);
       setUniversidadSeleccionada('');
     } else {
-      notificacion.error(resultado.error, 'Error al crear grupo');
+      notificacion.error(
+        resultado.error?.includes('duplicate') || resultado.error?.includes('unique')
+          ? 'Ya existe un grupo con ese nombre.'
+          : 'No se pudo crear el grupo. Verifica los datos e intenta de nuevo.',
+        'Error al crear grupo'
+      );
     }
     setCargando(false);
   }

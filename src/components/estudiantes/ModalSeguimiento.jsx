@@ -46,15 +46,33 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setCargando(true);
-    
+
     const formData = new FormData(e.target);
+    const tipo = formData.get('tipo');
+    const resultado_texto = formData.get('resultado')?.trim();
+    const fecha = formData.get('fecha_contacto');
+
+    if (!fecha) {
+      notificacion.warning('Selecciona la fecha en que se realizó el contacto.', 'Fecha requerida');
+      return;
+    }
+    if (!tipo) {
+      notificacion.warning('Selecciona el tipo de gestión (llamada, WhatsApp, correo, etc.).', 'Tipo de gestión requerido');
+      return;
+    }
+    if (!resultado_texto) {
+      notificacion.warning('Describe el resultado del contacto con el estudiante.', 'Resultado requerido');
+      return;
+    }
+
+    setCargando(true);
+
     const datos = {
       estudiante_id: estudiante.id,
-      tipo_gestion: formData.get('tipo'),
+      tipo_gestion: tipo,
       causa_ausencia: formData.get('causa') || null,
-      resultado: formData.get('resultado'),
-      fecha_contacto: formData.get('fecha_contacto'),
+      resultado: resultado_texto,
+      fecha_contacto: fecha,
       ...(conInasistencia && { cerrarInasistencia })
     };
 
