@@ -166,6 +166,15 @@ export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerP
                         <span className="text-gray-700 truncate">{item.grupo_nombre}</span>
                       </div>
                     </div>
+                    {item.observacion_docente && (
+                      <div className="mt-2 ml-0 sm:ml-13 flex items-start gap-2 text-sm">
+                        <span className="text-gray-400 flex-shrink-0">💬</span>
+                        <div>
+                          <span className="text-gray-500">Obs. docente: </span>
+                          <span className="text-gray-700">{item.observacion_docente}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex sm:flex-col gap-2 sm:gap-2 flex-shrink-0">
