@@ -32,6 +32,7 @@ export default function ModalHistorialAsistencia({ isOpen, onClose, grupo }) {
           id,
           estudiante_id,
           estado_seguimiento,
+          observacion_docente,
           estudiantes:estudiante_id (
             nombre_completo,
             documento
@@ -186,18 +187,25 @@ export default function ModalHistorialAsistencia({ isOpen, onClose, grupo }) {
                               'text-amber-600 bg-amber-50';
                             
                             return (
-                              <div key={ina.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-red-500">❌</span>
-                                  <span className="text-sm text-gray-800">
-                                    {ina.estudiantes?.nombre_completo}
+                              <div key={ina.id} className="p-2 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-red-500">❌</span>
+                                    <span className="text-sm text-gray-800">
+                                      {ina.estudiantes?.nombre_completo}
+                                    </span>
+                                  </div>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${estadoColor}`}>
+                                    {estado === 'realizado' ? '✅ Seguimiento hecho' :
+                                     estado === 'justificado' ? '📋 Justificado' :
+                                     '⏳ Pendiente'}
                                   </span>
                                 </div>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${estadoColor}`}>
-                                  {estado === 'realizado' ? '✅ Seguimiento hecho' :
-                                   estado === 'justificado' ? '📋 Justificado' :
-                                   '⏳ Pendiente'}
-                                </span>
+                                {ina.observacion_docente && (
+                                  <p className="mt-1 ml-6 text-xs text-gray-500 italic">
+                                    💬 {ina.observacion_docente}
+                                  </p>
+                                )}
                               </div>
                             );
                           })}
