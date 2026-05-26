@@ -19,16 +19,27 @@ export default function RankingDeserciones({ filtros = {} }) {
 
   async function cargarDatos() {
     setCargando(true);
-    
-    // Construir query base con filtros
-    let query = supabase.from('estudiantes').select('*');
-    if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-    if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-    if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-    
-    const { data } = await query;
-    
-    if (data) {
+
+    // Paginar para superar el límite de 1000 filas de Supabase
+    let data = [];
+    let from = 0;
+    const limit = 1000;
+
+    while (true) {
+      let query = supabase.from('estudiantes').select('*');
+      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
+      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
+      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
+      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
+
+      const { data: lote } = await query.range(from, from + limit - 1);
+      if (!lote || lote.length === 0) break;
+      data = [...data, ...lote];
+      if (lote.length < limit) break;
+      from += limit;
+    }
+
+    if (data.length > 0) {
       // Función para calcular ranking
       const calcularRanking = (campo) => {
         const agrupado = {};

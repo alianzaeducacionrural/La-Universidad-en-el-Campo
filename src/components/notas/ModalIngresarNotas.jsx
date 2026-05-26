@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
+import { interpretarError } from '../../utils/helpers';
 
 export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId, estudiantes, notaEditando = null }) {
   const notificacion = useNotificacion();
@@ -109,7 +110,7 @@ export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId
       onGuardar();
       onClose();
     } catch (err) {
-      notificacion.error(err.message, 'Error al guardar');
+      notificacion.error(interpretarError(err), 'Error al guardar');
     } finally {
       setCargando(false);
     }

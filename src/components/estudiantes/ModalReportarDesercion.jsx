@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
+import { interpretarError } from '../../utils/helpers';
 
 const MOTIVOS_DESERCION = [
   { value: 'Cambio de domicilio', label: 'Cambio de domicilio' },
@@ -39,15 +40,15 @@ export default function ModalReportarDesercion({
   const subirArchivo = async (archivo, tipo, registroId) => {
     if (!archivo) return null;
     
-    const nombreArchivo = `${Date.now()}_${archivo.name.replace(/\s+/g, '_')}`;
+    const nombreSeguro = archivo.name
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const nombreArchivo = `${Date.now()}_${nombreSeguro}`;
     const ruta = `desercion/${registroId}/${tipo}/${nombreArchivo}`;
     
     const { error } = await supabase.storage.from('evidencias').upload(ruta, archivo);
-    
-    if (error) {
-      console.error('Error subiendo archivo:', error);
-      return null;
-    }
+
+    if (error) throw error;
     
     const { data: urlData } = supabase.storage.from('evidencias').getPublicUrl(ruta);
     
@@ -160,7 +161,7 @@ export default function ModalReportarDesercion({
       
     } catch (error) {
       console.error('Error:', error);
-      notificacion.error(error.message, 'Error al reportar deserción');
+      notificacion.error(interpretarError(error), 'Error al reportar deserción');
     } finally {
       setCargando(false);
     }

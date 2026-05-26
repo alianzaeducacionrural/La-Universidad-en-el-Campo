@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { TIPOS_GESTION, CAUSAS_AUSENCIA } from '../../utils/constants';
-import { formatearFechaInput } from '../../utils/helpers';
+import { formatearFechaInput, interpretarError } from '../../utils/helpers';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seguimiento }) {
@@ -25,10 +25,15 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
     for (const archivo of nuevosArchivos) {
       if (archivo.size > 5 * 1024 * 1024) { notificacion.warning(`El archivo ${archivo.name} supera los 5MB`); continue; }
       if (!archivo.type.startsWith('image/')) { notificacion.warning(`El archivo ${archivo.name} no es una imagen`); continue; }
-      const nombreArchivo = `${Date.now()}_${archivo.name.replace(/\s+/g, '_')}`;
+      const nombreSeguro = archivo.name
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+      const nombreArchivo = `${Date.now()}_${nombreSeguro}`;
       const ruta = `seguimientos/${seguimientoId}/${nombreArchivo}`;
       const { error } = await supabase.storage.from('evidencias').upload(ruta, archivo);
-      if (!error) { const { data: urlData } = supabase.storage.from('evidencias').getPublicUrl(ruta); urls.push(urlData.publicUrl); }
+      if (error) { notificacion.error(interpretarError(error), 'Error al subir evidencia'); continue; }
+      const { data: urlData } = supabase.storage.from('evidencias').getPublicUrl(ruta);
+      urls.push(urlData.publicUrl);
     }
     setSubiendo(false);
     return urls;

@@ -91,6 +91,8 @@ export default function ComparativoCohortes({ filtros = {} }) {
         .map(c => ({
           cohorte: c.cohorte,
           total_estudiantes: c.total,
+          desertores: c.desertores,
+          graduados: c.graduados,
           desercion_pct: c.total > 0 ? Math.round((c.desertores / c.total) * 100) : 0,
           graduacion_pct: c.total > 0 ? Math.round((c.graduados / c.total) * 100) : 0
         }))
@@ -155,18 +157,20 @@ export default function ComparativoCohortes({ filtros = {} }) {
               ))}
             </tr>
             <tr className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-3 px-2 font-medium text-gray-700">🚨 % Deserción</td>
+              <td className="py-3 px-2 font-medium text-gray-700">🚨 Deserción</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
                   <span className="font-semibold text-red-600">{d.desercion_pct}%</span>
+                  <span className="block text-xs text-red-400">{d.desertores} est.</span>
                 </td>
               ))}
             </tr>
             <tr className="hover:bg-gray-50">
-              <td className="py-3 px-2 font-medium text-gray-700">🎓 % Graduación</td>
+              <td className="py-3 px-2 font-medium text-gray-700">🎓 Graduación</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
                   <span className="font-semibold text-blue-600">{d.graduacion_pct}%</span>
+                  <span className="block text-xs text-blue-400">{d.graduados} est.</span>
                 </td>
               ))}
             </tr>

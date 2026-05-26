@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
+import { interpretarError } from '../../utils/helpers';
 
 const MOTIVOS_DESERCION = [
   { value: 'Cambio de domicilio', label: 'Cambio de domicilio' },
@@ -98,7 +99,10 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
 
     setSubiendo(true);
     try {
-      const nombreArchivo = `${Date.now()}_${nuevoArchivo.name.replace(/\s+/g, '_')}`;
+      const nombreSeguro = nuevoArchivo.name
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+      const nombreArchivo = `${Date.now()}_${nombreSeguro}`;
       const ruta = `desercion/${datosDesercion.id}/${tipoNuevoDocumento}/${nombreArchivo}`;
 
       const { error: errorUpload } = await supabase.storage
@@ -132,7 +136,7 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
       notificacion.success('Documento agregado correctamente');
     } catch (error) {
       console.error('Error:', error);
-      notificacion.error(error.message, 'Error al subir documento');
+      notificacion.error(interpretarError(error), 'Error al subir documento');
     } finally {
       setSubiendo(false);
     }
@@ -205,7 +209,7 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
       onClose();
     } catch (error) {
       console.error('Error:', error);
-      notificacion.error(error.message, 'Error al actualizar');
+      notificacion.error(interpretarError(error), 'Error al actualizar');
     } finally {
       setCargando(false);
     }

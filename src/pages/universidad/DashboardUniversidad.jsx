@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/common/Header';
 import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
-import { formatearFecha } from '../../utils/helpers';
+import { formatearFecha, interpretarError } from '../../utils/helpers';
 import { exportarNotasGrupoExcel } from '../../utils/exportUtils';
 
 export default function DashboardUniversidad() {
@@ -129,7 +129,7 @@ export default function DashboardUniversidad() {
       notificacion.success('Registro de notas eliminado');
       cargarNotasGrupo(grupoSeleccionado.id);
     } catch (error) {
-      notificacion.error(error.message, 'Error al eliminar');
+      notificacion.error(interpretarError(error), 'Error al eliminar');
     }
   }
 
@@ -214,7 +214,7 @@ export default function DashboardUniversidad() {
       setModalEditar(false);
       cargarHistorial(grupoSeleccionado.id);
     } catch (error) {
-      notificacion.error(error.message, 'Error al actualizar');
+      notificacion.error(interpretarError(error), 'Error al actualizar');
     } finally {
       setCargando(false);
     }
@@ -230,7 +230,7 @@ export default function DashboardUniversidad() {
       notificacion.success('Reporte eliminado correctamente');
       cargarHistorial(grupoSeleccionado.id);
     } catch (error) {
-      notificacion.error(error.message, 'Error al eliminar');
+      notificacion.error(interpretarError(error), 'Error al eliminar');
     }
   }
 
@@ -324,7 +324,7 @@ export default function DashboardUniversidad() {
       setFechaAsistencia(new Date().toISOString().split('T')[0]);
       cargarHistorial(grupoSeleccionado.id);
     } catch (error) {
-      notificacion.error(error.message, 'Error al guardar');
+      notificacion.error(interpretarError(error), 'Error al guardar');
     } finally {
       setCargando(false);
     }

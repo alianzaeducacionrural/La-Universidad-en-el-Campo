@@ -10,7 +10,7 @@ import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useNotificacion } from '../../context/NotificacionContext';
-import { formatearFecha } from '../../utils/helpers';
+import { formatearFecha, interpretarError } from '../../utils/helpers';
 import jsPDF from 'jspdf';
 
 export default function GestionMultas({ onVerPerfil }) {
@@ -82,7 +82,7 @@ export default function GestionMultas({ onVerPerfil }) {
     const { error } = await supabase
       .from('cartas_cobro')
       .insert([{ multa_id: multaSeleccionada.id, numero_carta: numeroCarta, fecha_emision: fechaCarta }]);
-    if (error) { notificacion.error(error.message, 'Error al generar carta'); }
+    if (error) { notificacion.error(interpretarError(error), 'Error al generar carta'); }
     else { notificacion.success(`Carta de Cobro #${numeroCarta} generada correctamente`); setModalCarta(false); cargarMultas(); }
   }
 
@@ -101,7 +101,10 @@ export default function GestionMultas({ onVerPerfil }) {
       
       // Subir comprobante si existe
       if (comprobantePago) {
-        const nombreArchivo = `${Date.now()}_${comprobantePago.name.replace(/\s+/g, '_')}`;
+        const nombreSeguro = comprobantePago.name
+          .normalize('NFD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-zA-Z0-9._-]/g, '_');
+        const nombreArchivo = `${Date.now()}_${nombreSeguro}`;
         const ruta = `pagos/${multaSeleccionada.id}/${nombreArchivo}`;
         
         const { error: errorUpload } = await supabase.storage
@@ -146,7 +149,7 @@ export default function GestionMultas({ onVerPerfil }) {
       cargarMultas();
     } catch (error) {
       console.error('Error:', error);
-      notificacion.error(error.message, 'Error al registrar pago');
+      notificacion.error(interpretarError(error), 'Error al registrar pago');
     } finally {
       setCargando(false);
     }
