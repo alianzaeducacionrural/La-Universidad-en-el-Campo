@@ -16,6 +16,7 @@ import ModalEditarEstudiante from '../estudiantes/ModalEditarEstudiante';
 import ModalReportarDesercion from '../estudiantes/ModalReportarDesercion';
 import ModalEditarSeguimiento from '../seguimientos/ModalEditarSeguimiento';
 import ModalHistorialAcciones from '../grupos/ModalHistorialAcciones';
+import ModalNotasGrupo from '../notas/ModalNotasGrupo';
 
 export default function GrupoAdminCard({ grupo, onRecargar }) {
   const notificacion = useNotificacion();
@@ -34,6 +35,7 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
   const [modalHistorial, setModalHistorial] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
+  const [modalNotas, setModalNotas] = useState(false);
 
   // Estados para perfil del estudiante
   const [modalPerfil, setModalPerfil] = useState(false);
@@ -277,6 +279,7 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
             <button onClick={(e) => { e.stopPropagation(); setModalImportar(true); }} disabled={importando} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">{importando ? '⏳ Importando...' : '📥 Importar Estudiantes'}</button>
             <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
             <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
+            <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
             <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🔄 Finalizar Grupo' : '✅ Reactivar Grupo'}</button>
           </div>
 
@@ -318,6 +321,7 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
       <ModalEditarGrupo isOpen={modalEditar} onClose={() => setModalEditar(false)} grupo={grupo} onRecargar={onRecargar} />
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo}/>
+      <ModalNotasGrupo isOpen={modalNotas} onClose={() => setModalNotas(false)} grupo={grupo} />
 
       <ModalPerfilEstudiante
         isOpen={modalPerfil}

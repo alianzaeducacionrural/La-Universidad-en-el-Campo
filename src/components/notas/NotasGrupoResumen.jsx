@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { formatearFecha } from '../../utils/helpers';
 import { exportarNotasGrupoExcel } from '../../utils/exportUtils';
 
-export default function NotasGrupoResumen({ grupo }) {
+export default function NotasGrupoResumen({ grupo, modoModal = false }) {
   const [notasModulos, setNotasModulos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [expandidas, setExpandidas] = useState(new Set());
@@ -41,7 +41,7 @@ export default function NotasGrupoResumen({ grupo }) {
   if (!grupo) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden ${modoModal ? '' : 'mt-6'}`}>
       <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5">
         <div className="flex items-center justify-between">
           <div>
@@ -84,6 +84,7 @@ export default function NotasGrupoResumen({ grupo }) {
                 ? (conNota.reduce((s, n) => s + n.nota, 0) / conNota.length).toFixed(1)
                 : null;
               const aprobados = conNota.filter(n => n.nota >= 3.0).length;
+              const reprobados = conNota.filter(n => n.nota < 3.0).length;
               const estaExpandida = expandidas.has(nm.id);
 
               return (
@@ -105,7 +106,12 @@ export default function NotasGrupoResumen({ grupo }) {
                             </span>
                           )}
                           {conNota.length > 0 && (
-                            <span>{aprobados}/{conNota.length} aprobados</span>
+                            <>
+                              <span className="text-green-600">✅ {aprobados} aprobados</span>
+                              {reprobados > 0 && (
+                                <span className="text-red-500">❌ {reprobados} reprobados</span>
+                              )}
+                            </>
                           )}
                         </div>
                         {nm.observaciones && (
