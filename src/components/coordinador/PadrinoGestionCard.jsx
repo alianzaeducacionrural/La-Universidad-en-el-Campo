@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import ModalAsignarGrupo from './ModalAsignarGrupo';
 
-export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGrupoQuitado, onGrupoAsignado }) {
+export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGrupoQuitado, onGrupoAsignado, onEliminar }) {
   const [grupos, setGrupos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [datosCargados, setDatosCargados] = useState(false);
@@ -93,11 +93,18 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <div className="bg-purple-50 rounded-xl px-4 py-2 text-center min-w-[100px]">
               <p className="text-2xl font-bold text-purple-700">{padrino.total_grupos}</p>
               <p className="text-xs text-purple-600">Grupos asignados</p>
             </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEliminar(padrino.padrino_id, padrino.nombre_completo); }}
+              className="text-red-500 hover:text-red-700 p-1"
+              title="Eliminar padrino"
+            >
+              🗑️
+            </button>
           </div>
         </div>
       </div>

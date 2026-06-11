@@ -4,18 +4,23 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useNotificacion } from '../../context/NotificacionContext';
 import PadrinoGestionCard from './PadrinoGestionCard';
+import ModalCrearPadrino from './ModalCrearPadrino';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 export default function GestionPadrinos() {
+  const notificacion = useNotificacion();
   const [padrinos, setPadrinos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [padrinoExpandido, setPadrinoExpandido] = useState(null);
+  const [modalCrear, setModalCrear] = useState(false);
+  const [recargar, setRecargar] = useState(0);
 
   useEffect(() => {
     cargarPadrinos();
-  }, []);
+  }, [recargar]);
 
   async function cargarPadrinos() {
     setCargando(true);
@@ -41,6 +46,32 @@ export default function GestionPadrinos() {
     cargarPadrinos();
   };
 
+  async function handleEliminarPadrino(id, nombre) {
+    const { count: grupoCount } = await supabase
+      .from('grupo_padrino')
+      .select('*', { count: 'exact', head: true })
+      .eq('padrino_id', id);
+
+    if (grupoCount > 0) {
+      notificacion.error(
+        `No se puede eliminar "${nombre}" porque tiene ${grupoCount} grupo(s) asignado(s).`,
+        'No se puede eliminar'
+      );
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de eliminar al padrino "${nombre}"? El historial de seguimientos se conservará.`)) return;
+
+    const { error } = await supabase.from('padrinos').update({ activo: false }).eq('id', id);
+
+    if (error) {
+      notificacion.error(error.message, 'Error al eliminar');
+    } else {
+      notificacion.success(`Padrino "${nombre}" eliminado correctamente`);
+      setRecargar(prev => prev + 1);
+    }
+  }
+
   const padrinosFiltrados = padrinos.filter(p => 
     p.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()) ||
     p.correo.toLowerCase().includes(busqueda.toLowerCase())
@@ -57,15 +88,25 @@ export default function GestionPadrinos() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
-        <h3 className="font-bold text-gray-800 flex items-center">
-          <span className="text-xl mr-2">👥</span>
-          Gestión de Padrinos
-        </h3>
-        <p className="text-sm text-gray-600 mt-1">
-          Asigna o quita grupos a cada padrino
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-800 flex items-center">
+              <span className="text-xl mr-2">👥</span>
+              Gestión de Padrinos
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Asigna o quita grupos a cada padrino
+            </p>
+          </div>
+          <button
+            onClick={() => setModalCrear(true)}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm flex items-center space-x-2"
+          >
+            <span>➕</span>
+            <span>Nuevo Padrino</span>
+          </button>
+        </div>
         
-        {/* Buscador */}
         <div className="mt-4">
           <input
             type="text"
@@ -91,10 +132,20 @@ export default function GestionPadrinos() {
               onToggle={() => togglePadrino(padrino.padrino_id)}
               onGrupoQuitado={handleGrupoQuitado}
               onGrupoAsignado={handleGrupoAsignado}
+              onEliminar={handleEliminarPadrino}
             />
           ))
         )}
       </div>
+
+      <ModalCrearPadrino
+        isOpen={modalCrear}
+        onClose={() => setModalCrear(false)}
+        onCreado={() => {
+          setRecargar(prev => prev + 1);
+          setModalCrear(false);
+        }}
+      />
     </div>
   );
 }
