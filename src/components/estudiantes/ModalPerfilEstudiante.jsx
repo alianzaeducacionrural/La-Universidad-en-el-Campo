@@ -165,15 +165,19 @@ export default function ModalPerfilEstudiante({
             
             {/* ACCIONES RÁPIDAS */}
             <div className="flex flex-wrap gap-2 mb-6">
-              <button onClick={() => { onClose(); onSeguimiento(estudiante); }}
-                className="flex-1 bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm hover:shadow">
-                📝 Registrar Seguimiento
-              </button>
-              <button onClick={() => onEditar(estudiante)}
-                className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
-                ✏️ Editar Información
-              </button>
-              
+              {puedeGestionar && (
+                <>
+                  <button onClick={() => { onClose(); onSeguimiento(estudiante); }}
+                    className="flex-1 bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm hover:shadow">
+                    📝 Registrar Seguimiento
+                  </button>
+                  <button onClick={() => onEditar(estudiante)}
+                    className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
+                    ✏️ Editar Información
+                  </button>
+                </>
+              )}
+
               {/* BOTÓN EXPORTAR */}
               {historial && historial.length > 0 && (
                 <button
@@ -184,31 +188,37 @@ export default function ModalPerfilEstudiante({
                   <span>Descargar Reporte</span>
                 </button>
               )}
-              
+
               {/* SELECTOR DE ESTADO - CON ACTUALIZACIÓN LOCAL */}
-              <select 
-                value={estudiante.estado || 'Activo'}
-                onChange={async (e) => {
-                  const nuevoEstado = e.target.value;
-                  if (nuevoEstado === 'Desertor') {
-                    onClose();
-                    onReportarDesercion(estudiante);
-                  } else {
-                    const resultado = await onEstadoChange(estudiante.id, nuevoEstado);
-                    if (resultado && resultado.success) {
-                      // 🔥 Actualizar el estado localmente para que se refleje en la UI
-                      estudiante.estado = nuevoEstado;
-                      notificacion.success(`Estado actualizado a: ${nuevoEstado}`);
+              {puedeGestionar ? (
+                <select
+                  value={estudiante.estado || 'Activo'}
+                  onChange={async (e) => {
+                    const nuevoEstado = e.target.value;
+                    if (nuevoEstado === 'Desertor') {
+                      onClose();
+                      onReportarDesercion(estudiante);
+                    } else {
+                      const resultado = await onEstadoChange(estudiante.id, nuevoEstado);
+                      if (resultado && resultado.success) {
+                        // 🔥 Actualizar el estado localmente para que se refleje en la UI
+                        estudiante.estado = nuevoEstado;
+                        notificacion.success(`Estado actualizado a: ${nuevoEstado}`);
+                      }
                     }
-                  }
-                }}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white shadow-sm"
-              >
-                <option value="Activo">Activo</option>
-                <option value="En Riesgo">En Riesgo</option>
-                <option value="Graduado">Graduado</option>
-                {puedeGestionar && <option value="Desertor">Desertor</option>}
-              </select>
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white shadow-sm"
+                >
+                  <option value="Activo">Activo</option>
+                  <option value="En Riesgo">En Riesgo</option>
+                  <option value="Graduado">Graduado</option>
+                  <option value="Desertor">Desertor</option>
+                </select>
+              ) : (
+                <span className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${getEstadoColor(estudiante.estado)}`}>
+                  {estudiante.estado || 'Activo'}
+                </span>
+              )}
             </div>
             
             {/* INFORMACIÓN ACADÉMICA */}

@@ -2,10 +2,11 @@
 // FUNCIONES AUXILIARES
 // =============================================
 
-import { 
-  COLORES_ESTADO, 
-  COLORES_ROL, 
+import {
+  COLORES_ESTADO,
+  COLORES_ROL,
   ROLES_GESTION,
+  ROLES,
   NOMBRES_ROLES,
   NOMBRES_ROLES_UNIVERSIDAD,
   COLORES_ROL_UNIVERSIDAD
@@ -33,6 +34,18 @@ export const getNombreRol = (rol) => {
 
 export const puedeGestionar = (rol) => {
   return ROLES_GESTION.includes(rol);
+};
+
+// El aliado es un rol de solo lectura con acceso limitado a sus municipios
+export const esAliado = (rol) => rol === ROLES.ALIADO;
+
+// Devuelve la lista de municipios permitidos para el usuario, o null si puede ver todos.
+// Los aliados solo pueden ver la información de sus municipios asignados.
+export const getMunicipiosPermitidos = (perfil) => {
+  if (perfil?.rol === ROLES.ALIADO) {
+    return Array.isArray(perfil.municipios_asignados) ? perfil.municipios_asignados : [];
+  }
+  return null;
 };
 
 // 🔥 UNA SOLA DECLARACIÓN DE formatearFecha

@@ -2,7 +2,7 @@
 // ENRUTADOR PRINCIPAL (MODALES SEPARADOS)
 // =============================================
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
@@ -24,9 +24,14 @@ const Reportes = lazy(() => import('./pages/Reportes'));
 const GestionGrupos = lazy(() => import('./pages/admin/GestionGrupos'));
 const GestionMultas = lazy(() => import('./pages/admin/GestionMultas'));
 const HistorialReportesAsistencia = lazy(() => import('./pages/coordinador/HistorialReportesAsistencia'));
+const GestionAliados = lazy(() => import('./pages/admin/GestionAliados'));
+
+// Rutas a las que un aliado (solo lectura) tiene acceso
+const RUTAS_ALIADO = ['/estadisticas', '/reportes', '/grupos'];
 
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, perfil, loading } = useAuth();
+  const location = useLocation();
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-warm-light to-white flex items-center justify-center">
       <div className="text-center">
@@ -37,11 +42,24 @@ function ProtectedRoute({ children }) {
     </div>
   );
   if (!user) return <Navigate to="/login" replace />;
+  // Los aliados solo pueden entrar a Estadísticas, Reportes y Grupos
+  if (perfil?.rol === 'aliado' && !RUTAS_ALIADO.includes(location.pathname)) {
+    return <Navigate to="/estadisticas" replace />;
+  }
+  return children;
+}
+
+// Ruta exclusiva para administradores
+function AdminRoute({ children }) {
+  const { user, perfil, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  if (perfil?.rol !== 'admin') return <Navigate to="/" replace />;
   return children;
 }
 
 function HomeRedirect() {
-  const { user, tipoUsuario, loading } = useAuth();
+  const { user, perfil, tipoUsuario, loading } = useAuth();
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-warm-light to-white flex items-center justify-center">
       <div className="text-center">
@@ -52,6 +70,7 @@ function HomeRedirect() {
     </div>
   );
   if (!user) return <Navigate to="/login" replace />;
+  if (perfil?.rol === 'aliado') return <Navigate to="/estadisticas" replace />;
   if (tipoUsuario === 'padrino') return <Navigate to="/dashboard" replace />;
   if (tipoUsuario === 'universidad') return <Navigate to="/universidad/dashboard" replace />;
   return <Navigate to="/login" replace />;
@@ -125,6 +144,7 @@ function GlobalModales({
   usuario
 }) {
   const notificacion = useNotificacion();
+  const esLector = usuario?.rol === 'aliado';
 
   return (
     <>
@@ -157,7 +177,7 @@ function GlobalModales({
             setModalReportarDesercionGlobal(true);
           }, 150);
         }}
-        puedeGestionar={true}
+        puedeGestionar={!esLector}
         onEstadoChange={async (id, estado) => {
           if (estado === 'Desertor') {
             setModalPerfilGlobal(false);
@@ -361,6 +381,7 @@ function AppContent() {
           <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
           <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/" element={<HomeRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />

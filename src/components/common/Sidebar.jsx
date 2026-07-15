@@ -46,6 +46,8 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
 
   const esCoordinador = ['admin', 'coord_superior', 'coord_pedagogico', 'asistente_admin'].includes(rol);
   const esPadrino = (rol === 'padrino' || esCoordinador) && rol !== 'asistente_admin';
+  const esAliado = rol === 'aliado';
+  const esAdmin = rol === 'admin';
 
   const getActiveFromRoute = () => {
     const path = location.pathname;
@@ -54,6 +56,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     if (path === '/estadisticas') return 'estadisticas';
     if (path === '/reportes') return 'reportes';
     if (path === '/grupos') return 'grupos-admin';
+    if (path === '/aliados') return 'aliados';
     return vistaActiva || 'grupos';
   };
 
@@ -73,11 +76,12 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
 
   const menuAdmin = [
     { id: 'panel',       label: 'Panel de Control', mobileLabel: 'Panel',    icon: '📊', visible: esCoordinador, badge: 0, action: () => navigate('/panel') },
-    { id: 'estadisticas',label: 'Estadísticas',     mobileLabel: 'Stats',    icon: '📈', visible: esCoordinador, badge: 0, action: () => navigate('/estadisticas') },
-    { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador, badge: 0, action: () => navigate('/reportes') },
-    { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador, badge: 0,                   action: () => navigate('/grupos') },
+    { id: 'estadisticas',label: 'Estadísticas',     mobileLabel: 'Stats',    icon: '📈', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/estadisticas') },
+    { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/reportes') },
+    { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador || esAliado, badge: 0,                   action: () => navigate('/grupos') },
     { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: totalReportesNuevos, action: () => navigate('/historial-reportes') },
     { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
+    { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => navigate('/aliados') },
   ];
 
   const allVisibleItems = [...menuPadrino, ...menuAdmin].filter(i => i.visible);
@@ -230,7 +234,8 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
                    perfil?.rol === 'coord_superior'  ? 'Coordinador Superior' :
                    perfil?.rol === 'coord_pedagogico'? 'Coord. Pedagógico'    :
                    perfil?.rol === 'asistente_admin' ? 'Asistente Admin'      :
-                   perfil?.rol === 'padrino'         ? 'Padrino'              : 'Sin rol'}
+                   perfil?.rol === 'padrino'         ? 'Padrino'              :
+                   perfil?.rol === 'aliado'          ? 'Aliado'               : 'Sin rol'}
                 </p>
               </div>
             </div>

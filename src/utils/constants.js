@@ -24,7 +24,8 @@ export const ROLES = {
   COORD_SUPERIOR: 'coord_superior',
   COORD_PEDAGOGICO: 'coord_pedagogico',
   ASISTENTE_ADMIN: 'asistente_admin',
-  PADRINO: 'padrino'
+  PADRINO: 'padrino',
+  ALIADO: 'aliado'
 };
 
 // Colores por rol
@@ -33,7 +34,8 @@ export const COLORES_ROL = {
   [ROLES.COORD_SUPERIOR]: 'bg-blue-100 text-blue-700',
   [ROLES.COORD_PEDAGOGICO]: 'bg-indigo-100 text-indigo-700',
   [ROLES.ASISTENTE_ADMIN]: 'bg-purple-100 text-purple-700',
-  [ROLES.PADRINO]: 'bg-green-100 text-green-700'
+  [ROLES.PADRINO]: 'bg-green-100 text-green-700',
+  [ROLES.ALIADO]: 'bg-teal-100 text-teal-700'
 };
 
 // Nombres legibles de roles
@@ -42,7 +44,8 @@ export const NOMBRES_ROLES = {
   [ROLES.COORD_SUPERIOR]: 'Coordinador de Educación Superior',
   [ROLES.COORD_PEDAGOGICO]: 'Coordinador Pedagógico',
   [ROLES.ASISTENTE_ADMIN]: 'Asistente Administrativo',
-  [ROLES.PADRINO]: 'Padrino'
+  [ROLES.PADRINO]: 'Padrino',
+  [ROLES.ALIADO]: 'Aliado (solo lectura)'
 };
 
 // Roles que pueden gestionar (crear grupos, importar, etc.)

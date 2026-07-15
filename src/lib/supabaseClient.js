@@ -23,3 +23,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 console.log('✅ Cliente Supabase inicializado con persistencia');
+
+// =============================================
+// CLIENTE TEMPORAL (SIN PERSISTENCIA)
+// Se usa para crear usuarios con auth.signUp sin sobrescribir la sesión
+// del administrador que está logueado en el cliente principal.
+// =============================================
+export function crearClienteTemporal() {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+}

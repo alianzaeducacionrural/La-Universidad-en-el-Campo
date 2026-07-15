@@ -13,6 +13,7 @@ import FiltrosGrupos from '../../components/admin/FiltrosGrupos';
 import GrupoAdminCard from '../../components/admin/GrupoAdminCard';
 import ModalCrearGrupo from '../../components/grupos/ModalCrearGrupo';
 import { useNotificacion } from '../../context/NotificacionContext';
+import { getMunicipiosPermitidos, esAliado } from '../../utils/helpers';
 
 export default function GestionGrupos({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
@@ -26,8 +27,12 @@ export default function GestionGrupos({ onVerPerfil }) {
     cohorte: '',
     estado: 'activo'
   });
+  const [busqueda, setBusqueda] = useState('');
   const [modalCrearGrupo, setModalCrearGrupo] = useState(false);
   const [recargar, setRecargar] = useState(0);
+
+  const municipiosPermitidos = getMunicipiosPermitidos(usuario);
+  const soloLectura = esAliado(usuario?.rol);
 
   useEffect(() => {
     cargarGrupos();
@@ -35,7 +40,24 @@ export default function GestionGrupos({ onVerPerfil }) {
 
   async function cargarGrupos() {
     setCargando(true);
-    
+
+    // Alcance por municipio: solo grupos con estudiantes en los municipios permitidos
+    let gruposPermitidosIds = null;
+    if (municipiosPermitidos) {
+      const { data: ests } = await supabase
+        .from('estudiantes')
+        .select('grupo_id')
+        .in('municipio', municipiosPermitidos)
+        .not('grupo_id', 'is', null);
+      gruposPermitidosIds = [...new Set((ests || []).map(e => e.grupo_id))];
+
+      if (gruposPermitidosIds.length === 0) {
+        setGrupos([]);
+        setCargando(false);
+        return;
+      }
+    }
+
     let query = supabase
       .from('grupos')
       .select(`
@@ -46,14 +68,15 @@ export default function GestionGrupos({ onVerPerfil }) {
         ),
         estudiantes (count)
       `);
-    
+
+    if (gruposPermitidosIds) query = query.in('id', gruposPermitidosIds);
     if (filtros.universidad) query = query.eq('universidad', filtros.universidad);
     if (filtros.cohorte) query = query.eq('cohorte', filtros.cohorte);
     if (filtros.estado === 'activo') query = query.eq('activo', true);
     else if (filtros.estado === 'inactivo') query = query.eq('activo', false);
-    
+
     const { data } = await query.order('nombre');
-    
+
     if (data) {
       const gruposFormateados = data.map(g => ({
         ...g,
@@ -62,9 +85,22 @@ export default function GestionGrupos({ onVerPerfil }) {
       }));
       setGrupos(gruposFormateados);
     }
-    
+
     setCargando(false);
   }
+
+  // Buscador automático: filtra por nombre, universidad o programa a medida que se escribe
+  const gruposFiltrados = busqueda.trim()
+    ? grupos.filter(g => {
+        const t = busqueda.toLowerCase();
+        return (
+          g.nombre?.toLowerCase().includes(t) ||
+          g.universidad?.toLowerCase().includes(t) ||
+          g.programa?.toLowerCase().includes(t) ||
+          g.cohorte?.toLowerCase().includes(t)
+        );
+      })
+    : grupos;
 
   async function handleCrearGrupo(datosGrupo, padrinosSeleccionados) {
     const { data: grupoData, error: grupoError } = await supabase
@@ -117,13 +153,26 @@ export default function GestionGrupos({ onVerPerfil }) {
                 Administra todos los grupos del programa
               </p>
             </div>
-            <button
-              onClick={() => setModalCrearGrupo(true)}
-              className="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center space-x-2"
-            >
-              <span>➕</span>
-              <span>Crear Grupo</span>
-            </button>
+            {!soloLectura && (
+              <button
+                onClick={() => setModalCrearGrupo(true)}
+                className="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center space-x-2"
+              >
+                <span>➕</span>
+                <span>Crear Grupo</span>
+              </button>
+            )}
+          </div>
+
+          {/* Buscador automático */}
+          <div className="mb-4">
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="🔍 Buscar grupo por nombre, universidad, programa o cohorte..."
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary transition"
+            />
           </div>
 
           <FiltrosGrupos filtros={filtros} setFiltros={setFiltros} />
@@ -132,17 +181,19 @@ export default function GestionGrupos({ onVerPerfil }) {
             <div className="bg-white rounded-xl border border-gray-200 p-12">
               <LoadingSpinner mensaje="Cargando grupos..." />
             </div>
-          ) : grupos.length === 0 ? (
+          ) : gruposFiltrados.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <p className="text-gray-500">No hay grupos que coincidan con los filtros</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {grupos.map(grupo => (
+              {gruposFiltrados.map(grupo => (
                 <GrupoAdminCard
                   key={grupo.id}
                   grupo={grupo}
                   onRecargar={() => setRecargar(prev => prev + 1)}
+                  municipiosPermitidos={municipiosPermitidos}
+                  soloLectura={soloLectura}
                 />
               ))}
             </div>

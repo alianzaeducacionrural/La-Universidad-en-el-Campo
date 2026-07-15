@@ -18,7 +18,7 @@ import ModalEditarSeguimiento from '../seguimientos/ModalEditarSeguimiento';
 import ModalHistorialAcciones from '../grupos/ModalHistorialAcciones';
 import ModalNotasGrupo from '../notas/ModalNotasGrupo';
 
-export default function GrupoAdminCard({ grupo, onRecargar }) {
+export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos = null, soloLectura = false }) {
   const notificacion = useNotificacion();
   const { perfil: usuario } = useAuth();
 
@@ -54,11 +54,14 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
 
   async function cargarEstudiantes() {
     setCargandoEstudiantes(true);
-    const { data } = await supabase
+    let query = supabase
       .from('estudiantes')
       .select('*')
       .eq('grupo_id', grupo.id)
       .order('nombre_completo');
+    // Alcance por municipio: el aliado solo ve estudiantes de sus municipios
+    if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
+    const { data } = await query;
     if (data) setEstudiantes(data);
     setCargandoEstudiantes(false);
   }
@@ -273,15 +276,17 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
       {/* Contenido expandido */}
       {expandido && (
         <div className="border-t border-gray-200 bg-gray-50 p-5">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button onClick={(e) => { e.stopPropagation(); setModalEditar(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">✏️ Editar</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalPadrinos(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">👥 Gestionar Padrinos</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalImportar(true); }} disabled={importando} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">{importando ? '⏳ Importando...' : '📥 Importar Estudiantes'}</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
-            <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🔄 Finalizar Grupo' : '✅ Reactivar Grupo'}</button>
-          </div>
+          {!soloLectura && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button onClick={(e) => { e.stopPropagation(); setModalEditar(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">✏️ Editar</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalPadrinos(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">👥 Gestionar Padrinos</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalImportar(true); }} disabled={importando} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">{importando ? '⏳ Importando...' : '📥 Importar Estudiantes'}</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
+              <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🔄 Finalizar Grupo' : '✅ Reactivar Grupo'}</button>
+            </div>
+          )}
 
           <div>
             <h4 className="font-medium text-gray-700 mb-2">📋 Estudiantes ({estudiantes.length})</h4>
@@ -334,7 +339,7 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
         onEditar={handleEditar}
         onEditarSeguimiento={handleEditarSeguimiento}
         onReportarDesercion={handleReportarDesercion}
-        puedeGestionar={true}
+        puedeGestionar={!soloLectura}
         onEstadoChange={async (id, estado) => {
         const result = await handleCambiarEstado(id, estado);
         cargarEstudiantes(); // 🔥 Recargar lista de estudiantes
@@ -354,7 +359,7 @@ export default function GrupoAdminCard({ grupo, onRecargar }) {
         onClose={() => { setModalEditarEstudiante(false); setEstudianteSeleccionado(null); }}
         onGuardar={handleActualizarEstudiante}
         estudiante={estudianteSeleccionado}
-        puedeGestionar={true}
+        puedeGestionar={!soloLectura}
       />
 
       <ModalReportarDesercion

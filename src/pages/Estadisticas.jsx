@@ -2,9 +2,10 @@
 // PÁGINA: ESTADÍSTICAS (CON BUSCADOR GLOBAL)
 // =============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { getMunicipiosPermitidos } from '../utils/helpers';
 import { useReportesNuevos } from '../hooks/useReportesNuevos';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
@@ -28,13 +29,25 @@ export default function Estadisticas({ onVerPerfil }) {
   const [vistaActiva, setVistaActiva] = useState('estadisticas');
   const [filtros, setFiltros] = useState({});
 
+  // Municipios permitidos para el usuario (null = todos). Los aliados solo ven los suyos.
+  const municipiosPermitidos = useMemo(() => getMunicipiosPermitidos(usuario), [usuario]);
+
+  // Filtros efectivos: se fuerza el alcance por municipio del aliado
+  const filtrosEfectivos = useMemo(() => {
+    if (!municipiosPermitidos) return filtros;
+    const seleccion = filtros.municipios?.length > 0
+      ? filtros.municipios.filter(m => municipiosPermitidos.includes(m))
+      : municipiosPermitidos;
+    return { ...filtros, municipios: seleccion };
+  }, [filtros, municipiosPermitidos]);
+
   useEffect(() => {
     cargarKPIs();
-  }, [filtros]);
+  }, [filtrosEfectivos]);
 
   async function cargarKPIs() {
     setCargando(true);
-    
+
     // Obtener TODOS los estudiantes con paginación
     let todosLosDatos = [];
     let from = 0;
@@ -43,11 +56,11 @@ export default function Estadisticas({ onVerPerfil }) {
 
     while (hasMore) {
       let query = supabase.from('estudiantes').select('*', { count: 'exact' });
-      
-      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
+
+      if (filtrosEfectivos.municipios?.length > 0) query = query.in('municipio', filtrosEfectivos.municipios);
+      if (filtrosEfectivos.cohortes?.length > 0) query = query.in('cohorte', filtrosEfectivos.cohortes);
+      if (filtrosEfectivos.universidades?.length > 0) query = query.in('universidad', filtrosEfectivos.universidades);
+      if (filtrosEfectivos.estados?.length > 0) query = query.in('estado', filtrosEfectivos.estados);
       
       const { data, error } = await query.range(from, from + limit - 1);
 
@@ -158,9 +171,10 @@ export default function Estadisticas({ onVerPerfil }) {
           </div>
 
           {/* FILTROS */}
-          <FiltrosEstadisticas 
+          <FiltrosEstadisticas
             onAplicarFiltros={handleAplicarFiltros}
             onLimpiarFiltros={handleLimpiarFiltros}
+            municipiosPermitidos={municipiosPermitidos}
           />
 
           {cargando || !kpis ? (
@@ -181,8 +195,8 @@ export default function Estadisticas({ onVerPerfil }) {
 
               {/* GRÁFICOS PRINCIPALES */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GraficoEstadosDoughnut filtros={filtros} />
-                <GraficoGeneroDoughnut filtros={filtros} />
+                <GraficoEstadosDoughnut filtros={filtrosEfectivos} />
+                <GraficoGeneroDoughnut filtros={filtrosEfectivos} />
               </div>
 
               {/* GRÁFICOS DE DISTRIBUCIÓN - FILA 1 */}
@@ -191,14 +205,14 @@ export default function Estadisticas({ onVerPerfil }) {
                   titulo="Estudiantes por Municipio" 
                   campo="municipio" 
                   icono="📍" 
-                  filtros={filtros}
+                  filtros={filtrosEfectivos}
                   limite={10}
                 />
                 <GraficoBarrasHorizontal 
                   titulo="Estudiantes por Institución" 
                   campo="institucion_educativa" 
                   icono="🏫" 
-                  filtros={filtros}
+                  filtros={filtrosEfectivos}
                   limite={10}
                 />
               </div>
@@ -209,28 +223,28 @@ export default function Estadisticas({ onVerPerfil }) {
                   titulo="Estudiantes por Universidad" 
                   campo="universidad" 
                   icono="🎓" 
-                  filtros={filtros}
+                  filtros={filtrosEfectivos}
                   limite={10}
                 />
                 <GraficoBarrasHorizontal 
                   titulo="Estudiantes por Programa" 
                   campo="programa" 
                   icono="📚" 
-                  filtros={filtros}
+                  filtros={filtrosEfectivos}
                   limite={10}
                 />
               </div>
 
               {/* COMPARATIVO INTER-COHORTE */}
-              <ComparativoCohortes filtros={filtros} />
+              <ComparativoCohortes filtros={filtrosEfectivos} />
 
               {/* RANKING DE DESERCIONES */}
-              <RankingDeserciones filtros={filtros} />
+              <RankingDeserciones filtros={filtrosEfectivos} />
 
               {/* INASISTENCIAS */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GraficoCausasInasistencia filtros={filtros} />
-                <GraficoInasistenciasMensual filtros={filtros} />
+                <GraficoCausasInasistencia filtros={filtrosEfectivos} />
+                <GraficoInasistenciasMensual filtros={filtrosEfectivos} />
               </div>
             </div>
           )}

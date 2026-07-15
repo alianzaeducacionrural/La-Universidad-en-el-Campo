@@ -9,13 +9,23 @@ import { useReportesNuevos } from '../hooks/useReportesNuevos';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import * as XLSX from 'xlsx';
-import { formatearFecha, limpiarEmojis } from '../utils/helpers';
+import { formatearFecha, limpiarEmojis, getMunicipiosPermitidos, esAliado } from '../utils/helpers';
 
 export default function Reportes({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('reportes');
   const [cargando, setCargando] = useState({});
+
+  // Municipios permitidos (null = todos). Los aliados solo descargan sus municipios.
+  const municipiosPermitidos = getMunicipiosPermitidos(usuario);
+  const soloLectura = esAliado(usuario?.rol);
+
+  // Filtra un arreglo de registros dejando solo los de municipios permitidos
+  function filtrarPorMunicipio(registros, obtenerMunicipio = (r) => r.municipio) {
+    if (!municipiosPermitidos) return registros;
+    return registros.filter(r => municipiosPermitidos.includes(obtenerMunicipio(r)));
+  }
 
   // =============================================
   // FUNCIONES DE DESCARGA
@@ -81,11 +91,15 @@ export default function Reportes({ onVerPerfil }) {
     let hasMore = true;
 
     while (hasMore) {
-      const { data, error } = await supabase
+      let query = supabase
         .from('estudiantes')
         .select('*')
         .order('nombre_completo')
         .range(from, from + limit - 1);
+
+      if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error:', error);
@@ -102,7 +116,12 @@ export default function Reportes({ onVerPerfil }) {
       }
     }
 
-    return todosLosDatos;
+    // Garantizar un único registro por estudiante (por id)
+    const unicos = new Map();
+    for (const est of todosLosDatos) {
+      if (!unicos.has(est.id)) unicos.set(est.id, est);
+    }
+    return Array.from(unicos.values());
   }
 
   function formatearEstudiantes(data) {
@@ -183,11 +202,22 @@ export default function Reportes({ onVerPerfil }) {
       }
     }
 
-    return todosLosDatos.map(d => ({
-      ...d,
-      ...d.estudiante,
-      reportado_por: d.usuario?.nombre_completo || ''
-    }));
+    // Los datos vienen ordenados por fecha_reporte DESC. Se deja un único
+    // registro por estudiante: el más reciente (evita duplicados por ediciones).
+    const vistos = new Set();
+    const unicos = [];
+    for (const d of todosLosDatos) {
+      const clave = d.estudiante_id;
+      if (vistos.has(clave)) continue;
+      vistos.add(clave);
+      unicos.push({
+        ...d,
+        ...d.estudiante,
+        reportado_por: d.usuario?.nombre_completo || ''
+      });
+    }
+
+    return filtrarPorMunicipio(unicos);
   }
 
   function formatearDeserciones(data) {
@@ -266,7 +296,7 @@ export default function Reportes({ onVerPerfil }) {
       }
     }
 
-    return todosLosDatos.map(i => ({
+    const mapeados = todosLosDatos.map(i => ({
       ...i,
       ...i.estudiante,
       fecha: i.registros_asistencia?.fecha || '',
@@ -274,6 +304,8 @@ export default function Reportes({ onVerPerfil }) {
       docente_nombre: i.registros_asistencia?.docente_nombre || '',
       estado_seguimiento: i.estado_seguimiento === 'realizado' ? 'Realizado' : 'Pendiente'
     }));
+
+    return filtrarPorMunicipio(mapeados);
   }
 
   function formatearInasistencias(data) {
@@ -353,7 +385,7 @@ export default function Reportes({ onVerPerfil }) {
       }
     }
 
-    return todosLosDatos;
+    return filtrarPorMunicipio(todosLosDatos, (s) => s.estudiante?.municipio);
   }
 
   function formatearSeguimientos(data) {
@@ -459,6 +491,11 @@ export default function Reportes({ onVerPerfil }) {
     green: 'border-green-200 bg-green-50'
   };
 
+  // Los aliados solo pueden descargar el Listado General y el Reporte de Deserciones
+  const reportesVisibles = soloLectura
+    ? reportes.filter(r => r.id === 'estudiantes' || r.id === 'deserciones')
+    : reportes;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario?.rol} totalReportesNuevos={totalReportesNuevos} />
@@ -469,7 +506,7 @@ export default function Reportes({ onVerPerfil }) {
           <p className="text-gray-600 mb-8">Descarga reportes en Excel con la información del sistema</p>
 
           <div className="space-y-6">
-            {reportes.map(reporte => (
+            {reportesVisibles.map(reporte => (
               <div key={reporte.id} className={`rounded-xl border p-6 ${coloresFondo[reporte.color]}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div>

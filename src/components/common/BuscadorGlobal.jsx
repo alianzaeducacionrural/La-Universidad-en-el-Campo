@@ -4,8 +4,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
+import { getMunicipiosPermitidos } from '../../utils/helpers';
 
 export default function BuscadorGlobal({ onVerPerfil }) {
+  const { perfil } = useAuth();
+  const municipiosPermitidos = getMunicipiosPermitidos(perfil);
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState([]);
   const [mostrarResultados, setMostrarResultados] = useState(false);
@@ -34,14 +38,19 @@ export default function BuscadorGlobal({ onVerPerfil }) {
 
   async function buscarEstudiantes() {
     setCargando(true);
-    
-    const { data } = await supabase
+
+    let query = supabase
       .from('estudiantes')
       .select('*')
       .or(`nombre_completo.ilike.%${busqueda}%,documento.ilike.%${busqueda}%`)
       .limit(8)
       .order('nombre_completo');
-    
+
+    // Alcance por municipio: el aliado solo encuentra estudiantes de sus municipios
+    if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
+
+    const { data } = await query;
+
     if (data) {
       setResultados(data);
       setMostrarResultados(true);

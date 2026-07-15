@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros }) {
+export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros, municipiosPermitidos = null }) {
   const [filtrosActivos, setFiltrosActivos] = useState([]);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState('municipios');
@@ -61,14 +61,20 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
     const limit = 1000;
     let hasMore = true;
 
+    // Alcance por municipio: si el usuario tiene municipios permitidos y no hay
+    // una selección explícita de municipios, se restringe a los permitidos.
+    const municipiosFiltro = (otrosFiltros.municipios && otrosFiltros.municipios.length > 0)
+      ? otrosFiltros.municipios
+      : (municipiosPermitidos || null);
+
     while (hasMore) {
       let query = supabase
         .from('estudiantes')
         .select(campo);
 
-      // Aplicar otros filtros existentes
-      if (otrosFiltros.municipios && otrosFiltros.municipios.length > 0) {
-        query = query.in('municipio', otrosFiltros.municipios);
+      // Aplicar filtro de municipio (selección o alcance permitido)
+      if (municipiosFiltro) {
+        query = query.in('municipio', municipiosFiltro);
       }
       if (otrosFiltros.cohortes && otrosFiltros.cohortes.length > 0) {
         query = query.in('cohorte', otrosFiltros.cohortes);
@@ -133,7 +139,9 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
           });
           
           opcionesConConteo = ordenarOpciones(
-            Object.entries(conteo).map(([valor, count]) => ({ valor, count }))
+            Object.entries(conteo)
+              .map(([valor, count]) => ({ valor, count }))
+              .filter(op => !municipiosPermitidos || municipiosPermitidos.includes(op.valor))
           );
           break;
         }
@@ -166,16 +174,21 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
           
           if (error) throw error;
           
+          // Alcance por municipio para el conteo por universidad
+          const municipiosFiltroUni = (otrosFiltros.municipios && otrosFiltros.municipios.length > 0)
+            ? otrosFiltros.municipios
+            : (municipiosPermitidos || null);
+
           // Para cada universidad, contar estudiantes con otros filtros aplicados
           for (const uni of universidades) {
             let query = supabase
               .from('estudiantes')
               .select('id', { count: 'exact', head: true })
               .eq('universidad', uni.nombre);
-            
-            // Aplicar otros filtros
-            if (otrosFiltros.municipios && otrosFiltros.municipios.length > 0) {
-              query = query.in('municipio', otrosFiltros.municipios);
+
+            // Aplicar filtro de municipio (selección o alcance permitido)
+            if (municipiosFiltroUni) {
+              query = query.in('municipio', municipiosFiltroUni);
             }
             if (otrosFiltros.cohortes && otrosFiltros.cohortes.length > 0) {
               query = query.in('cohorte', otrosFiltros.cohortes);
