@@ -36,6 +36,23 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
   }, [busqueda, opciones]);
 
   // ==========================================
+  // ORDENAR OPCIONES: numéricas de menor a mayor, texto en orden alfabético
+  // ==========================================
+  function ordenarOpciones(lista) {
+    return [...lista].sort((a, b) => {
+      const numA = Number(a.valor);
+      const numB = Number(b.valor);
+      const esNumA = a.valor !== '' && !isNaN(numA);
+      const esNumB = b.valor !== '' && !isNaN(numB);
+
+      if (esNumA && esNumB) {
+        return numA - numB;
+      }
+      return a.valor.localeCompare(b.valor, 'es', { sensitivity: 'base', numeric: true });
+    });
+  }
+
+  // ==========================================
   // FUNCIÓN PARA TRAER TODOS LOS REGISTROS DE ESTUDIANTES CON PAGINACIÓN
   // ==========================================
   async function fetchAllEstudiantesConFiltros(campo, otrosFiltros) {
@@ -115,12 +132,12 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
             }
           });
           
-          opcionesConConteo = Object.entries(conteo)
-            .map(([valor, count]) => ({ valor, count }))
-            .sort((a, b) => b.count - a.count);
+          opcionesConConteo = ordenarOpciones(
+            Object.entries(conteo).map(([valor, count]) => ({ valor, count }))
+          );
           break;
         }
-        
+
         case 'cohortes': {
           // Traer TODOS los estudiantes con paginación
           const datos = await fetchAllEstudiantesConFiltros('cohorte', otrosFiltros);
@@ -134,12 +151,12 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
             }
           });
           
-          opcionesConConteo = Object.entries(conteo)
-            .map(([valor, count]) => ({ valor, count }))
-            .sort((a, b) => b.count - a.count);
+          opcionesConConteo = ordenarOpciones(
+            Object.entries(conteo).map(([valor, count]) => ({ valor, count }))
+          );
           break;
         }
-        
+
         case 'universidades': {
           // Para universidades, obtener de la tabla universidades y contar estudiantes
           const { data: universidades, error } = await supabase
@@ -172,10 +189,10 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
               opcionesConConteo.push({ valor: uni.nombre, count });
             }
           }
-          opcionesConConteo.sort((a, b) => b.count - a.count);
+          opcionesConConteo = ordenarOpciones(opcionesConConteo);
           break;
         }
-        
+
         case 'estados': {
           // Traer TODOS los estudiantes con paginación
           const datos = await fetchAllEstudiantesConFiltros('estado', otrosFiltros);
@@ -195,10 +212,11 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
             }
           });
           
-          opcionesConConteo = estadosBase
-            .map(estado => ({ valor: estado, count: conteo[estado] || 0 }))
-            .filter(op => op.count > 0)
-            .sort((a, b) => b.count - a.count);
+          opcionesConConteo = ordenarOpciones(
+            estadosBase
+              .map(estado => ({ valor: estado, count: conteo[estado] || 0 }))
+              .filter(op => op.count > 0)
+          );
           break;
         }
       }
@@ -225,11 +243,27 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
   }
 
   function toggleSeleccion(valor) {
-    setSeleccionados(prev => 
-      prev.includes(valor) 
+    setSeleccionados(prev =>
+      prev.includes(valor)
         ? prev.filter(v => v !== valor)
         : [...prev, valor]
     );
+  }
+
+  // Todas las opciones visibles están seleccionadas
+  const todasSeleccionadas =
+    opcionesFiltradas.length > 0 &&
+    opcionesFiltradas.every(o => seleccionados.includes(o.valor));
+
+  function toggleSeleccionarTodos() {
+    const valoresVisibles = opcionesFiltradas.map(o => o.valor);
+    if (todasSeleccionadas) {
+      // Deseleccionar solo las visibles
+      setSeleccionados(prev => prev.filter(v => !valoresVisibles.includes(v)));
+    } else {
+      // Seleccionar todas las visibles (sin duplicar)
+      setSeleccionados(prev => [...new Set([...prev, ...valoresVisibles])]);
+    }
   }
 
   function agregarFiltros() {
@@ -380,6 +414,21 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
                 autoFocus
               />
             </div>
+
+            {/* Seleccionar / Deseleccionar todos */}
+            {!cargando && opcionesFiltradas.length > 0 && (
+              <div className="px-4 pt-3 flex items-center justify-between">
+                <button
+                  onClick={toggleSeleccionarTodos}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 transition"
+                >
+                  {todasSeleccionadas ? '☐ Deseleccionar todos' : '☑ Seleccionar todos'}
+                </button>
+                <span className="text-xs text-gray-400">
+                  {opcionesFiltradas.length} opción(es)
+                </span>
+              </div>
+            )}
 
             {/* Lista de opciones */}
             <div className="p-4 max-h-80 overflow-y-auto">
