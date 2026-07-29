@@ -53,8 +53,20 @@ function iniciales(nombre) {
 // Las instituciones no reconocen el nombre interno del grupo (p. ej. "Internet
 // de las Cosas Manizales - La Trinidad - 2026"); lo que les es útil es a qué
 // universidad, programa y cohorte pertenece.
+// Solo para las etiquetas de grupo del portal: nombres cortos para que quepan
+// en las pestañas y tarjetas, sin tocar las universidades/programas mostrados
+// en otras secciones (p. ej. Información Académica del perfil).
+const ABREVIATURAS_UNIVERSIDAD = {
+  'Universidad Católica de Manizales': 'U. Católica',
+  'Universidad de Manizales': 'U. Manizales',
+  'Universidad Autónoma de Manizales': 'U. Autónoma',
+  'Universidad de Caldas': 'U. Caldas',
+};
+
 function etiquetaGrupo(g) {
-  return `${g.universidad} - ${g.programa} - Cohorte ${g.cohorte}`;
+  const universidad = ABREVIATURAS_UNIVERSIDAD[g.universidad] || g.universidad;
+  const programa = (g.programa || '').replace('Técnico Profesional', 'T.P.');
+  return `${universidad} - ${programa} - Cohorte ${g.cohorte}`;
 }
 
 export default function PortalInstitucion() {
