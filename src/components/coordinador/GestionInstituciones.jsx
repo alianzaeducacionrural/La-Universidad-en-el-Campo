@@ -24,16 +24,37 @@ export default function GestionInstituciones() {
 
   useEffect(() => { cargarDatos(); }, []);
 
+  // La tabla estudiantes ya supera las 1000 filas (límite por página de
+  // PostgREST), así que hay que paginar o el conteo por institución queda
+  // truncado silenciosamente.
+  async function obtenerTodosLosEstudiantesBasico() {
+    let todos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+    while (hasMore) {
+      const { data } = await supabase
+        .from('estudiantes')
+        .select('id, institucion_educativa, municipio')
+        .range(from, from + limit - 1);
+      if (data && data.length > 0) {
+        todos = [...todos, ...data];
+        from += limit;
+      }
+      if (!data || data.length < limit) hasMore = false;
+    }
+    return todos;
+  }
+
   async function cargarDatos() {
     setCargando(true);
-    const [instRes, estRes, muniRes] = await Promise.all([
+    const [instRes, filasEstudiantes, muniRes] = await Promise.all([
       supabase.from('instituciones').select('*, municipios:municipio_id (nombre)').order('nombre'),
-      supabase.from('estudiantes').select('institucion_educativa, municipio'),
+      obtenerTodosLosEstudiantesBasico(),
       supabase.from('municipios').select('id, nombre').order('nombre')
     ]);
 
     const listaInstituciones = instRes.data || [];
-    const filasEstudiantes = estRes.data || [];
     setMunicipios(muniRes.data || []);
 
     // Conteo real de estudiantes por institución (cruzando nombre + municipio,
