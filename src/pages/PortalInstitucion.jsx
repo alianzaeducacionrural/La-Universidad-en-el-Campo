@@ -50,6 +50,13 @@ function iniciales(nombre) {
   return ((partes[0]?.[0] || '') + (partes[1]?.[0] || '')).toUpperCase();
 }
 
+// Las instituciones no reconocen el nombre interno del grupo (p. ej. "Internet
+// de las Cosas Manizales - La Trinidad - 2026"); lo que les es útil es a qué
+// universidad, programa y cohorte pertenece.
+function etiquetaGrupo(g) {
+  return `${g.universidad} - ${g.programa} - Cohorte ${g.cohorte}`;
+}
+
 export default function PortalInstitucion() {
   const { token } = useParams();
   const [cargando, setCargando] = useState(true);
@@ -211,7 +218,8 @@ export default function PortalInstitucion() {
               <div className="absolute mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 animate-fade-in">
                 {resultadosBusqueda.map(est => {
                   const tema = temaPorGrupo[est.grupo_id];
-                  const grupoNombre = gruposOrdenados.find(g => g.id === est.grupo_id)?.nombre;
+                  const grupoRef = gruposOrdenados.find(g => g.id === est.grupo_id);
+                  const grupoNombre = grupoRef ? etiquetaGrupo(grupoRef) : undefined;
                   return (
                     <button
                       key={est.id}
@@ -259,7 +267,7 @@ export default function PortalInstitucion() {
                   title={`${g.universidad} · ${g.programa} · Cohorte ${g.cohorte}`}
                 >
                   <span className={`w-2 h-2 rounded-full ${activa ? 'bg-white' : tema.dot}`}></span>
-                  {g.nombre}
+                  {etiquetaGrupo(g)}
                   <span className={activa ? 'text-white/80' : 'text-gray-400'}>· {g.total_estudiantes_institucion}</span>
                 </button>
               );
@@ -388,8 +396,7 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
                     <span className={`w-2.5 h-2.5 rounded-full ${tema.dot} flex-shrink-0`}></span>
                     <span className="text-xs font-medium text-gray-500 ml-auto">{stats.total} estudiante{stats.total !== 1 ? 's' : ''}</span>
                   </div>
-                  <p className={`font-bold ${tema.text} leading-snug mb-1`}>{g.nombre}</p>
-                  <p className="text-xs text-gray-500 mb-3">{g.universidad} · {g.programa} · Cohorte {g.cohorte}</p>
+                  <p className={`font-bold ${tema.text} leading-snug mb-3`}>{etiquetaGrupo(g)}</p>
                   <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1.5">
                     <div className={`h-full ${tema.solido}`} style={{ width: `${pctActivos}%` }}></div>
                   </div>
@@ -421,7 +428,7 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <GraficoBarrasPortal
           titulo="📚 Estudiantes por Grupo"
-          datos={gruposOrdenados.map(g => ({ nombre: g.nombre, total: (estadisticasPorGrupo[g.id] || {}).total || 0 }))}
+          datos={gruposOrdenados.map(g => ({ nombre: etiquetaGrupo(g), total: (estadisticasPorGrupo[g.id] || {}).total || 0 }))}
         />
         <GraficoCausasInasistenciaPortal estudiantes={estudiantes} />
       </div>
@@ -706,11 +713,8 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
     <div className="space-y-5">
       {/* Encabezado del grupo, coloreado con el tema del grupo */}
       <div className={`rounded-xl bg-gradient-to-r ${tema.gradiente} p-5 shadow-sm`}>
-        <p className={`text-lg font-bold leading-tight ${tema.text}`}>{grupo.nombre}</p>
+        <p className={`text-lg font-bold leading-tight ${tema.text}`}>{etiquetaGrupo(grupo)}</p>
         <div className={`flex flex-wrap items-center gap-2 mt-2 text-sm ${tema.text}`}>
-          <span className="bg-white/60 px-2.5 py-1 rounded-full">{grupo.universidad}</span>
-          <span className="bg-white/60 px-2.5 py-1 rounded-full">{grupo.programa}</span>
-          <span className="bg-white/60 px-2.5 py-1 rounded-full">Cohorte {grupo.cohorte}</span>
           <span className="bg-white/60 px-2.5 py-1 rounded-full">{grupo.total_estudiantes_institucion} estudiante{grupo.total_estudiantes_institucion !== 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -1105,9 +1109,9 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
                 {traslados.map(t => (
                   <div key={t.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-gray-700">{t.grupo_origen?.nombre || 'Sin grupo'}</span>
+                      <span className="font-medium text-gray-700">{t.grupo_origen ? etiquetaGrupo(t.grupo_origen) : 'Sin grupo'}</span>
                       <span className="text-gray-400">→</span>
-                      <span className="font-medium text-gray-700">{t.grupo_destino?.nombre || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">{t.grupo_destino ? etiquetaGrupo(t.grupo_destino) : 'N/A'}</span>
                       <span className="text-xs text-gray-400 ml-auto">{formatearFecha(t.fecha_traslado)}</span>
                     </div>
                     {t.motivo && <p className="text-xs text-gray-500 mt-1">📝 {t.motivo}</p>}
@@ -1234,7 +1238,10 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
               <span className="flex items-center"><span className="mr-2 text-xl">⚠️</span> Histórico de Inasistencias</span>
               {inasistencias.length > 0 && (
                 <button
-                  onClick={() => exportarInasistenciasExcel(inasistencias, estudiante.nombre_completo)}
+                  onClick={() => exportarInasistenciasExcel(
+                    inasistencias.map(i => ({ ...i, grupo_nombre: i.registros_asistencia?.grupos ? etiquetaGrupo(i.registros_asistencia.grupos) : 'N/A' })),
+                    estudiante.nombre_completo
+                  )}
                   className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-green-200 flex items-center space-x-1"
                 >
                   <span>📥</span><span>Descargar Inasistencias</span>
@@ -1270,7 +1277,7 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
                         <tr key={ina.id} className="hover:bg-gray-50 align-top">
                           <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">{formatearFecha(ra?.fecha)}</td>
                           <td className="px-4 py-2.5 font-medium text-gray-800">{ra?.modulo || 'N/A'}</td>
-                          <td className="px-4 py-2.5 text-gray-600">{ra?.grupos?.nombre || 'N/A'}</td>
+                          <td className="px-4 py-2.5 text-gray-600">{ra?.grupos ? etiquetaGrupo(ra.grupos) : 'N/A'}</td>
                           <td className="px-4 py-2.5 text-gray-600">{ra?.docente_nombre || 'N/A'}</td>
                           <td className="px-4 py-2.5 text-center">
                             <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${estadoColor}`}>
