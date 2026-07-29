@@ -361,30 +361,6 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
         </div>
       )}
 
-      {/* Estadísticas, al estilo del Panel de Estadísticas del administrador */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <GraficoDoughnutPortal
-          titulo="📊 Estudiantes por Estado"
-          detalles={[
-            { etiqueta: 'Activo', total: kpis.activos, color: '#10b981', icono: '✅' },
-            { etiqueta: 'En Riesgo', total: kpis.enRiesgo, color: '#f59e0b', icono: '⚠️' },
-            { etiqueta: 'Desertor', total: kpis.desertores, color: '#ef4444', icono: '🚨' },
-            { etiqueta: 'Graduado', total: kpis.graduados, color: '#3b82f6', icono: '🎓' },
-          ].filter(d => d.total > 0)}
-        />
-        <GraficoGeneroPortal estudiantes={estudiantes} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <GraficoBarrasPortal
-          titulo="📚 Estudiantes por Grupo"
-          datos={gruposOrdenados.map(g => ({ nombre: g.nombre, total: (estadisticasPorGrupo[g.id] || {}).total || 0 }))}
-        />
-        <GraficoCausasInasistenciaPortal estudiantes={estudiantes} />
-      </div>
-
-      {kpis.desertores > 0 && <GraficoMotivosDesercionPortal estudiantes={estudiantes} />}
-
       {/* Tarjetas de grupo, coloreadas para identificarlas de un vistazo */}
       {gruposOrdenados.length > 0 && (
         <div>
@@ -427,6 +403,32 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
           </div>
         </div>
       )}
+
+      {/* Estadísticas, al estilo del Panel de Estadísticas del administrador */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <GraficoDoughnutPortal
+          titulo="📊 Estudiantes por Estado"
+          detalles={[
+            { etiqueta: 'Activo', total: kpis.activos, color: '#10b981', icono: '✅' },
+            { etiqueta: 'En Riesgo', total: kpis.enRiesgo, color: '#f59e0b', icono: '⚠️' },
+            { etiqueta: 'Desertor', total: kpis.desertores, color: '#ef4444', icono: '🚨' },
+            { etiqueta: 'Graduado', total: kpis.graduados, color: '#3b82f6', icono: '🎓' },
+          ].filter(d => d.total > 0)}
+        />
+        <GraficoGeneroPortal estudiantes={estudiantes} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <GraficoBarrasPortal
+          titulo="📚 Estudiantes por Grupo"
+          datos={gruposOrdenados.map(g => ({ nombre: g.nombre, total: (estadisticasPorGrupo[g.id] || {}).total || 0 }))}
+        />
+        <GraficoCausasInasistenciaPortal estudiantes={estudiantes} />
+      </div>
+
+      <ComparativoCohortesPortal estudiantes={estudiantes} />
+
+      {kpis.desertores > 0 && <GraficoMotivosDesercionPortal estudiantes={estudiantes} />}
     </div>
   );
 }
@@ -575,6 +577,81 @@ function GraficoCausasInasistenciaPortal({ estudiantes }) {
     .map(([causa, total], idx) => ({ etiqueta: causa, total, color: colores[idx % colores.length], icono: '' }));
 
   return <GraficoDoughnutPortal titulo="🔍 Causas de Inasistencia" detalles={detalles} />;
+}
+
+function ComparativoCohortesPortal({ estudiantes }) {
+  const cohortesMap = new Map();
+  estudiantes.forEach(e => {
+    if (!e.cohorte) return;
+    if (!cohortesMap.has(e.cohorte)) cohortesMap.set(e.cohorte, { cohorte: e.cohorte, total: 0, desertores: 0, graduados: 0 });
+    const c = cohortesMap.get(e.cohorte);
+    c.total++;
+    if (e.estado === 'Desertor') c.desertores++;
+    if (e.estado === 'Graduado') c.graduados++;
+  });
+  const datos = Array.from(cohortesMap.values())
+    .map(c => ({
+      ...c,
+      desercion_pct: c.total > 0 ? Math.round((c.desertores / c.total) * 100) : 0,
+      graduacion_pct: c.total > 0 ? Math.round((c.graduados / c.total) * 100) : 0
+    }))
+    .sort((a, b) => a.cohorte.localeCompare(b.cohorte));
+
+  if (datos.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <h3 className="font-semibold text-gray-800 mb-4">📅 Comparativo Inter-Cohorte</h3>
+        <p className="text-gray-500 text-center py-8 text-sm">No hay datos disponibles</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <h3 className="font-semibold text-gray-800 mb-2">📅 Comparativo Inter-Cohorte</h3>
+      <p className="text-sm text-gray-500 mb-4">Indicadores clave por cohorte</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-3 px-2 font-semibold text-gray-700">Indicador</th>
+              {datos.map(d => (
+                <th key={d.cohorte} className="text-center py-3 px-2 font-semibold text-gray-700">{d.cohorte}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-gray-100 hover:bg-gray-50">
+              <td className="py-3 px-2 font-medium text-gray-700">👥 Total Estudiantes</td>
+              {datos.map(d => (
+                <td key={d.cohorte} className="text-center py-3 px-2">
+                  <span className="font-semibold text-gray-800">{d.total}</span>
+                </td>
+              ))}
+            </tr>
+            <tr className="border-b border-gray-100 hover:bg-gray-50">
+              <td className="py-3 px-2 font-medium text-gray-700">🚨 Deserción</td>
+              {datos.map(d => (
+                <td key={d.cohorte} className="text-center py-3 px-2">
+                  <span className="font-semibold text-red-600">{d.desercion_pct}%</span>
+                  <span className="block text-xs text-red-400">{d.desertores} est.</span>
+                </td>
+              ))}
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="py-3 px-2 font-medium text-gray-700">🎓 Graduación</td>
+              {datos.map(d => (
+                <td key={d.cohorte} className="text-center py-3 px-2">
+                  <span className="font-semibold text-blue-600">{d.graduacion_pct}%</span>
+                  <span className="block text-xs text-blue-400">{d.graduados} est.</span>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 function GraficoMotivosDesercionPortal({ estudiantes }) {
