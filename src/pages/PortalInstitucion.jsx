@@ -29,14 +29,14 @@ const TAB_RESUMEN = '__resumen__';
 // grupo conserva siempre el mismo color mientras no cambie su posición en
 // la lista ordenada alfabéticamente.
 const TEMAS_GRUPO = [
-  { nombre: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', solido: 'bg-blue-600', dot: 'bg-blue-500', activo: 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200', gradiente: 'from-blue-500 to-blue-600', anillo: 'focus-visible:ring-blue-400' },
-  { nombre: 'purple', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', solido: 'bg-purple-600', dot: 'bg-purple-500', activo: 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200', gradiente: 'from-purple-500 to-purple-600', anillo: 'focus-visible:ring-purple-400' },
-  { nombre: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', solido: 'bg-amber-600', dot: 'bg-amber-500', activo: 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-200', gradiente: 'from-amber-500 to-amber-600', anillo: 'focus-visible:ring-amber-400' },
-  { nombre: 'rose', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', solido: 'bg-rose-600', dot: 'bg-rose-500', activo: 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200', gradiente: 'from-rose-500 to-rose-600', anillo: 'focus-visible:ring-rose-400' },
-  { nombre: 'teal', bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', solido: 'bg-teal-600', dot: 'bg-teal-500', activo: 'bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-200', gradiente: 'from-teal-500 to-teal-600', anillo: 'focus-visible:ring-teal-400' },
-  { nombre: 'indigo', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', solido: 'bg-indigo-600', dot: 'bg-indigo-500', activo: 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200', gradiente: 'from-indigo-500 to-indigo-600', anillo: 'focus-visible:ring-indigo-400' },
-  { nombre: 'orange', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', solido: 'bg-orange-600', dot: 'bg-orange-500', activo: 'bg-orange-600 text-white border-orange-600 shadow-md shadow-orange-200', gradiente: 'from-orange-500 to-orange-600', anillo: 'focus-visible:ring-orange-400' },
-  { nombre: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-600', dot: 'bg-cyan-500', activo: 'bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200', gradiente: 'from-cyan-500 to-cyan-600', anillo: 'focus-visible:ring-cyan-400' },
+  { nombre: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', solido: 'bg-blue-400', dot: 'bg-blue-400', activo: 'bg-blue-400 text-white border-blue-400 shadow-md shadow-blue-200', gradiente: 'from-blue-200 to-blue-300', anillo: 'focus-visible:ring-blue-400' },
+  { nombre: 'purple', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', solido: 'bg-purple-400', dot: 'bg-purple-400', activo: 'bg-purple-400 text-white border-purple-400 shadow-md shadow-purple-200', gradiente: 'from-purple-200 to-purple-300', anillo: 'focus-visible:ring-purple-400' },
+  { nombre: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', solido: 'bg-amber-400', dot: 'bg-amber-400', activo: 'bg-amber-400 text-white border-amber-400 shadow-md shadow-amber-200', gradiente: 'from-amber-200 to-amber-300', anillo: 'focus-visible:ring-amber-400' },
+  { nombre: 'rose', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', solido: 'bg-rose-400', dot: 'bg-rose-400', activo: 'bg-rose-400 text-white border-rose-400 shadow-md shadow-rose-200', gradiente: 'from-rose-200 to-rose-300', anillo: 'focus-visible:ring-rose-400' },
+  { nombre: 'teal', bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', solido: 'bg-teal-400', dot: 'bg-teal-400', activo: 'bg-teal-400 text-white border-teal-400 shadow-md shadow-teal-200', gradiente: 'from-teal-200 to-teal-300', anillo: 'focus-visible:ring-teal-400' },
+  { nombre: 'indigo', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', solido: 'bg-indigo-400', dot: 'bg-indigo-400', activo: 'bg-indigo-400 text-white border-indigo-400 shadow-md shadow-indigo-200', gradiente: 'from-indigo-200 to-indigo-300', anillo: 'focus-visible:ring-indigo-400' },
+  { nombre: 'orange', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', solido: 'bg-orange-400', dot: 'bg-orange-400', activo: 'bg-orange-400 text-white border-orange-400 shadow-md shadow-orange-200', gradiente: 'from-orange-200 to-orange-300', anillo: 'focus-visible:ring-orange-400' },
+  { nombre: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-400', dot: 'bg-cyan-400', activo: 'bg-cyan-400 text-white border-cyan-400 shadow-md shadow-cyan-200', gradiente: 'from-cyan-200 to-cyan-300', anillo: 'focus-visible:ring-cyan-400' },
 ];
 
 function iniciales(nombre) {
@@ -409,13 +409,13 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
   return (
     <div className="space-y-5">
       {/* Encabezado del grupo, coloreado con el tema del grupo */}
-      <div className={`rounded-xl bg-gradient-to-r ${tema.gradiente} p-5 shadow-sm text-white`}>
-        <p className="text-lg font-bold leading-tight">{grupo.nombre}</p>
-        <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-white/90">
-          <span className="bg-white/15 px-2.5 py-1 rounded-full">{grupo.universidad}</span>
-          <span className="bg-white/15 px-2.5 py-1 rounded-full">{grupo.programa}</span>
-          <span className="bg-white/15 px-2.5 py-1 rounded-full">Cohorte {grupo.cohorte}</span>
-          <span className="bg-white/15 px-2.5 py-1 rounded-full">{grupo.total_estudiantes_institucion} estudiante{grupo.total_estudiantes_institucion !== 1 ? 's' : ''}</span>
+      <div className={`rounded-xl bg-gradient-to-r ${tema.gradiente} p-5 shadow-sm`}>
+        <p className={`text-lg font-bold leading-tight ${tema.text}`}>{grupo.nombre}</p>
+        <div className={`flex flex-wrap items-center gap-2 mt-2 text-sm ${tema.text}`}>
+          <span className="bg-white/60 px-2.5 py-1 rounded-full">{grupo.universidad}</span>
+          <span className="bg-white/60 px-2.5 py-1 rounded-full">{grupo.programa}</span>
+          <span className="bg-white/60 px-2.5 py-1 rounded-full">Cohorte {grupo.cohorte}</span>
+          <span className="bg-white/60 px-2.5 py-1 rounded-full">{grupo.total_estudiantes_institucion} estudiante{grupo.total_estudiantes_institucion !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
@@ -560,17 +560,17 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
         <div className={`p-4 sm:p-6 border-b border-gray-200 rounded-t-xl ${tema ? `bg-gradient-to-r ${tema.gradiente}` : 'bg-gradient-to-r from-primary/10 to-primary/5'}`}>
           <div className="flex justify-between items-start gap-3">
             <div className="min-w-0">
-              <h2 className={`text-xl sm:text-2xl font-bold leading-tight ${tema ? 'text-white' : 'text-gray-800'}`}>
+              <h2 className={`text-xl sm:text-2xl font-bold leading-tight ${tema ? tema.text : 'text-gray-800'}`}>
                 {estudiante.nombre_completo}
               </h2>
               <div className="flex flex-wrap items-center gap-3 mt-2">
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getEstadoColor(estudiante.estado)}`}>
                   {estudiante.estado || 'Activo'}
                 </span>
-                <span className={`text-sm ${tema ? 'text-white/90' : 'text-gray-600'}`}>📋 {estudiante.documento || 'Sin documento'}</span>
+                <span className={`text-sm ${tema ? tema.text : 'text-gray-600'}`}>📋 {estudiante.documento || 'Sin documento'}</span>
               </div>
             </div>
-            <button onClick={onClose} className={`text-2xl w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0 ${tema ? 'text-white/80 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+            <button onClick={onClose} className={`text-2xl w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0 ${tema ? `${tema.text} hover:bg-white/50` : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
               ✕
             </button>
           </div>
