@@ -10,7 +10,7 @@
 // La vista replica, en modo solo-lectura, lo que ve un padrino en su
 // dashboard (selector de grupos + tabla de estudiantes + perfil completo).
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getEstadoColor, formatearFecha } from '../utils/helpers';
 import {
@@ -23,7 +23,26 @@ import BotonWhatsApp from '../components/common/BotonWhatsApp';
 import VisorImagen from '../components/common/VisorImagen';
 
 const FUNCIONES_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-institucion`;
-const GRUPO_TODOS = '__todos__';
+const TAB_RESUMEN = '__resumen__';
+
+// Paleta rotativa para diferenciar cada grupo a simple vista — el mismo
+// grupo conserva siempre el mismo color mientras no cambie su posición en
+// la lista ordenada alfabéticamente.
+const TEMAS_GRUPO = [
+  { nombre: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', solido: 'bg-blue-600', dot: 'bg-blue-500', activo: 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200', gradiente: 'from-blue-500 to-blue-600', anillo: 'focus-visible:ring-blue-400' },
+  { nombre: 'purple', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', solido: 'bg-purple-600', dot: 'bg-purple-500', activo: 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-200', gradiente: 'from-purple-500 to-purple-600', anillo: 'focus-visible:ring-purple-400' },
+  { nombre: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', solido: 'bg-amber-600', dot: 'bg-amber-500', activo: 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-200', gradiente: 'from-amber-500 to-amber-600', anillo: 'focus-visible:ring-amber-400' },
+  { nombre: 'rose', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', solido: 'bg-rose-600', dot: 'bg-rose-500', activo: 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200', gradiente: 'from-rose-500 to-rose-600', anillo: 'focus-visible:ring-rose-400' },
+  { nombre: 'teal', bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', solido: 'bg-teal-600', dot: 'bg-teal-500', activo: 'bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-200', gradiente: 'from-teal-500 to-teal-600', anillo: 'focus-visible:ring-teal-400' },
+  { nombre: 'indigo', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', solido: 'bg-indigo-600', dot: 'bg-indigo-500', activo: 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200', gradiente: 'from-indigo-500 to-indigo-600', anillo: 'focus-visible:ring-indigo-400' },
+  { nombre: 'orange', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', solido: 'bg-orange-600', dot: 'bg-orange-500', activo: 'bg-orange-600 text-white border-orange-600 shadow-md shadow-orange-200', gradiente: 'from-orange-500 to-orange-600', anillo: 'focus-visible:ring-orange-400' },
+  { nombre: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-600', dot: 'bg-cyan-500', activo: 'bg-cyan-600 text-white border-cyan-600 shadow-md shadow-cyan-200', gradiente: 'from-cyan-500 to-cyan-600', anillo: 'focus-visible:ring-cyan-400' },
+];
+
+function iniciales(nombre) {
+  const partes = (nombre || '').trim().split(/\s+/);
+  return ((partes[0]?.[0] || '') + (partes[1]?.[0] || '')).toUpperCase();
+}
 
 export default function PortalInstitucion() {
   const { token } = useParams();
@@ -31,8 +50,10 @@ export default function PortalInstitucion() {
   const [error, setError] = useState(false);
   const [datos, setDatos] = useState(null);
   const [busqueda, setBusqueda] = useState('');
-  const [grupoActivo, setGrupoActivo] = useState(GRUPO_TODOS);
+  const [busquedaGrupo, setBusquedaGrupo] = useState('');
+  const [tabActiva, setTabActiva] = useState(TAB_RESUMEN);
   const [estudianteSeleccionado, setEstudianteSeleccionado] = useState(null);
+  const buscadorRef = useRef(null);
 
   useEffect(() => {
     async function cargar() {
@@ -62,6 +83,12 @@ export default function PortalInstitucion() {
     return [...(datos?.grupos || [])].sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [datos]);
 
+  const temaPorGrupo = useMemo(() => {
+    const mapa = {};
+    gruposOrdenados.forEach((g, idx) => { mapa[g.id] = TEMAS_GRUPO[idx % TEMAS_GRUPO.length]; });
+    return mapa;
+  }, [gruposOrdenados]);
+
   const kpis = useMemo(() => {
     const estudiantes = datos?.estudiantes || [];
     return {
@@ -73,20 +100,51 @@ export default function PortalInstitucion() {
     };
   }, [datos]);
 
-  const estudiantesFiltrados = useMemo(() => {
-    let lista = datos?.estudiantes || [];
-    if (grupoActivo !== GRUPO_TODOS) {
-      lista = lista.filter(e => e.grupo_id === grupoActivo);
-    }
-    if (busqueda.trim()) {
-      const q = busqueda.toLowerCase();
+  const estadisticasPorGrupo = useMemo(() => {
+    const estudiantes = datos?.estudiantes || [];
+    const mapa = {};
+    gruposOrdenados.forEach(g => {
+      const deGrupo = estudiantes.filter(e => e.grupo_id === g.id);
+      mapa[g.id] = {
+        total: deGrupo.length,
+        activos: deGrupo.filter(e => e.estado === 'Activo' || !e.estado).length,
+        enRiesgo: deGrupo.filter(e => e.estado === 'En Riesgo').length,
+        desertores: deGrupo.filter(e => e.estado === 'Desertor').length,
+      };
+    });
+    return mapa;
+  }, [datos, gruposOrdenados]);
+
+  const resultadosBusqueda = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return [];
+    const estudiantes = datos?.estudiantes || [];
+    return estudiantes
+      .filter(e => e.nombre_completo.toLowerCase().includes(q) || e.documento?.includes(q))
+      .slice(0, 8);
+  }, [datos, busqueda]);
+
+  const estudiantesDeGrupoActivo = useMemo(() => {
+    if (tabActiva === TAB_RESUMEN) return [];
+    let lista = (datos?.estudiantes || []).filter(e => e.grupo_id === tabActiva);
+    if (busquedaGrupo.trim()) {
+      const q = busquedaGrupo.toLowerCase();
       lista = lista.filter(e => e.nombre_completo.toLowerCase().includes(q) || e.documento?.includes(q));
     }
     return lista;
-  }, [datos, grupoActivo, busqueda]);
+  }, [datos, tabActiva, busquedaGrupo]);
 
-  function descargarExcel() {
-    exportarEstudiantesExcel(estudiantesFiltrados, datos?.institucion?.nombre);
+  const grupoActivoInfo = gruposOrdenados.find(g => g.id === tabActiva);
+  const temaActivo = temaPorGrupo[tabActiva];
+
+  function descargarExcel(lista, nombreArchivo) {
+    exportarEstudiantesExcel(lista, nombreArchivo);
+  }
+
+  function irAEstudiante(est) {
+    setBusqueda('');
+    if (est.grupo_id) setTabActiva(est.grupo_id);
+    setEstudianteSeleccionado(est);
   }
 
   if (cargando) {
@@ -116,10 +174,11 @@ export default function PortalInstitucion() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* ENCABEZADO */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+            <div className="w-11 h-11 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
               <span className="text-white text-xl font-bold">☕</span>
             </div>
             <div>
@@ -130,169 +189,100 @@ export default function PortalInstitucion() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
-            <p className="text-2xl font-bold text-gray-800">{kpis.total}</p>
-            <p className="text-xs text-gray-500">Total</p>
-          </div>
-          <div className="bg-green-50 rounded-xl p-4 text-center border border-green-200">
-            <p className="text-2xl font-bold text-green-700">{kpis.activos}</p>
-            <p className="text-xs text-green-600">Activos</p>
-          </div>
-          <div className="bg-yellow-50 rounded-xl p-4 text-center border border-yellow-200">
-            <p className="text-2xl font-bold text-yellow-700">{kpis.enRiesgo}</p>
-            <p className="text-xs text-yellow-600">En Riesgo</p>
-          </div>
-          <div className="bg-red-50 rounded-xl p-4 text-center border border-red-200">
-            <p className="text-2xl font-bold text-red-700">{kpis.desertores}</p>
-            <p className="text-xs text-red-600">Desertores</p>
-          </div>
-          <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
-            <p className="text-2xl font-bold text-blue-700">{kpis.graduados}</p>
-            <p className="text-xs text-blue-600">Graduados</p>
+      {/* BUSCADOR GLOBAL, siempre visible sin importar la pestaña activa */}
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3">
+          <div className="relative max-w-md">
+            <input
+              ref={buscadorRef}
+              type="text"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="🔍 Buscar estudiante en toda la institución..."
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus:border-primary transition"
+            />
+            {resultadosBusqueda.length > 0 && (
+              <div className="absolute mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 animate-fade-in">
+                {resultadosBusqueda.map(est => {
+                  const tema = temaPorGrupo[est.grupo_id];
+                  const grupoNombre = gruposOrdenados.find(g => g.id === est.grupo_id)?.nombre;
+                  return (
+                    <button
+                      key={est.id}
+                      onClick={() => irAEstudiante(est)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition flex items-center justify-between gap-2 border-b border-gray-100 last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{est.nombre_completo}</p>
+                        <p className="text-xs text-gray-500 truncate">{grupoNombre || 'Sin grupo'}</p>
+                      </div>
+                      {tema && <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${tema.dot}`}></span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Selector de grupos, igual al flujo del padrino */}
-        {gruposOrdenados.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h2 className="font-semibold text-gray-700 mb-3">📚 Grupos con estudiantes de esta institución</h2>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setGrupoActivo(GRUPO_TODOS)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                  grupoActivo === GRUPO_TODOS
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Todos ({datos.estudiantes.length})
-              </button>
-              {gruposOrdenados.map(g => (
+      {/* PESTAÑAS: Resumen + una por grupo, coloreadas para identificarlas al instante */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 md:px-6">
+          <div className="flex gap-1.5 overflow-x-auto py-2.5 scrollbar-thin">
+            <button
+              onClick={() => setTabActiva(TAB_RESUMEN)}
+              className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                tabActiva === TAB_RESUMEN
+                  ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              📊 Resumen
+            </button>
+            {gruposOrdenados.map(g => {
+              const tema = temaPorGrupo[g.id];
+              const activa = tabActiva === g.id;
+              return (
                 <button
                   key={g.id}
-                  onClick={() => setGrupoActivo(g.id)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                    grupoActivo === g.id
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                  onClick={() => setTabActiva(g.id)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 ${tema.anillo} ${
+                    activa ? tema.activo : `${tema.bg} ${tema.border} ${tema.text} hover:brightness-95`
                   }`}
                   title={`${g.universidad} · ${g.programa} · Cohorte ${g.cohorte}`}
                 >
-                  {g.nombre} · {g.total_estudiantes_institucion}
+                  <span className={`w-2 h-2 rounded-full ${activa ? 'bg-white' : tema.dot}`}></span>
+                  {g.nombre}
+                  <span className={activa ? 'text-white/80' : 'text-gray-400'}>· {g.total_estudiantes_institucion}</span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Buscador + descarga */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <input
-            type="text"
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            placeholder="🔍 Buscar estudiante..."
-            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm flex-1 min-w-[200px] max-w-md bg-white"
+      <div key={tabActiva} className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-fade-in">
+        {tabActiva === TAB_RESUMEN ? (
+          <VistaResumen
+            kpis={kpis}
+            gruposOrdenados={gruposOrdenados}
+            temaPorGrupo={temaPorGrupo}
+            estadisticasPorGrupo={estadisticasPorGrupo}
+            onIrAGrupo={setTabActiva}
+            onDescargarTodo={() => descargarExcel(datos.estudiantes, datos.institucion.nombre)}
           />
-          <button
-            onClick={descargarExcel}
-            disabled={estudiantesFiltrados.length === 0}
-            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
-          >
-            📥 Descargar Excel
-          </button>
-        </div>
-
-        {/* Tabla de estudiantes, con el mismo estilo de TablaEstudiantes */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-          {estudiantesFiltrados.length === 0 ? (
-            <p className="text-center text-gray-500 py-10 text-sm">No hay estudiantes que coincidan</p>
-          ) : (
-            <>
-              {/* Desktop */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estudiante</th>
-                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Contacto</th>
-                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estado</th>
-                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Faltas</th>
-                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Notas</th>
-                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {estudiantesFiltrados.map(est => (
-                      <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                        <td className="py-3.5 px-4">
-                          <p className="font-medium text-gray-800">{est.nombre_completo}</p>
-                          <p className="text-xs text-gray-500">{est.documento || 'Sin documento'}</p>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <p className="text-sm text-gray-700">{est.telefono || 'N/A'}</p>
-                          <p className="text-xs text-gray-500">{est.correo || 'Sin correo'}</p>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
-                            {est.estado || 'Activo'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`font-semibold text-sm ${est.total_faltas > 3 ? 'text-red-600' : 'text-gray-700'}`}>
-                            {est.total_inasistencias || 0}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`font-semibold text-sm ${est.promedio_notas !== null && est.promedio_notas < 3 ? 'text-red-500' : 'text-gray-700'}`}>
-                            {est.promedio_notas ?? '–'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <button
-                            onClick={() => setEstudianteSeleccionado(est)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
-                            title="Ver perfil completo"
-                          >
-                            👤
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Móvil */}
-              <div className="lg:hidden divide-y divide-gray-100">
-                {estudiantesFiltrados.map(est => (
-                  <div
-                    key={est.id}
-                    onClick={() => setEstudianteSeleccionado(est)}
-                    className="p-4 cursor-pointer active:bg-gray-50"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">{est.nombre_completo}</p>
-                        <p className="text-xs text-gray-400 mb-1.5">{est.documento || 'Sin documento'}</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
-                            {est.estado || 'Activo'}
-                          </span>
-                          <span className="text-xs text-gray-500">{est.total_inasistencias || 0} falta(s)</span>
-                        </div>
-                      </div>
-                      <span className="text-gray-400 text-xl flex-shrink-0">›</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        ) : (
+          <VistaGrupo
+            grupo={grupoActivoInfo}
+            tema={temaActivo}
+            estudiantes={estudiantesDeGrupoActivo}
+            busqueda={busquedaGrupo}
+            setBusqueda={setBusquedaGrupo}
+            onVerPerfil={setEstudianteSeleccionado}
+            onDescargar={() => descargarExcel(estudiantesDeGrupoActivo, `${datos.institucion.nombre}_${grupoActivoInfo?.nombre}`)}
+          />
+        )}
 
         <p className="text-xs text-gray-400 text-center">
           Portal de solo lectura · Comité de Cafeteros de Caldas
@@ -301,8 +291,247 @@ export default function PortalInstitucion() {
 
       <PerfilEstudiantePortal
         estudiante={estudianteSeleccionado}
+        tema={estudianteSeleccionado ? temaPorGrupo[estudianteSeleccionado.grupo_id] : null}
         onClose={() => setEstudianteSeleccionado(null)}
       />
+    </div>
+  );
+}
+
+// =============================================
+// PESTAÑA: RESUMEN GENERAL
+// =============================================
+function VistaResumen({ kpis, gruposOrdenados, temaPorGrupo, estadisticasPorGrupo, onIrAGrupo, onDescargarTodo }) {
+  const segmentos = [
+    { valor: kpis.activos, color: 'bg-green-500', label: 'Activos' },
+    { valor: kpis.enRiesgo, color: 'bg-amber-400', label: 'En Riesgo' },
+    { valor: kpis.desertores, color: 'bg-red-500', label: 'Desertores' },
+    { valor: kpis.graduados, color: 'bg-blue-500', label: 'Graduados' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-white rounded-xl p-4 text-center border border-gray-200 shadow-sm hover:shadow-md transition">
+          <p className="text-2xl font-bold text-gray-800">{kpis.total}</p>
+          <p className="text-xs text-gray-500">Total</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-4 text-center border border-green-200 shadow-sm hover:shadow-md transition">
+          <p className="text-2xl font-bold text-green-700">{kpis.activos}</p>
+          <p className="text-xs text-green-600">Activos</p>
+        </div>
+        <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-200 shadow-sm hover:shadow-md transition">
+          <p className="text-2xl font-bold text-amber-700">{kpis.enRiesgo}</p>
+          <p className="text-xs text-amber-600">En Riesgo</p>
+        </div>
+        <div className="bg-red-50 rounded-xl p-4 text-center border border-red-200 shadow-sm hover:shadow-md transition">
+          <p className="text-2xl font-bold text-red-700">{kpis.desertores}</p>
+          <p className="text-xs text-red-600">Desertores</p>
+        </div>
+        <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-200 shadow-sm hover:shadow-md transition">
+          <p className="text-2xl font-bold text-blue-700">{kpis.graduados}</p>
+          <p className="text-xs text-blue-600">Graduados</p>
+        </div>
+      </div>
+
+      {/* Barra de composición */}
+      {kpis.total > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
+            {segmentos.filter(s => s.valor > 0).map(s => (
+              <div key={s.label} className={s.color} style={{ width: `${(s.valor / kpis.total) * 100}%` }} title={`${s.label}: ${s.valor}`}></div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
+            {segmentos.map(s => (
+              <span key={s.label} className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className={`w-2 h-2 rounded-full ${s.color}`}></span>
+                {s.label} · {s.valor}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tarjetas de grupo, coloreadas para identificarlas de un vistazo */}
+      {gruposOrdenados.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-700">📚 Grupos de esta institución</h2>
+            <button
+              onClick={onDescargarTodo}
+              className="bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow-sm"
+            >
+              📥 Descargar todo (Excel)
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {gruposOrdenados.map(g => {
+              const tema = temaPorGrupo[g.id];
+              const stats = estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 };
+              const pctActivos = stats.total > 0 ? Math.round((stats.activos / stats.total) * 100) : 0;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => onIrAGrupo(g.id)}
+                  className={`text-left rounded-xl border ${tema.border} ${tema.bg} p-4 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${tema.dot} flex-shrink-0`}></span>
+                    <span className="text-xs font-medium text-gray-500 ml-auto">{stats.total} estudiante{stats.total !== 1 ? 's' : ''}</span>
+                  </div>
+                  <p className={`font-bold ${tema.text} leading-snug mb-1`}>{g.nombre}</p>
+                  <p className="text-xs text-gray-500 mb-3">{g.universidad} · {g.programa} · Cohorte {g.cohorte}</p>
+                  <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1.5">
+                    <div className={`h-full ${tema.solido}`} style={{ width: `${pctActivos}%` }}></div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{pctActivos}% activos</span>
+                    {stats.desertores > 0 && <span className="text-red-500">{stats.desertores} desertor{stats.desertores !== 1 ? 'es' : ''}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================
+// PESTAÑA: DETALLE DE UN GRUPO
+// =============================================
+function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerfil, onDescargar }) {
+  if (!grupo || !tema) return null;
+
+  return (
+    <div className="space-y-5">
+      {/* Encabezado del grupo, coloreado con el tema del grupo */}
+      <div className={`rounded-xl bg-gradient-to-r ${tema.gradiente} p-5 shadow-sm text-white`}>
+        <p className="text-lg font-bold leading-tight">{grupo.nombre}</p>
+        <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-white/90">
+          <span className="bg-white/15 px-2.5 py-1 rounded-full">{grupo.universidad}</span>
+          <span className="bg-white/15 px-2.5 py-1 rounded-full">{grupo.programa}</span>
+          <span className="bg-white/15 px-2.5 py-1 rounded-full">Cohorte {grupo.cohorte}</span>
+          <span className="bg-white/15 px-2.5 py-1 rounded-full">{grupo.total_estudiantes_institucion} estudiante{grupo.total_estudiantes_institucion !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+
+      {/* Buscador local + descarga del grupo */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <input
+          type="text"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="🔍 Buscar en este grupo..."
+          className={`border ${tema.border} rounded-lg px-4 py-2.5 text-sm flex-1 min-w-[200px] max-w-md bg-white focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
+        />
+        <button
+          onClick={onDescargar}
+          disabled={estudiantes.length === 0}
+          className={`${tema.solido} text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 hover:brightness-95`}
+        >
+          📥 Descargar Excel del grupo
+        </button>
+      </div>
+
+      {/* Tabla de estudiantes */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+        {estudiantes.length === 0 ? (
+          <p className="text-center text-gray-500 py-10 text-sm">No hay estudiantes que coincidan</p>
+        ) : (
+          <>
+            {/* Desktop */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estudiante</th>
+                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Contacto</th>
+                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estado</th>
+                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Faltas</th>
+                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Notas</th>
+                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {estudiantes.map(est => (
+                    <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
+                            {iniciales(est.nombre_completo)}
+                          </span>
+                          <div>
+                            <p className="font-medium text-gray-800">{est.nombre_completo}</p>
+                            <p className="text-xs text-gray-500">{est.documento || 'Sin documento'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <p className="text-sm text-gray-700">{est.telefono || 'N/A'}</p>
+                        <p className="text-xs text-gray-500">{est.correo || 'Sin correo'}</p>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
+                          {est.estado || 'Activo'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${est.total_inasistencias > 3 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                          {est.total_inasistencias || 0}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`font-semibold text-sm ${est.promedio_notas !== null && est.promedio_notas < 3 ? 'text-red-500' : 'text-gray-700'}`}>
+                          {est.promedio_notas ?? '–'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <button
+                          onClick={() => onVerPerfil(est)}
+                          className={`${tema.solido} hover:brightness-95 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition`}
+                          title="Ver perfil completo"
+                        >
+                          👤
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Móvil */}
+            <div className="lg:hidden divide-y divide-gray-100">
+              {estudiantes.map(est => (
+                <div
+                  key={est.id}
+                  onClick={() => onVerPerfil(est)}
+                  className="p-4 cursor-pointer active:bg-gray-50 flex items-center gap-3"
+                >
+                  <span className={`w-9 h-9 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
+                    {iniciales(est.nombre_completo)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-800 truncate">{est.nombre_completo}</p>
+                    <p className="text-xs text-gray-400 mb-1.5">{est.documento || 'Sin documento'}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
+                        {est.estado || 'Activo'}
+                      </span>
+                      <span className="text-xs text-gray-500">{est.total_inasistencias || 0} falta(s)</span>
+                    </div>
+                  </div>
+                  <span className="text-gray-400 text-xl flex-shrink-0">›</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -313,7 +542,7 @@ export default function PortalInstitucion() {
 // Réplica de ModalPerfilEstudiante sin ninguna acción de edición/gestión —
 // los datos ya vienen resueltos desde la Edge Function, no se consulta
 // Supabase directamente.
-function PerfilEstudiantePortal({ estudiante, onClose }) {
+function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
 
   if (!estudiante) return null;
@@ -328,20 +557,20 @@ function PerfilEstudiantePortal({ estudiante, onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl">
 
-        <div className="p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 rounded-t-xl">
+        <div className={`p-4 sm:p-6 border-b border-gray-200 rounded-t-xl ${tema ? `bg-gradient-to-r ${tema.gradiente}` : 'bg-gradient-to-r from-primary/10 to-primary/5'}`}>
           <div className="flex justify-between items-start gap-3">
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 leading-tight">
+              <h2 className={`text-xl sm:text-2xl font-bold leading-tight ${tema ? 'text-white' : 'text-gray-800'}`}>
                 {estudiante.nombre_completo}
               </h2>
               <div className="flex flex-wrap items-center gap-3 mt-2">
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(estudiante.estado)}`}>
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getEstadoColor(estudiante.estado)}`}>
                   {estudiante.estado || 'Activo'}
                 </span>
-                <span className="text-sm text-gray-600">📋 {estudiante.documento || 'Sin documento'}</span>
+                <span className={`text-sm ${tema ? 'text-white/90' : 'text-gray-600'}`}>📋 {estudiante.documento || 'Sin documento'}</span>
               </div>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition">
+            <button onClick={onClose} className={`text-2xl w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0 ${tema ? 'text-white/80 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
               ✕
             </button>
           </div>
