@@ -364,6 +364,7 @@ export default function Dashboard() {
         }
         return result;
       }}
+        onTrasladoCompletado={() => { if (grupoSeleccionado) cargarEstudiantes(); }}
       />
 
       <ModalEditarSeguimiento

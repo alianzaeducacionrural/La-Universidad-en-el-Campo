@@ -25,6 +25,8 @@ const GestionGrupos = lazy(() => import('./pages/admin/GestionGrupos'));
 const GestionMultas = lazy(() => import('./pages/admin/GestionMultas'));
 const HistorialReportesAsistencia = lazy(() => import('./pages/coordinador/HistorialReportesAsistencia'));
 const GestionAliados = lazy(() => import('./pages/admin/GestionAliados'));
+const GestionDesertores = lazy(() => import('./pages/admin/GestionDesertores'));
+const PortalInstitucion = lazy(() => import('./pages/PortalInstitucion'));
 
 // Rutas a las que un aliado (solo lectura) tiene acceso
 const RUTAS_ALIADO = ['/estadisticas', '/reportes', '/grupos'];
@@ -367,6 +369,8 @@ function AppContent() {
       <Suspense fallback={null}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* Portal público de Instituciones Educativas — sin sesión, fuera de ProtectedRoute */}
+          <Route path="/ie/:token" element={<PortalInstitucion />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad /></ProtectedRoute>} />
           <Route path="/panel" element={
@@ -381,6 +385,7 @@ function AppContent() {
           <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+          <Route path="/desertores" element={<ProtectedRoute><GestionDesertores onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
           <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
           <Route path="/" element={<HomeRedirect />} />

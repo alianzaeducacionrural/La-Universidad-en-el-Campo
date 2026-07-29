@@ -1,31 +1,60 @@
 // =============================================
-// PÁGINA: REPORTES DESCARGABLES (CON PAGINACIÓN)
+// PÁGINA: REPORTES DESCARGABLES (CON FILTROS Y DESCARGA POR GRUPO)
 // =============================================
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useReportesNuevos } from '../hooks/useReportesNuevos';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
+import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
 import * as XLSX from 'xlsx';
 import { formatearFecha, limpiarEmojis, getMunicipiosPermitidos, esAliado } from '../utils/helpers';
+import { ESTADOS_ESTUDIANTE } from '../utils/constants';
 
 export default function Reportes({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('reportes');
-  const [cargando, setCargando] = useState({});
+
+  const [cargandoDatos, setCargandoDatos] = useState(true);
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
+
+  // Datos crudos (una sola carga; el filtrado ocurre en cliente)
+  const [rawEstudiantes, setRawEstudiantes] = useState([]);
+  const [rawDeserciones, setRawDeserciones] = useState([]);
+  const [rawInasistencias, setRawInasistencias] = useState([]);
+  const [rawSeguimientos, setRawSeguimientos] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [municipiosDb, setMunicipiosDb] = useState([]);
+  const [universidadesDb, setUniversidadesDb] = useState([]);
+  const [programasDb, setProgramasDb] = useState([]);
 
   // Municipios permitidos (null = todos). Los aliados solo descargan sus municipios.
   const municipiosPermitidos = getMunicipiosPermitidos(usuario);
   const soloLectura = esAliado(usuario?.rol);
 
-  // Filtra un arreglo de registros dejando solo los de municipios permitidos
-  function filtrarPorMunicipio(registros, obtenerMunicipio = (r) => r.municipio) {
-    if (!municipiosPermitidos) return registros;
-    return registros.filter(r => municipiosPermitidos.includes(obtenerMunicipio(r)));
+  const gruposMap = useMemo(() => new Map(grupos.map(g => [g.id, g.nombre])), [grupos]);
+
+  // Filtrado central — reemplaza al antiguo filtrarPorMunicipio.
+  // El alcance del aliado (municipiosPermitidos) se aplica primero y
+  // no se puede ampliar desde los filtros de esta página.
+  function aplicarFiltros(filas, getters) {
+    return aplicarFiltrosGenerico(filas, getters, filtros, municipiosPermitidos);
   }
+
+  function conGrupoNombre(filas, obtenerGrupoId) {
+    return filas.map(f => ({ ...f, grupo_nombre: gruposMap.get(obtenerGrupoId(f)) || 'Sin grupo' }));
+  }
+
+  const gettersComunes = {
+    municipio: r => r.municipio,
+    universidad: r => r.universidad,
+    programa: r => r.programa,
+    cohorte: r => r.cohorte,
+    grupoId: r => r.grupo_id
+  };
 
   // =============================================
   // FUNCIONES DE DESCARGA
@@ -40,20 +69,20 @@ export default function Reportes({ onVerPerfil }) {
 
   function descargarExcelAgrupado(datos, campoAgrupacion, nombreArchivo) {
     const wb = XLSX.utils.book_new();
-    
+
     const agrupado = {};
     datos.forEach(item => {
       const valor = item[campoAgrupacion] || 'Sin especificar';
       if (!agrupado[valor]) agrupado[valor] = [];
       agrupado[valor].push(item);
     });
-    
+
     Object.entries(agrupado).sort().forEach(([nombreHoja, items]) => {
       const nombreCorto = nombreHoja.substring(0, 31).replace(/[\\\[\]\*\?\/]/g, '-');
       const ws = XLSX.utils.json_to_sheet(items);
       XLSX.utils.book_append_sheet(wb, ws, nombreCorto);
     });
-    
+
     XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
   }
 
@@ -64,7 +93,7 @@ export default function Reportes({ onVerPerfil }) {
   const COLUMNAS_ESTUDIANTES = [
     'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
     'municipio', 'institucion_educativa', 'universidad', 'programa',
-    'cohorte', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono'
+    'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono'
   ];
 
   const LABELS_ESTUDIANTES = {
@@ -78,13 +107,14 @@ export default function Reportes({ onVerPerfil }) {
     universidad: 'Universidad',
     programa: 'Programa',
     cohorte: 'Cohorte',
+    grupo_nombre: 'Grupo',
     estado: 'Estado',
     total_faltas: 'Faltas',
     acudiente_nombre: 'Acudiente',
     acudiente_telefono: 'Tel. Acudiente'
   };
 
-  async function obtenerEstudiantes() {
+  async function obtenerEstudiantesCrudo() {
     let todosLosDatos = [];
     let from = 0;
     const limit = 1000;
@@ -124,6 +154,12 @@ export default function Reportes({ onVerPerfil }) {
     return Array.from(unicos.values());
   }
 
+  const gettersEstudiantes = { ...gettersComunes, estado: r => r.estado };
+  const estudiantesFiltrados = useMemo(
+    () => conGrupoNombre(aplicarFiltros(rawEstudiantes, gettersEstudiantes), e => e.grupo_id),
+    [rawEstudiantes, filtros, gruposMap, municipiosPermitidos]
+  );
+
   function formatearEstudiantes(data) {
     return data.map(e => {
       const obj = {};
@@ -134,18 +170,12 @@ export default function Reportes({ onVerPerfil }) {
     });
   }
 
-  async function descargarEstudiantesCompleto() {
-    setCargando(prev => ({ ...prev, estudiantesCompleto: true }));
-    const data = await obtenerEstudiantes();
-    descargarExcelCompleto(formatearEstudiantes(data), 'Listado_General_Estudiantes');
-    setCargando(prev => ({ ...prev, estudiantesCompleto: false }));
+  function descargarEstudiantesCompleto() {
+    descargarExcelCompleto(formatearEstudiantes(estudiantesFiltrados), 'Listado_General_Estudiantes');
   }
 
-  async function descargarEstudiantesAgrupado(campo, nombre) {
-    setCargando(prev => ({ ...prev, [`estudiantes_${campo}`]: true }));
-    const data = await obtenerEstudiantes();
-    descargarExcelAgrupado(formatearEstudiantes(data), LABELS_ESTUDIANTES[campo] || campo, `Listado_Estudiantes_Por_${nombre}`);
-    setCargando(prev => ({ ...prev, [`estudiantes_${campo}`]: false }));
+  function descargarEstudiantesAgrupado(campo, nombre) {
+    descargarExcelAgrupado(formatearEstudiantes(estudiantesFiltrados), LABELS_ESTUDIANTES[campo] || campo, `Listado_Estudiantes_Por_${nombre}`);
   }
 
   // =============================================
@@ -154,7 +184,7 @@ export default function Reportes({ onVerPerfil }) {
 
   const COLUMNAS_DESERCION = [
     'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
-    'universidad', 'programa', 'cohorte', 'tipo_desercion', 'motivo_principal',
+    'universidad', 'programa', 'cohorte', 'grupo_nombre', 'tipo_desercion', 'motivo_principal',
     'motivo_otro', 'observaciones', 'fecha_reporte', 'reportado_por'
   ];
 
@@ -166,6 +196,7 @@ export default function Reportes({ onVerPerfil }) {
     universidad: 'Universidad',
     programa: 'Programa',
     cohorte: 'Cohorte',
+    grupo_nombre: 'Grupo',
     tipo_desercion: 'Tipo Deserción',
     motivo_principal: 'Motivo Principal',
     motivo_otro: 'Motivo Especificado',
@@ -174,7 +205,7 @@ export default function Reportes({ onVerPerfil }) {
     reportado_por: 'Reportado por'
   };
 
-  async function obtenerDeserciones() {
+  async function obtenerDesercionesCrudo() {
     let todosLosDatos = [];
     let from = 0;
     const limit = 1000;
@@ -217,8 +248,14 @@ export default function Reportes({ onVerPerfil }) {
       });
     }
 
-    return filtrarPorMunicipio(unicos);
+    return unicos;
   }
+
+  const gettersDeserciones = { ...gettersComunes, fecha: r => r.fecha_reporte };
+  const desercionesFiltradas = useMemo(
+    () => conGrupoNombre(aplicarFiltros(rawDeserciones, gettersDeserciones), d => d.grupo_id),
+    [rawDeserciones, filtros, gruposMap, municipiosPermitidos]
+  );
 
   function formatearDeserciones(data) {
     return data.map(d => {
@@ -230,18 +267,12 @@ export default function Reportes({ onVerPerfil }) {
     });
   }
 
-  async function descargarDesercionesCompleto() {
-    setCargando(prev => ({ ...prev, desercionesCompleto: true }));
-    const data = await obtenerDeserciones();
-    descargarExcelCompleto(formatearDeserciones(data), 'Reporte_Deserciones');
-    setCargando(prev => ({ ...prev, desercionesCompleto: false }));
+  function descargarDesercionesCompleto() {
+    descargarExcelCompleto(formatearDeserciones(desercionesFiltradas), 'Reporte_Deserciones');
   }
 
-  async function descargarDesercionesAgrupado(campo, nombre) {
-    setCargando(prev => ({ ...prev, [`deserciones_${campo}`]: true }));
-    const data = await obtenerDeserciones();
-    descargarExcelAgrupado(formatearDeserciones(data), LABELS_DESERCION[campo] || campo, `Reporte_Deserciones_Por_${nombre}`);
-    setCargando(prev => ({ ...prev, [`deserciones_${campo}`]: false }));
+  function descargarDesercionesAgrupado(campo, nombre) {
+    descargarExcelAgrupado(formatearDeserciones(desercionesFiltradas), LABELS_DESERCION[campo] || campo, `Reporte_Deserciones_Por_${nombre}`);
   }
 
   // =============================================
@@ -250,7 +281,7 @@ export default function Reportes({ onVerPerfil }) {
 
   const COLUMNAS_INASISTENCIAS = [
     'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
-    'universidad', 'programa', 'cohorte', 'fecha', 'modulo', 'docente_nombre',
+    'universidad', 'programa', 'cohorte', 'grupo_nombre', 'fecha', 'modulo', 'docente_nombre',
     'estado_seguimiento'
   ];
 
@@ -262,13 +293,14 @@ export default function Reportes({ onVerPerfil }) {
     universidad: 'Universidad',
     programa: 'Programa',
     cohorte: 'Cohorte',
+    grupo_nombre: 'Grupo',
     fecha: 'Fecha',
     modulo: 'Módulo',
     docente_nombre: 'Docente',
     estado_seguimiento: 'Estado Seguimiento'
   };
 
-  async function obtenerInasistencias() {
+  async function obtenerInasistenciasCrudo() {
     let todosLosDatos = [];
     let from = 0;
     const limit = 1000;
@@ -296,17 +328,23 @@ export default function Reportes({ onVerPerfil }) {
       }
     }
 
-    const mapeados = todosLosDatos.map(i => ({
+    return todosLosDatos.map(i => ({
       ...i,
       ...i.estudiante,
       fecha: i.registros_asistencia?.fecha || '',
       modulo: i.registros_asistencia?.modulo || '',
       docente_nombre: i.registros_asistencia?.docente_nombre || '',
-      estado_seguimiento: i.estado_seguimiento === 'realizado' ? 'Realizado' : 'Pendiente'
+      estado_seguimiento:
+        i.estado_seguimiento === 'realizado' ? 'Realizado' :
+        i.estado_seguimiento === 'justificado' ? 'Justificado' : 'Pendiente'
     }));
-
-    return filtrarPorMunicipio(mapeados);
   }
+
+  const gettersInasistencias = { ...gettersComunes, fecha: r => r.fecha };
+  const inasistenciasFiltradas = useMemo(
+    () => conGrupoNombre(aplicarFiltros(rawInasistencias, gettersInasistencias), i => i.grupo_id),
+    [rawInasistencias, filtros, gruposMap, municipiosPermitidos]
+  );
 
   function formatearInasistencias(data) {
     return data.map(i => {
@@ -318,18 +356,12 @@ export default function Reportes({ onVerPerfil }) {
     });
   }
 
-  async function descargarInasistenciasCompleto() {
-    setCargando(prev => ({ ...prev, inasistenciasCompleto: true }));
-    const data = await obtenerInasistencias();
-    descargarExcelCompleto(formatearInasistencias(data), 'Reporte_Inasistencias');
-    setCargando(prev => ({ ...prev, inasistenciasCompleto: false }));
+  function descargarInasistenciasCompleto() {
+    descargarExcelCompleto(formatearInasistencias(inasistenciasFiltradas), 'Reporte_Inasistencias');
   }
 
-  async function descargarInasistenciasAgrupado(campo, nombre) {
-    setCargando(prev => ({ ...prev, [`inasistencias_${campo}`]: true }));
-    const data = await obtenerInasistencias();
-    descargarExcelAgrupado(formatearInasistencias(data), LABELS_INASISTENCIAS[campo] || campo, `Reporte_Inasistencias_Por_${nombre}`);
-    setCargando(prev => ({ ...prev, [`inasistencias_${campo}`]: false }));
+  function descargarInasistenciasAgrupado(campo, nombre) {
+    descargarExcelAgrupado(formatearInasistencias(inasistenciasFiltradas), LABELS_INASISTENCIAS[campo] || campo, `Reporte_Inasistencias_Por_${nombre}`);
   }
 
   // =============================================
@@ -338,7 +370,7 @@ export default function Reportes({ onVerPerfil }) {
 
   const COLUMNAS_SEGUIMIENTOS = [
     'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
-    'universidad', 'programa', 'cohorte', 'fecha_contacto', 'tipo_gestion',
+    'universidad', 'programa', 'cohorte', 'grupo_nombre', 'fecha_contacto', 'tipo_gestion',
     'causa_ausencia', 'resultado', 'padrino_nombre'
   ];
 
@@ -350,6 +382,7 @@ export default function Reportes({ onVerPerfil }) {
     universidad: 'Universidad',
     programa: 'Programa',
     cohorte: 'Cohorte',
+    grupo_nombre: 'Grupo',
     fecha_contacto: 'Fecha',
     tipo_gestion: 'Tipo Gestión',
     causa_ausencia: 'Causa',
@@ -357,7 +390,7 @@ export default function Reportes({ onVerPerfil }) {
     padrino_nombre: 'Padrino'
   };
 
-  async function obtenerSeguimientos() {
+  async function obtenerSeguimientosCrudo() {
     let todosLosDatos = [];
     let from = 0;
     const limit = 1000;
@@ -385,34 +418,91 @@ export default function Reportes({ onVerPerfil }) {
       }
     }
 
-    return filtrarPorMunicipio(todosLosDatos, (s) => s.estudiante?.municipio);
-  }
-
-  function formatearSeguimientos(data) {
-    return data.map(s => ({
-      'Estudiante': s.estudiante?.nombre_completo || 'N/A',
-      'Documento': s.estudiante?.documento || 'N/A',
-      'Fecha': formatearFecha(s.fecha_contacto),
-      'Tipo Gestión': limpiarEmojis(s.tipo_gestion),
-      'Causa': limpiarEmojis(s.causa_ausencia) || 'N/A',
-      'Resultado': s.resultado,
-      'Padrino': s.padrino?.nombre_completo || 'N/A'
+    // Se aplana el estudiante al nivel superior, igual que en Deserciones,
+    // para poder usar el mismo formateador dirigido por columnas.
+    return todosLosDatos.map(s => ({
+      ...s,
+      ...s.estudiante,
+      tipo_gestion: limpiarEmojis(s.tipo_gestion),
+      causa_ausencia: limpiarEmojis(s.causa_ausencia) || '',
+      padrino_nombre: s.padrino?.nombre_completo || 'N/A'
     }));
   }
 
-  async function descargarSeguimientosCompleto() {
-    setCargando(prev => ({ ...prev, seguimientosCompleto: true }));
-    const data = await obtenerSeguimientos();
-    descargarExcelCompleto(formatearSeguimientos(data), 'Reporte_Seguimientos');
-    setCargando(prev => ({ ...prev, seguimientosCompleto: false }));
+  const gettersSeguimientos = { ...gettersComunes, fecha: r => r.fecha_contacto };
+  const seguimientosFiltrados = useMemo(
+    () => conGrupoNombre(aplicarFiltros(rawSeguimientos, gettersSeguimientos), s => s.grupo_id),
+    [rawSeguimientos, filtros, gruposMap, municipiosPermitidos]
+  );
+
+  function formatearSeguimientos(data) {
+    return data.map(s => {
+      const obj = {};
+      COLUMNAS_SEGUIMIENTOS.forEach(col => {
+        if (col === 'fecha_contacto') {
+          obj[LABELS_SEGUIMIENTOS[col]] = formatearFecha(s.fecha_contacto);
+          return;
+        }
+        obj[LABELS_SEGUIMIENTOS[col] || col] = s[col] || '';
+      });
+      return obj;
+    });
   }
 
-  async function descargarSeguimientosAgrupado(campo, nombre) {
-    setCargando(prev => ({ ...prev, [`seguimientos_${campo}`]: true }));
-    const data = await obtenerSeguimientos();
-    descargarExcelAgrupado(formatearSeguimientos(data), LABELS_SEGUIMIENTOS[campo] || campo, `Reporte_Seguimientos_Por_${nombre}`);
-    setCargando(prev => ({ ...prev, [`seguimientos_${campo}`]: false }));
+  function descargarSeguimientosCompleto() {
+    descargarExcelCompleto(formatearSeguimientos(seguimientosFiltrados), 'Reporte_Seguimientos');
   }
+
+  function descargarSeguimientosAgrupado(campo, nombre) {
+    descargarExcelAgrupado(formatearSeguimientos(seguimientosFiltrados), LABELS_SEGUIMIENTOS[campo] || campo, `Reporte_Seguimientos_Por_${nombre}`);
+  }
+
+  // =============================================
+  // CARGA INICIAL (una sola vez)
+  // =============================================
+
+  useEffect(() => {
+    async function cargarTodo() {
+      setCargandoDatos(true);
+      const [est, des, ina, seg, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
+        obtenerEstudiantesCrudo(),
+        obtenerDesercionesCrudo(),
+        obtenerInasistenciasCrudo(),
+        obtenerSeguimientosCrudo(),
+        supabase.from('grupos').select('id, nombre, universidad, programa, cohorte').eq('activo', true).order('nombre'),
+        supabase.from('municipios').select('nombre').order('nombre'),
+        supabase.from('universidades').select('nombre').order('nombre'),
+        supabase.from('programas').select('nombre').order('nombre')
+      ]);
+      setRawEstudiantes(est);
+      setRawDeserciones(des);
+      setRawInasistencias(ina);
+      setRawSeguimientos(seg);
+      setGrupos(gruposRes.data || []);
+      setMunicipiosDb(municipiosRes.data || []);
+      setUniversidadesDb(universidadesRes.data || []);
+      setProgramasDb(programasRes.data || []);
+      setCargandoDatos(false);
+    }
+    cargarTodo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cohortesDisponibles = useMemo(() => {
+    const set = new Set(rawEstudiantes.map(e => e.cohorte).filter(Boolean));
+    return Array.from(set).sort();
+  }, [rawEstudiantes]);
+
+  const opcionesFiltro = useMemo(() => ({
+    municipios: municipiosDb
+      .filter(m => !municipiosPermitidos || municipiosPermitidos.includes(m.nombre))
+      .map(m => ({ valor: m.nombre, label: m.nombre })),
+    universidades: universidadesDb.map(u => ({ valor: u.nombre, label: u.nombre })),
+    programas: programasDb.map(p => ({ valor: p.nombre, label: p.nombre })),
+    cohortes: cohortesDisponibles.map(c => ({ valor: c, label: c })),
+    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}` })),
+    estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
+  }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, municipiosPermitidos]);
 
   // =============================================
   // CONFIGURACIÓN DE REPORTES
@@ -424,63 +514,68 @@ export default function Reportes({ onVerPerfil }) {
       titulo: '👥 Listado General de Estudiantes',
       descripcion: 'Todos los estudiantes del sistema con datos completos',
       color: 'blue',
+      total: estudiantesFiltrados.length,
+      sinFecha: true,
       categorias: [
         { campo: 'municipio', label: 'Por Municipio' },
         { campo: 'universidad', label: 'Por Universidad' },
         { campo: 'cohorte', label: 'Por Cohorte' },
         { campo: 'programa', label: 'Por Programa' },
+        { campo: 'grupo_nombre', label: 'Por Grupo' },
         { campo: 'estado', label: 'Por Estado' }
       ],
       descargarCompleto: descargarEstudiantesCompleto,
-      descargarAgrupado: descargarEstudiantesAgrupado,
-      loadingKey: 'estudiantes'
+      descargarAgrupado: descargarEstudiantesAgrupado
     },
     {
       id: 'deserciones',
       titulo: '🚨 Reporte de Deserciones',
       descripcion: 'Estudiantes desertores con tipo, motivo y fecha',
       color: 'red',
+      total: desercionesFiltradas.length,
       categorias: [
         { campo: 'municipio', label: 'Por Municipio' },
         { campo: 'universidad', label: 'Por Universidad' },
         { campo: 'cohorte', label: 'Por Cohorte' },
+        { campo: 'grupo_nombre', label: 'Por Grupo' },
         { campo: 'tipo_desercion', label: 'Por Tipo (Justificada/Sin Justificar)' },
         { campo: 'motivo_principal', label: 'Por Motivo' }
       ],
       descargarCompleto: descargarDesercionesCompleto,
-      descargarAgrupado: descargarDesercionesAgrupado,
-      loadingKey: 'deserciones'
+      descargarAgrupado: descargarDesercionesAgrupado
     },
     {
       id: 'inasistencias',
       titulo: '⚠️ Reporte de Inasistencias',
       descripcion: 'Todas las inasistencias con estado de seguimiento',
       color: 'amber',
+      total: inasistenciasFiltradas.length,
       categorias: [
         { campo: 'municipio', label: 'Por Municipio' },
         { campo: 'universidad', label: 'Por Universidad' },
         { campo: 'cohorte', label: 'Por Cohorte' },
+        { campo: 'grupo_nombre', label: 'Por Grupo' },
         { campo: 'estado_seguimiento', label: 'Por Estado (Pendiente/Realizado)' }
       ],
       descargarCompleto: descargarInasistenciasCompleto,
-      descargarAgrupado: descargarInasistenciasAgrupado,
-      loadingKey: 'inasistencias'
+      descargarAgrupado: descargarInasistenciasAgrupado
     },
     {
       id: 'seguimientos',
       titulo: '📝 Reporte de Seguimientos',
       descripcion: 'Todos los seguimientos realizados por los padrinos',
       color: 'green',
+      total: seguimientosFiltrados.length,
       categorias: [
         { campo: 'municipio', label: 'Por Municipio' },
         { campo: 'universidad', label: 'Por Universidad' },
         { campo: 'cohorte', label: 'Por Cohorte' },
+        { campo: 'grupo_nombre', label: 'Por Grupo' },
         { campo: 'padrino_nombre', label: 'Por Padrino' },
         { campo: 'tipo_gestion', label: 'Por Tipo de Gestión' }
       ],
       descargarCompleto: descargarSeguimientosCompleto,
-      descargarAgrupado: descargarSeguimientosAgrupado,
-      loadingKey: 'seguimientos'
+      descargarAgrupado: descargarSeguimientosAgrupado
     }
   ];
 
@@ -496,6 +591,8 @@ export default function Reportes({ onVerPerfil }) {
     ? reportes.filter(r => r.id === 'estudiantes' || r.id === 'deserciones')
     : reportes;
 
+  const hayFechaActiva = Boolean(filtros.fechaInicio || filtros.fechaFin);
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario?.rol} totalReportesNuevos={totalReportesNuevos} />
@@ -503,44 +600,59 @@ export default function Reportes({ onVerPerfil }) {
         <Header onVerPerfil={onVerPerfil} />
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">📑 Reportes Descargables</h1>
-          <p className="text-gray-600 mb-8">Descarga reportes en Excel con la información del sistema</p>
+          <p className="text-gray-600 mb-6">Descarga reportes en Excel con la información del sistema</p>
 
-          <div className="space-y-6">
-            {reportesVisibles.map(reporte => (
-              <div key={reporte.id} className={`rounded-xl border p-6 ${coloresFondo[reporte.color]}`}>
-                <div className="flex items-center justify-between mb-4">
+          <FiltrosReportes filtros={filtros} onCambio={setFiltros} opciones={opcionesFiltro} />
+
+          {cargandoDatos ? (
+            <div className="text-center py-16">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-gray-500 mt-4">Cargando datos del sistema...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {reportesVisibles.map(reporte => (
+                <div key={reporte.id} className={`rounded-xl border p-6 ${coloresFondo[reporte.color]}`}>
+                  <div className="flex items-center justify-between mb-4 gap-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 text-lg">{reporte.titulo}</h3>
+                      <p className="text-sm opacity-75">{reporte.descripcion}</p>
+                      <p className="text-sm font-medium text-gray-700 mt-1">
+                        {reporte.total} registro{reporte.total === 1 ? '' : 's'} con los filtros actuales
+                      </p>
+                      {reporte.sinFecha && hayFechaActiva && (
+                        <p className="text-xs text-gray-400 italic mt-0.5">Los filtros de fecha no aplican a este listado</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={reporte.descargarCompleto}
+                      disabled={reporte.total === 0}
+                      className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
+                    >
+                      📥 Descargar Excel
+                    </button>
+                  </div>
+
+                  {/* Categorías */}
                   <div>
-                    <h3 className="font-semibold text-gray-800 text-lg">{reporte.titulo}</h3>
-                    <p className="text-sm opacity-75">{reporte.descripcion}</p>
-                  </div>
-                  <button
-                    onClick={reporte.descargarCompleto}
-                    disabled={cargando[`${reporte.loadingKey}Completo`]}
-                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {cargando[`${reporte.loadingKey}Completo`] ? 'Descargando...' : '📥 Descargar Excel'}
-                  </button>
-                </div>
-
-                {/* Categorías */}
-                <div>
-                  <p className="text-sm font-medium mb-2">📊 Por Categoría:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {reporte.categorias.map(cat => (
-                      <button
-                        key={cat.campo}
-                        onClick={() => reporte.descargarAgrupado(cat.campo, cat.label.replace('Por ', ''))}
-                        disabled={cargando[`${reporte.loadingKey}_${cat.campo}`]}
-                        className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition disabled:opacity-50"
-                      >
-                        {cargando[`${reporte.loadingKey}_${cat.campo}`] ? '...' : cat.label}
-                      </button>
-                    ))}
+                    <p className="text-sm font-medium mb-2">📊 Por Categoría:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {reporte.categorias.map(cat => (
+                        <button
+                          key={cat.campo}
+                          onClick={() => reporte.descargarAgrupado(cat.campo, cat.label.replace('Por ', ''))}
+                          disabled={reporte.total === 0}
+                          className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition disabled:opacity-50"
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

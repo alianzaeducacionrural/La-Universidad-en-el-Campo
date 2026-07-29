@@ -6,10 +6,12 @@ import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import { formatearFecha } from '../../utils/helpers';
+import CumplimientoCronograma from '../../components/coordinador/CumplimientoCronograma';
 
 export default function HistorialReportesAsistencia({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const { marcarComoVisto, getLastSeen } = useReportesNuevos();
+  const [tab, setTab] = useState('reportes');
   const [reportes, setReportes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtroUniversidad, setFiltroUniversidad] = useState('');
@@ -81,13 +83,35 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
       <div className="flex-1 min-w-0">
         <Header onVerPerfil={onVerPerfil} />
 
-        <div className="max-w-4xl mx-auto px-4 lg:px-6 py-6 pb-24 lg:pb-8">
+        <div className={`mx-auto px-4 lg:px-6 py-6 pb-24 lg:pb-8 ${tab === 'cronograma' ? 'max-w-6xl' : 'max-w-4xl'}`}>
           {/* Encabezado */}
-          <div className="mb-6">
+          <div className="mb-4">
             <h1 className="text-2xl font-bold text-gray-800">📅 Historial de Reportes</h1>
-            <p className="text-gray-500 text-sm mt-1">Todos los reportes de asistencia enviados por las universidades</p>
+            <p className="text-gray-500 text-sm mt-1">Reportes de asistencia enviados y cumplimiento del cronograma de clases</p>
           </div>
 
+          {/* Pestañas */}
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="flex space-x-6">
+              <button
+                onClick={() => setTab('reportes')}
+                className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap ${tab === 'reportes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+              >
+                📅 Reportes recibidos
+              </button>
+              <button
+                onClick={() => setTab('cronograma')}
+                className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap ${tab === 'cronograma' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+              >
+                🗓️ Cumplimiento del Cronograma
+              </button>
+            </nav>
+          </div>
+
+          {tab === 'cronograma' && <CumplimientoCronograma />}
+
+          {tab === 'reportes' && (
+          <>
           {/* Banner de nuevos */}
           {cantidadNuevos.current > 0 && (
             <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center gap-2">
@@ -259,6 +283,8 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
             <p className="text-xs text-gray-400 text-center mt-4">
               {reportesFiltrados.length} reporte{reportesFiltrados.length !== 1 ? 's' : ''} en total
             </p>
+          )}
+          </>
           )}
         </div>
       </div>

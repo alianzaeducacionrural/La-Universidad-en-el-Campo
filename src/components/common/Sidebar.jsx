@@ -56,6 +56,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     if (path === '/estadisticas') return 'estadisticas';
     if (path === '/reportes') return 'reportes';
     if (path === '/grupos') return 'grupos-admin';
+    if (path === '/desertores') return 'desertores';
     if (path === '/aliados') return 'aliados';
     return vistaActiva || 'grupos';
   };
@@ -79,6 +80,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     { id: 'estadisticas',label: 'Estadísticas',     mobileLabel: 'Stats',    icon: '📈', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/estadisticas') },
     { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/reportes') },
     { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador || esAliado, badge: 0,                   action: () => navigate('/grupos') },
+    { id: 'desertores',          label: 'Desertores',          mobileLabel: 'Desert.',   icon: '🚨', visible: esCoordinador, badge: 0,                   action: () => navigate('/desertores') },
     { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: totalReportesNuevos, action: () => navigate('/historial-reportes') },
     { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
     { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => navigate('/aliados') },
@@ -216,11 +218,11 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
   };
 
   return (
-    <div className={`bg-white border-r border-gray-200 h-screen sticky top-0 overflow-y-auto transition-all duration-300 flex-shrink-0 ${
+    <div className={`bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col transition-all duration-300 flex-shrink-0 ${
       isCollapsed ? 'w-16' : 'w-72'
     }`}>
       {/* Cabecera */}
-      <div className={`p-4 border-b border-gray-200 ${isCollapsed ? 'flex justify-center' : ''}`}>
+      <div className={`flex-shrink-0 p-4 border-b border-gray-200 ${isCollapsed ? 'flex justify-center' : ''}`}>
         {!isCollapsed ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -271,8 +273,9 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
         )}
       </div>
 
-      {/* Menú */}
-      <nav className="p-2 space-y-4">
+      {/* Menú — flex-1 + scroll propio: aunque crezca el número de pestañas,
+          el pie de página nunca queda superpuesto sobre el último ítem. */}
+      <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-4">
         {menuPadrino.some(item => item.visible) && (
           <div>
             {!isCollapsed && (
@@ -296,8 +299,8 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
         )}
       </nav>
 
-      {/* Pie */}
-      <div className={`absolute bottom-0 ${isCollapsed ? 'w-16' : 'w-72'} p-3 border-t border-gray-200 bg-gray-50 transition-all duration-300`}>
+      {/* Pie — en el flujo normal (ya no absolute), siempre debajo del menú */}
+      <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-gray-50">
         {!isCollapsed ? (
           <div className="text-xs text-gray-500 text-center">
             <p>Comité de Cafeteros de Caldas</p>

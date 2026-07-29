@@ -35,14 +35,26 @@ export default function ModalHistorialAsistencia({ isOpen, onClose, grupo }) {
           observacion_docente,
           estudiantes:estudiante_id (
             nombre_completo,
-            documento
+            documento,
+            grupo_id
           )
         )
       `)
       .eq('grupo_id', grupo.id)
       .order('fecha', { ascending: false });
-    
-    if (data) setReportes(data);
+
+    if (data) {
+      // Si un estudiante fue trasladado a otro grupo, su inasistencia sigue
+      // ligada a la sesión histórica, pero ya no debe contarse como pendiente
+      // ni mostrarse en el historial de ESTE grupo (queda en su perfil).
+      const conSoloGrupoActual = data.map(reporte => ({
+        ...reporte,
+        inasistencias: (reporte.inasistencias || []).filter(
+          ina => ina.estudiantes?.grupo_id === grupo.id
+        )
+      }));
+      setReportes(conSoloGrupoActual);
+    }
     setCargando(false);
   }
 

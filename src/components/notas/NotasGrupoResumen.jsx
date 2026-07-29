@@ -21,12 +21,21 @@ export default function NotasGrupoResumen({ grupo, modoModal = false }) {
         *,
         notas_estudiantes (
           id, estudiante_id, nota, observaciones,
-          estudiante:estudiante_id ( id, nombre_completo, estado )
+          estudiante:estudiante_id ( id, nombre_completo, estado, grupo_id )
         )
       `)
       .eq('grupo_id', grupoId)
       .order('fecha_evaluacion', { ascending: false });
-    if (data) setNotasModulos(data);
+    if (data) {
+      // Si un estudiante fue trasladado a otro grupo, su nota queda registrada
+      // en el módulo del grupo donde se evaluó, pero ya no debe contarse en el
+      // resumen/descarga del grupo actual (ver perfil del estudiante para su histórico).
+      const filtrado = data.map(nm => ({
+        ...nm,
+        notas_estudiantes: (nm.notas_estudiantes || []).filter(ne => ne.estudiante?.grupo_id === grupoId)
+      }));
+      setNotasModulos(filtrado);
+    }
     setCargando(false);
   }
 

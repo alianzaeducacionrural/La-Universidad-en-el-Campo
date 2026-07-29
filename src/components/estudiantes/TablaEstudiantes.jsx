@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 import { getEstadoColor } from '../../utils/helpers';
 import EmptyState from '../common/EmptyState';
 
@@ -10,6 +12,29 @@ export default function TablaEstudiantes({
   onVerPerfil,
   onImportar
 }) {
+  // Estudiantes trasladados A este grupo: id -> nombre del grupo de origen
+  const [origenPorEstudiante, setOrigenPorEstudiante] = useState({});
+
+  useEffect(() => {
+    if (!grupoSeleccionado?.id) { setOrigenPorEstudiante({}); return; }
+    let cancelado = false;
+    supabase
+      .from('traslados_grupo')
+      .select('estudiante_id, created_at, grupo_origen:grupo_origen_id ( nombre )')
+      .eq('grupo_destino_id', grupoSeleccionado.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (cancelado || !data) return;
+        const mapa = {};
+        // El más reciente por estudiante (por si fue trasladado varias veces)
+        for (const t of data) {
+          if (!mapa[t.estudiante_id]) mapa[t.estudiante_id] = t.grupo_origen?.nombre || 'otro grupo';
+        }
+        setOrigenPorEstudiante(mapa);
+      });
+    return () => { cancelado = true; };
+  }, [grupoSeleccionado?.id]);
+
   if (!grupoSeleccionado) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-12">
@@ -55,7 +80,12 @@ export default function TablaEstudiantes({
             {estudiantes.map((est) => (
               <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                 <td className="py-3.5 px-4">
-                  <p className="font-medium text-gray-800">{est.nombre_completo}</p>
+                  <p className="font-medium text-gray-800 flex items-center gap-1.5">
+                    {est.nombre_completo}
+                    {origenPorEstudiante[est.id] && (
+                      <span title={`Viene de ${origenPorEstudiante[est.id]}`}>🔄</span>
+                    )}
+                  </p>
                   <p className="text-xs text-gray-500">{est.documento || 'Sin documento'}</p>
                 </td>
                 <td className="py-3.5 px-4">
@@ -95,7 +125,12 @@ export default function TablaEstudiantes({
           <div key={est.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 truncate">{est.nombre_completo}</p>
+                <p className="font-semibold text-gray-800 truncate flex items-center gap-1.5">
+                  {est.nombre_completo}
+                  {origenPorEstudiante[est.id] && (
+                    <span title={`Viene de ${origenPorEstudiante[est.id]}`}>🔄</span>
+                  )}
+                </p>
                 <p className="text-xs text-gray-400 mb-1.5">{est.documento || 'Sin documento'}</p>
 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500 mb-2.5">

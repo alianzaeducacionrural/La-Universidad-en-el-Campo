@@ -56,20 +56,34 @@ export function exportarSeguimientosExcel(seguimientos, estudianteNombre) {
 
 /**
  * Exporta reporte de inasistencias a Excel
+ * Acepta tanto filas planas (fecha_inasistencia/estudiante_nombre) como filas anidadas
+ * con registros_asistencia (fecha, modulo, docente_nombre, grupos: { nombre }).
  */
-export function exportarInasistenciasExcel(inasistencias, grupoNombre) {
-  const datos = inasistencias.map(i => ({
-    'Estudiante': i.estudiante_nombre || i.estudiante?.nombre_completo,
-    'Fecha': formatearFecha(i.fecha_inasistencia || i.fecha),
-    'Módulo': i.modulo || 'N/A',
-    'Docente': i.docente_nombre || 'N/A',
-    'Estado Seguimiento': i.estado_seguimiento === 'realizado' ? 'Realizado' : 'Pendiente'
-  }));
+export function exportarInasistenciasExcel(inasistencias, nombreArchivo) {
+  const datos = inasistencias.map(i => {
+    const ra = i.registros_asistencia || {};
+    const estado = i.estado_seguimiento === 'realizado' ? 'Realizado'
+      : i.estado_seguimiento === 'justificado' ? 'Justificado'
+      : 'Pendiente';
+    return {
+      'Estudiante': i.estudiante_nombre || i.estudiante?.nombre_completo || undefined,
+      'Fecha': formatearFecha(i.fecha_inasistencia || i.fecha || ra.fecha),
+      'Módulo': i.modulo || ra.modulo || 'N/A',
+      'Grupo': i.grupo_nombre || ra.grupos?.nombre || 'N/A',
+      'Docente': i.docente_nombre || ra.docente_nombre || 'N/A',
+      'Estado Seguimiento': estado,
+      'Observación Docente': i.observacion_docente || ''
+    };
+  }).map(fila => {
+    // quitar la columna Estudiante cuando no aplica (export desde perfil individual)
+    if (fila['Estudiante'] === undefined) delete fila['Estudiante'];
+    return fila;
+  });
 
   const ws = XLSX.utils.json_to_sheet(datos);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inasistencias');
-  XLSX.writeFile(wb, `Inasistencias_${grupoNombre?.replace(/\s+/g, '_') || 'grupo'}.xlsx`);
+  XLSX.writeFile(wb, `Inasistencias_${nombreArchivo?.replace(/\s+/g, '_') || 'reporte'}.xlsx`);
 }
 
 /**

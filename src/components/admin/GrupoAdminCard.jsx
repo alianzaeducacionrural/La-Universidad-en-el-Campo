@@ -345,6 +345,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
         cargarEstudiantes(); // 🔥 Recargar lista de estudiantes
         return result;
       }}
+        onTrasladoCompletado={() => { cargarEstudiantes(); onRecargar(); }}
       />
 
       <ModalSeguimiento

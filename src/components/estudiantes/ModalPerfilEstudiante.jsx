@@ -7,14 +7,15 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
 import { getEstadoColor, formatearFecha } from '../../utils/helpers';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
-import { exportarSeguimientosExcel, exportarNotasEstudianteExcel } from '../../utils/exportUtils';
+import { exportarSeguimientosExcel, exportarNotasEstudianteExcel, exportarInasistenciasExcel } from '../../utils/exportUtils';
 import VisorImagen from '../common/VisorImagen';
 import BotonWhatsApp from '../common/BotonWhatsApp';
 import ModalEditarDesercion from './ModalEditarDesercion';
+import ModalCambiarGrupo from './ModalCambiarGrupo';
 
-export default function ModalPerfilEstudiante({ 
-  isOpen, 
-  onClose, 
+export default function ModalPerfilEstudiante({
+  isOpen,
+  onClose,
   estudiante,
   historial,
   cargandoHistorial,
@@ -24,15 +25,54 @@ export default function ModalPerfilEstudiante({
   onEditarSeguimiento,
   onReportarDesercion,
   puedeGestionar,
-  onEstadoChange
+  onEstadoChange,
+  onTrasladoCompletado
 }) {
   const notificacion = useNotificacion();
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
   const [datosDesercion, setDatosDesercion] = useState(null);
   const [cargandoDesercion, setCargandoDesercion] = useState(false);
   const [modalEditarDesercion, setModalEditarDesercion] = useState(false);
+  const [modalCambiarGrupo, setModalCambiarGrupo] = useState(false);
   const [notasEstudiante, setNotasEstudiante] = useState([]);
   const [cargandoNotasEst, setCargandoNotasEst] = useState(false);
+  const [inasistenciasEst, setInasistenciasEst] = useState([]);
+  const [cargandoInasistencias, setCargandoInasistencias] = useState(false);
+  const [traslados, setTraslados] = useState([]);
+  const [cargandoTraslados, setCargandoTraslados] = useState(false);
+
+  async function cargarTraslados(estudianteId) {
+    setCargandoTraslados(true);
+    const { data } = await supabase
+      .from('traslados_grupo')
+      .select(`
+        id, fecha_traslado, motivo, observaciones,
+        grupo_origen:grupo_origen_id ( nombre ),
+        grupo_destino:grupo_destino_id ( nombre ),
+        usuario:usuario_id ( nombre_completo )
+      `)
+      .eq('estudiante_id', estudianteId)
+      .order('fecha_traslado', { ascending: false });
+    if (data) setTraslados(data);
+    setCargandoTraslados(false);
+  }
+
+  async function cargarInasistenciasEstudiante(estudianteId) {
+    setCargandoInasistencias(true);
+    const { data } = await supabase
+      .from('inasistencias')
+      .select(`
+        id, estado_seguimiento, observacion_docente, created_at,
+        registros_asistencia:registro_id (
+          fecha, modulo, docente_nombre, grupo_id,
+          grupos:grupo_id ( nombre )
+        )
+      `)
+      .eq('estudiante_id', estudianteId)
+      .order('created_at', { ascending: false });
+    if (data) setInasistenciasEst(data);
+    setCargandoInasistencias(false);
+  }
 
   async function cargarNotasEstudiante(estudianteId) {
     setCargandoNotasEst(true);
@@ -74,6 +114,8 @@ export default function ModalPerfilEstudiante({
     if (isOpen && estudiante) {
       onCargarHistorial(estudiante.id);
       cargarNotasEstudiante(estudiante.id);
+      cargarInasistenciasEstudiante(estudiante.id);
+      cargarTraslados(estudiante.id);
       if (estudiante.estado === 'Desertor') {
         cargarDatosDesercion(estudiante.id);
       } else {
@@ -144,7 +186,9 @@ export default function ModalPerfilEstudiante({
             {/* ESTADÍSTICAS RÁPIDAS */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
-                <p className="text-2xl font-bold text-blue-700">{estudiante.total_faltas || 0}</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {cargandoInasistencias ? '…' : inasistenciasEst.length}
+                </p>
                 <p className="text-xs text-blue-600">Faltas Acumuladas</p>
               </div>
               <div className="bg-green-50 rounded-xl p-4 text-center border border-green-200">
@@ -174,6 +218,10 @@ export default function ModalPerfilEstudiante({
                   <button onClick={() => onEditar(estudiante)}
                     className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
                     ✏️ Editar Información
+                  </button>
+                  <button onClick={() => setModalCambiarGrupo(true)}
+                    className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
+                    🔄 Cambiar de Grupo
                   </button>
                 </>
               )}
@@ -230,6 +278,35 @@ export default function ModalPerfilEstudiante({
                 <p><strong>Cohorte:</strong> {estudiante.cohorte}</p>
               </div>
             </div>
+
+            {/* TRASLADOS DE GRUPO */}
+            {(cargandoTraslados || traslados.length > 0) && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-700 mb-3 flex items-center">
+                  <span className="mr-2 text-xl">🔄</span> Traslados de Grupo
+                </h3>
+                {cargandoTraslados ? (
+                  <div className="text-center py-3">
+                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {traslados.map(t => (
+                      <div key={t.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-gray-700">{t.grupo_origen?.nombre || 'Sin grupo'}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="font-medium text-gray-700">{t.grupo_destino?.nombre || 'N/A'}</span>
+                          <span className="text-xs text-gray-400 ml-auto">{formatearFecha(t.fecha_traslado)}</span>
+                        </div>
+                        {t.motivo && <p className="text-xs text-gray-500 mt-1">📝 {t.motivo}</p>}
+                        <p className="text-xs text-gray-400 mt-1">👤 Registrado por: {t.usuario?.nombre_completo || 'Sistema'}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* SECCIÓN DE DESERCIÓN */}
             {estudiante.estado === 'Desertor' && (
@@ -367,6 +444,91 @@ export default function ModalPerfilEstudiante({
               )}
             </div>
 
+            {/* HISTÓRICO DE INASISTENCIAS */}
+            <div className="mb-6">
+              <h3 className="font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                <span className="flex items-center">
+                  <span className="mr-2 text-xl">⚠️</span> Histórico de Inasistencias
+                </span>
+                {inasistenciasEst.length > 0 && (
+                  <button
+                    onClick={() => exportarInasistenciasExcel(inasistenciasEst, estudiante.nombre_completo)}
+                    className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-green-200 flex items-center space-x-1"
+                  >
+                    <span>📥</span>
+                    <span>Descargar Inasistencias</span>
+                  </button>
+                )}
+              </h3>
+
+              {cargandoInasistencias ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  <p className="text-sm text-gray-500 mt-2">Cargando inasistencias...</p>
+                </div>
+              ) : inasistenciasEst.length === 0 ? (
+                <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-gray-400 text-sm">Este estudiante no registra inasistencias</p>
+                </div>
+              ) : (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Fecha</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Módulo</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Grupo</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-gray-600">Docente</th>
+                        <th className="px-4 py-2.5 text-center font-medium text-gray-600">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {inasistenciasEst.map(ina => {
+                        const ra = ina.registros_asistencia;
+                        const estado = ina.estado_seguimiento;
+                        const estadoColor =
+                          estado === 'realizado' ? 'text-green-600 bg-green-50' :
+                          estado === 'justificado' ? 'text-blue-600 bg-blue-50' :
+                          'text-amber-600 bg-amber-50';
+                        return (
+                          <tr key={ina.id} className="hover:bg-gray-50 align-top">
+                            <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                              {formatearFecha(ra?.fecha)}
+                            </td>
+                            <td className="px-4 py-2.5 font-medium text-gray-800">
+                              {ra?.modulo || 'N/A'}
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-600">
+                              {ra?.grupos?.nombre || 'N/A'}
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-600">
+                              {ra?.docente_nombre || 'N/A'}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${estadoColor}`}>
+                                {estado === 'realizado' ? '✅ Seguimiento hecho' :
+                                 estado === 'justificado' ? '📋 Justificado' :
+                                 '⏳ Pendiente'}
+                              </span>
+                              {ina.observacion_docente && (
+                                <p className="mt-1 text-xs text-gray-400 italic">💬 {ina.observacion_docente}</p>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+                    <p className="text-xs text-gray-400">
+                      {inasistenciasEst.length} inasistencia(s) en total
+                      · {inasistenciasEst.filter(i => i.estado_seguimiento === 'pendiente').length} pendiente(s)
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* LÍNEA DE TIEMPO */}
             <div>
               <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
@@ -462,6 +624,18 @@ export default function ModalPerfilEstudiante({
           if (estudiante?.id) {
             onCargarHistorial(estudiante.id);
           }
+        }}
+      />
+
+      <ModalCambiarGrupo
+        isOpen={modalCambiarGrupo}
+        onClose={() => setModalCambiarGrupo(false)}
+        estudiante={estudiante}
+        onTrasladado={() => {
+          cargarTraslados(estudiante.id);
+          cargarInasistenciasEstudiante(estudiante.id);
+          cargarNotasEstudiante(estudiante.id);
+          onTrasladoCompletado?.();
         }}
       />
     </>

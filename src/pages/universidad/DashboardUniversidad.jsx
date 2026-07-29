@@ -112,12 +112,20 @@ export default function DashboardUniversidad() {
         *,
         notas_estudiantes (
           id, estudiante_id, nota, observaciones,
-          estudiante:estudiante_id ( id, nombre_completo, estado )
+          estudiante:estudiante_id ( id, nombre_completo, estado, grupo_id )
         )
       `)
       .eq('grupo_id', grupoId)
       .order('fecha_evaluacion', { ascending: false });
-    if (data) setNotasModulos(data);
+    if (data) {
+      // Igual que en NotasGrupoResumen: si el estudiante fue trasladado, su nota
+      // no debe seguir contando en el resumen/descarga de este grupo.
+      const filtrado = data.map(nm => ({
+        ...nm,
+        notas_estudiantes: (nm.notas_estudiantes || []).filter(ne => ne.estudiante?.grupo_id === grupoId)
+      }));
+      setNotasModulos(filtrado);
+    }
     setCargandoNotas(false);
   }
 
@@ -146,11 +154,19 @@ export default function DashboardUniversidad() {
     setCargandoHistorial(true);
     const { data } = await supabase
       .from('registros_asistencia')
-      .select(`*, inasistencias (*)`)
+      .select(`*, inasistencias (*, estudiante:estudiante_id (grupo_id))`)
       .eq('grupo_id', grupoId)
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: false });
-    if (data) setHistorial(data);
+    if (data) {
+      // Un estudiante trasladado a otro grupo conserva su inasistencia histórica,
+      // pero ya no debe contarse en "Mi Historial" de este grupo (ver su perfil).
+      const conSoloGrupoActual = data.map(reporte => ({
+        ...reporte,
+        inasistencias: (reporte.inasistencias || []).filter(i => i.estudiante?.grupo_id === grupoId)
+      }));
+      setHistorial(conSoloGrupoActual);
+    }
     setCargandoHistorial(false);
   }
 

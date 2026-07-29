@@ -11,6 +11,7 @@ import PanelSeguimientosPendientes from '../../components/coordinador/PanelSegui
 import GestionPadrinos from '../../components/coordinador/GestionPadrinos';
 import GestionUniversidades from '../../components/coordinador/GestionUniversidades';
 import PanelMonitoreoAcciones from '../../components/coordinador/PanelMonitoreoAcciones';
+import GestionInstituciones from '../../components/coordinador/GestionInstituciones';
 import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 
 export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
@@ -80,6 +81,16 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
               >
                 📋 Monitoreo Acciones
               </button>
+              <button
+                onClick={() => setVistaActiva('instituciones')}
+                className={`pb-3 px-1 font-medium text-sm border-b-2 transition whitespace-nowrap ${
+                  vistaActiva === 'instituciones'
+                    ? 'border-green-600 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                🏫 Instituciones Educativas
+              </button>
             </nav>
           </div>
           
@@ -100,6 +111,9 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
           )}
           {vistaActiva === 'monitoreo' && (
             <PanelMonitoreoAcciones />
+          )}
+          {vistaActiva === 'instituciones' && (
+            <GestionInstituciones />
           )}
         </div>
       </div>
