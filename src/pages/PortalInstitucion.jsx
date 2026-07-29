@@ -12,15 +12,21 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getEstadoColor, formatearFecha } from '../utils/helpers';
+import { Doughnut, Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
+import { getEstadoColor, formatearFecha, limpiarEmojis } from '../utils/helpers';
 import {
   exportarEstudiantesExcel,
   exportarSeguimientosExcel,
   exportarNotasEstudianteExcel,
-  exportarInasistenciasExcel
+  exportarInasistenciasExcel,
+  exportarNotasGrupoExcel,
+  exportarAsistenciaGrupoExcel
 } from '../utils/exportUtils';
 import BotonWhatsApp from '../components/common/BotonWhatsApp';
 import VisorImagen from '../components/common/VisorImagen';
+
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const FUNCIONES_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-institucion`;
 const TAB_RESUMEN = '__resumen__';
@@ -266,6 +272,7 @@ export default function PortalInstitucion() {
         {tabActiva === TAB_RESUMEN ? (
           <VistaResumen
             kpis={kpis}
+            estudiantes={datos.estudiantes}
             gruposOrdenados={gruposOrdenados}
             temaPorGrupo={temaPorGrupo}
             estadisticasPorGrupo={estadisticasPorGrupo}
@@ -301,7 +308,7 @@ export default function PortalInstitucion() {
 // =============================================
 // PESTAÑA: RESUMEN GENERAL
 // =============================================
-function VistaResumen({ kpis, gruposOrdenados, temaPorGrupo, estadisticasPorGrupo, onIrAGrupo, onDescargarTodo }) {
+function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadisticasPorGrupo, onIrAGrupo, onDescargarTodo }) {
   const segmentos = [
     { valor: kpis.activos, color: 'bg-green-500', label: 'Activos' },
     { valor: kpis.enRiesgo, color: 'bg-amber-400', label: 'En Riesgo' },
@@ -354,6 +361,30 @@ function VistaResumen({ kpis, gruposOrdenados, temaPorGrupo, estadisticasPorGrup
         </div>
       )}
 
+      {/* Estadísticas, al estilo del Panel de Estadísticas del administrador */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <GraficoDoughnutPortal
+          titulo="📊 Estudiantes por Estado"
+          detalles={[
+            { etiqueta: 'Activo', total: kpis.activos, color: '#10b981', icono: '✅' },
+            { etiqueta: 'En Riesgo', total: kpis.enRiesgo, color: '#f59e0b', icono: '⚠️' },
+            { etiqueta: 'Desertor', total: kpis.desertores, color: '#ef4444', icono: '🚨' },
+            { etiqueta: 'Graduado', total: kpis.graduados, color: '#3b82f6', icono: '🎓' },
+          ].filter(d => d.total > 0)}
+        />
+        <GraficoGeneroPortal estudiantes={estudiantes} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <GraficoBarrasPortal
+          titulo="📚 Estudiantes por Grupo"
+          datos={gruposOrdenados.map(g => ({ nombre: g.nombre, total: (estadisticasPorGrupo[g.id] || {}).total || 0 }))}
+        />
+        <GraficoCausasInasistenciaPortal estudiantes={estudiantes} />
+      </div>
+
+      {kpis.desertores > 0 && <GraficoMotivosDesercionPortal estudiantes={estudiantes} />}
+
       {/* Tarjetas de grupo, coloreadas para identificarlas de un vistazo */}
       {gruposOrdenados.length > 0 && (
         <div>
@@ -370,7 +401,7 @@ function VistaResumen({ kpis, gruposOrdenados, temaPorGrupo, estadisticasPorGrup
             {gruposOrdenados.map(g => {
               const tema = temaPorGrupo[g.id];
               const stats = estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 };
-              const pctActivos = stats.total > 0 ? Math.round((stats.activos / stats.total) * 100) : 0;
+              const pctActivos = stats.total > 0 ? Math.round(((stats.activos + stats.enRiesgo) / stats.total) * 100) : 0;
               return (
                 <button
                   key={g.id}
@@ -401,10 +432,198 @@ function VistaResumen({ kpis, gruposOrdenados, temaPorGrupo, estadisticasPorGrup
 }
 
 // =============================================
+// GRÁFICOS DE LA PESTAÑA RESUMEN (estilo del Panel de Estadísticas)
+// =============================================
+
+function GraficoDoughnutPortal({ titulo, detalles }) {
+  const total = detalles.reduce((s, d) => s + d.total, 0);
+
+  if (total === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <h3 className="font-semibold text-gray-800 mb-4">{titulo}</h3>
+        <p className="text-gray-500 text-center py-8 text-sm">No hay datos disponibles</p>
+      </div>
+    );
+  }
+
+  const datos = {
+    labels: detalles.map(d => d.etiqueta),
+    datasets: [{ data: detalles.map(d => d.total), backgroundColor: detalles.map(d => d.color), borderWidth: 0, borderRadius: 8 }],
+  };
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const d = detalles[ctx.dataIndex];
+            const pct = Math.round((d.total / total) * 1000) / 10;
+            return `${d.etiqueta}: ${d.total} (${pct}%)`;
+          }
+        }
+      }
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <h3 className="font-semibold text-gray-800 mb-2">{titulo}</h3>
+      <p className="text-sm text-gray-500 mb-4">Total: {total} estudiantes</p>
+      <div className="h-48">
+        <Doughnut data={datos} options={options} />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {detalles.map(d => {
+          const pct = Math.round((d.total / total) * 1000) / 10;
+          return (
+            <div key={d.etiqueta} className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium shadow-sm"
+              style={{ backgroundColor: d.color + '20', color: d.color, border: `1px solid ${d.color}40` }}>
+              <span className="mr-2">{d.icono}</span>
+              <span>{d.etiqueta}</span>
+              <span className="ml-2 font-bold">{d.total}</span>
+              <span className="ml-1 text-xs opacity-75">({pct}%)</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GraficoGeneroPortal({ estudiantes }) {
+  const colores = { 'Masculino': '#3b82f6', 'Femenino': '#ec4899', 'Otro': '#8b5cf6', 'Prefiero no decir': '#6b7280', 'No especificado': '#9ca3af' };
+  const iconos = { 'Masculino': '👨', 'Femenino': '👩', 'Otro': '👤', 'Prefiero no decir': '⚪', 'No especificado': '❓' };
+
+  const conteo = {};
+  estudiantes.forEach(e => { const g = e.genero || 'No especificado'; conteo[g] = (conteo[g] || 0) + 1; });
+  const detalles = Object.entries(conteo)
+    .sort((a, b) => b[1] - a[1])
+    .map(([genero, total]) => ({ etiqueta: genero, total, color: colores[genero] || '#6b7280', icono: iconos[genero] || '👤' }));
+
+  return <GraficoDoughnutPortal titulo="👥 Estudiantes por Género" detalles={detalles} />;
+}
+
+function GraficoBarrasPortal({ titulo, datos }) {
+  const ordenados = [...datos].sort((a, b) => b.total - a.total);
+  const total = ordenados.reduce((s, d) => s + d.total, 0);
+
+  if (total === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <h3 className="font-semibold text-gray-800 mb-4">{titulo}</h3>
+        <p className="text-gray-500 text-center py-8 text-sm">No hay datos disponibles</p>
+      </div>
+    );
+  }
+
+  const chartData = {
+    labels: ordenados.map(d => d.nombre),
+    datasets: [{ label: 'Estudiantes', data: ordenados.map(d => d.total), backgroundColor: '#3b82f6', borderRadius: 8, barPercentage: 0.7, categoryPercentage: 0.8 }]
+  };
+  const options = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (ctx) => `${ctx.raw} estudiantes (${Math.round((ctx.raw / total) * 1000) / 10}%)` } }
+    },
+    scales: {
+      x: { beginAtZero: true, grid: { display: false }, ticks: { precision: 0 } },
+      y: {
+        grid: { display: false },
+        ticks: {
+          font: { size: 11 },
+          callback: (value) => {
+            const label = chartData.labels[value];
+            return label && label.length > 22 ? label.substring(0, 22) + '...' : label;
+          }
+        }
+      }
+    },
+    layout: { padding: { left: 4 } }
+  };
+  const altura = Math.min(400, Math.max(180, ordenados.length * 40));
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <h3 className="font-semibold text-gray-800 mb-2">{titulo}</h3>
+      <p className="text-sm text-gray-500 mb-4">Total: {total} estudiantes</p>
+      <div style={{ height: `${altura}px` }}>
+        <Bar data={chartData} options={options} />
+      </div>
+    </div>
+  );
+}
+
+function GraficoCausasInasistenciaPortal({ estudiantes }) {
+  const colores = ['#f97316', '#ef4444', '#eab308', '#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#6366f1'];
+  const conteo = {};
+  estudiantes.forEach(est => {
+    (est.seguimientos || []).forEach(s => {
+      if (!s.causa_ausencia) return;
+      const causa = limpiarEmojis(s.causa_ausencia) || 'Sin especificar';
+      conteo[causa] = (conteo[causa] || 0) + 1;
+    });
+  });
+  const detalles = Object.entries(conteo)
+    .sort((a, b) => b[1] - a[1])
+    .map(([causa, total], idx) => ({ etiqueta: causa, total, color: colores[idx % colores.length], icono: '' }));
+
+  return <GraficoDoughnutPortal titulo="🔍 Causas de Inasistencia" detalles={detalles} />;
+}
+
+function GraficoMotivosDesercionPortal({ estudiantes }) {
+  const conteo = {};
+  estudiantes.forEach(est => {
+    if (est.estado !== 'Desertor') return;
+    const motivo = est.desercion?.motivo_principal || 'Sin especificar';
+    conteo[motivo] = (conteo[motivo] || 0) + 1;
+  });
+  const datos = Object.entries(conteo).map(([nombre, total]) => ({ nombre, total }));
+
+  return <GraficoBarrasPortal titulo="🚨 Motivos de Deserción" datos={datos} />;
+}
+
+// =============================================
 // PESTAÑA: DETALLE DE UN GRUPO
 // =============================================
 function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerfil, onDescargar }) {
+  const [subTab, setSubTab] = useState('estudiantes');
+
   if (!grupo || !tema) return null;
+
+  const notasModulos = grupo.notas_modulos || [];
+  const registrosAsistencia = grupo.registros_asistencia || [];
+
+  function descargarSubTabActual() {
+    if (subTab === 'notas') {
+      const modulosConEstudiantes = notasModulos.map(nm => ({
+        ...nm,
+        notas_estudiantes: estudiantes
+          .map(est => {
+            const ne = (est.notas || []).find(n => n.nota_modulo_id === nm.id);
+            return ne ? { estudiante_id: est.id, estudiante: { nombre_completo: est.nombre_completo }, nota: ne.nota, observaciones: ne.observaciones } : null;
+          })
+          .filter(Boolean)
+      }));
+      exportarNotasGrupoExcel(modulosConEstudiantes, grupo.nombre);
+    } else if (subTab === 'asistencia') {
+      exportarAsistenciaGrupoExcel(registrosAsistencia, estudiantes, grupo.nombre);
+    } else {
+      onDescargar();
+    }
+  }
+
+  const subTabs = [
+    { id: 'estudiantes', label: '👥 Estudiantes' },
+    { id: 'notas', label: '🎓 Notas del Grupo' },
+    { id: 'asistencia', label: '📅 Asistencia del Grupo' },
+  ];
 
   return (
     <div className="space-y-5">
@@ -419,7 +638,22 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
         </div>
       </div>
 
-      {/* Buscador local + descarga del grupo */}
+      {/* Sub-pestañas: estudiantes / notas del grupo / asistencia del grupo */}
+      <div className="flex gap-1.5 overflow-x-auto">
+        {subTabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={`flex-shrink-0 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 ${tema.anillo} ${
+              subTab === t.id ? tema.activo : `bg-white ${tema.border} text-gray-500 hover:bg-gray-50`
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Buscador local + descarga (aplica a la sub-pestaña activa) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input
           type="text"
@@ -429,109 +663,253 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
           className={`border ${tema.border} rounded-lg px-4 py-2.5 text-sm flex-1 min-w-[200px] max-w-md bg-white focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
         />
         <button
-          onClick={onDescargar}
+          onClick={descargarSubTabActual}
           disabled={estudiantes.length === 0}
           className={`${tema.solido} text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 hover:brightness-95`}
         >
-          📥 Descargar Excel del grupo
+          📥 {subTab === 'notas' ? 'Descargar notas del grupo' : subTab === 'asistencia' ? 'Descargar asistencia del grupo' : 'Descargar Excel del grupo'}
         </button>
       </div>
 
-      {/* Tabla de estudiantes */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-        {estudiantes.length === 0 ? (
-          <p className="text-center text-gray-500 py-10 text-sm">No hay estudiantes que coincidan</p>
-        ) : (
-          <>
-            {/* Desktop */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estudiante</th>
-                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Contacto</th>
-                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estado</th>
-                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Faltas</th>
-                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Notas</th>
-                    <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {estudiantes.map(est => (
-                    <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <span className={`w-8 h-8 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
-                            {iniciales(est.nombre_completo)}
-                          </span>
-                          <div>
-                            <p className="font-medium text-gray-800">{est.nombre_completo}</p>
-                            <p className="text-xs text-gray-500">{est.documento || 'Sin documento'}</p>
+      {subTab === 'notas' ? (
+        <TablaNotasGrupo tema={tema} estudiantes={estudiantes} notasModulos={notasModulos} />
+      ) : subTab === 'asistencia' ? (
+        <TablaAsistenciaGrupo tema={tema} estudiantes={estudiantes} registros={registrosAsistencia} />
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+          {estudiantes.length === 0 ? (
+            <p className="text-center text-gray-500 py-10 text-sm">No hay estudiantes que coincidan</p>
+          ) : (
+            <>
+              {/* Desktop */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estudiante</th>
+                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Contacto</th>
+                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Estado</th>
+                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Faltas</th>
+                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm">Notas</th>
+                      <th className="text-left py-3.5 px-4 text-gray-600 font-semibold text-sm"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {estudiantes.map(est => (
+                      <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-8 h-8 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
+                              {iniciales(est.nombre_completo)}
+                            </span>
+                            <div>
+                              <p className="font-medium text-gray-800">{est.nombre_completo}</p>
+                              <p className="text-xs text-gray-500">{est.documento || 'Sin documento'}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <p className="text-sm text-gray-700">{est.telefono || 'N/A'}</p>
-                        <p className="text-xs text-gray-500">{est.correo || 'Sin correo'}</p>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <p className="text-sm text-gray-700">{est.telefono || 'N/A'}</p>
+                          <p className="text-xs text-gray-500">{est.correo || 'Sin correo'}</p>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
+                            {est.estado || 'Activo'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${est.total_inasistencias > 3 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                            {est.total_inasistencias || 0}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`font-semibold text-sm ${est.promedio_notas !== null && est.promedio_notas < 3 ? 'text-red-500' : 'text-gray-700'}`}>
+                            {est.promedio_notas ?? '–'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <button
+                            onClick={() => onVerPerfil(est)}
+                            className={`${tema.solido} hover:brightness-95 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition`}
+                            title="Ver perfil completo"
+                          >
+                            👤
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Móvil */}
+              <div className="lg:hidden divide-y divide-gray-100">
+                {estudiantes.map(est => (
+                  <div
+                    key={est.id}
+                    onClick={() => onVerPerfil(est)}
+                    className="p-4 cursor-pointer active:bg-gray-50 flex items-center gap-3"
+                  >
+                    <span className={`w-9 h-9 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
+                      {iniciales(est.nombre_completo)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-800 truncate">{est.nombre_completo}</p>
+                      <p className="text-xs text-gray-400 mb-1.5">{est.documento || 'Sin documento'}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
                           {est.estado || 'Activo'}
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${est.total_inasistencias > 3 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                          {est.total_inasistencias || 0}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`font-semibold text-sm ${est.promedio_notas !== null && est.promedio_notas < 3 ? 'text-red-500' : 'text-gray-700'}`}>
-                          {est.promedio_notas ?? '–'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <button
-                          onClick={() => onVerPerfil(est)}
-                          className={`${tema.solido} hover:brightness-95 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition`}
-                          title="Ver perfil completo"
-                        >
-                          👤
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Móvil */}
-            <div className="lg:hidden divide-y divide-gray-100">
-              {estudiantes.map(est => (
-                <div
-                  key={est.id}
-                  onClick={() => onVerPerfil(est)}
-                  className="p-4 cursor-pointer active:bg-gray-50 flex items-center gap-3"
-                >
-                  <span className={`w-9 h-9 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
-                    {iniciales(est.nombre_completo)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-800 truncate">{est.nombre_completo}</p>
-                    <p className="text-xs text-gray-400 mb-1.5">{est.documento || 'Sin documento'}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
-                        {est.estado || 'Activo'}
-                      </span>
-                      <span className="text-xs text-gray-500">{est.total_inasistencias || 0} falta(s)</span>
+                        <span className="text-xs text-gray-500">{est.total_inasistencias || 0} falta(s)</span>
+                      </div>
                     </div>
+                    <span className="text-gray-400 text-xl flex-shrink-0">›</span>
                   </div>
-                  <span className="text-gray-400 text-xl flex-shrink-0">›</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================
+// TABLA: NOTAS DEL GRUPO (matriz estudiante × módulo)
+// =============================================
+function TablaNotasGrupo({ tema, estudiantes, notasModulos }) {
+  if (notasModulos.length === 0) {
+    return (
+      <div className="text-center py-10 bg-white rounded-lg border border-gray-200 text-sm text-gray-500">
+        Este grupo aún no tiene módulos evaluados
       </div>
+    );
+  }
+  if (estudiantes.length === 0) {
+    return <p className="text-center text-gray-500 py-10 text-sm bg-white rounded-lg border border-gray-200">No hay estudiantes que coincidan</p>;
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-x-auto">
+      <table className="text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className={`sticky left-0 z-10 bg-gray-50 text-left py-3 px-4 font-semibold text-gray-600 min-w-[180px] border-r ${tema.border}`}>Estudiante</th>
+            {notasModulos.map(nm => (
+              <th key={nm.id} className="py-3 px-3 font-semibold text-gray-600 min-w-[110px] text-center whitespace-nowrap">
+                <p className="truncate max-w-[110px]" title={nm.modulo}>{nm.modulo}</p>
+                <p className="text-xs font-normal text-gray-400">{formatearFecha(nm.fecha_evaluacion)}</p>
+              </th>
+            ))}
+            <th className="py-3 px-3 font-semibold text-gray-600 min-w-[90px] text-center">Promedio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {estudiantes.map(est => {
+            const notasEnEsteGrupo = notasModulos
+              .map(nm => (est.notas || []).find(n => n.nota_modulo_id === nm.id)?.nota)
+              .filter(n => n !== null && n !== undefined);
+            const promedio = notasEnEsteGrupo.length > 0
+              ? (notasEnEsteGrupo.reduce((s, n) => s + Number(n), 0) / notasEnEsteGrupo.length)
+              : null;
+            return (
+              <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className={`sticky left-0 z-10 bg-white py-2.5 px-4 font-medium text-gray-800 border-r ${tema.border} whitespace-nowrap`}>
+                  {est.nombre_completo}
+                </td>
+                {notasModulos.map(nm => {
+                  const nota = (est.notas || []).find(n => n.nota_modulo_id === nm.id)?.nota;
+                  return (
+                    <td key={nm.id} className="py-2.5 px-3 text-center">
+                      {nota !== null && nota !== undefined ? (
+                        <span className={`font-semibold ${nota >= 3 ? 'text-green-600' : 'text-red-500'}`}>{Number(nota).toFixed(1)}</span>
+                      ) : (
+                        <span className="text-gray-300">–</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="py-2.5 px-3 text-center">
+                  {promedio !== null ? (
+                    <span className={`font-bold ${promedio >= 3 ? 'text-green-600' : 'text-red-500'}`}>{promedio.toFixed(1)}</span>
+                  ) : (
+                    <span className="text-gray-300">–</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// =============================================
+// TABLA: ASISTENCIA DEL GRUPO (matriz estudiante × sesión)
+// =============================================
+function TablaAsistenciaGrupo({ tema, estudiantes, registros }) {
+  if (registros.length === 0) {
+    return (
+      <div className="text-center py-10 bg-white rounded-lg border border-gray-200 text-sm text-gray-500">
+        Este grupo aún no tiene sesiones de asistencia reportadas
+      </div>
+    );
+  }
+  if (estudiantes.length === 0) {
+    return <p className="text-center text-gray-500 py-10 text-sm bg-white rounded-lg border border-gray-200">No hay estudiantes que coincidan</p>;
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-x-auto">
+      <table className="text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            <th className={`sticky left-0 z-10 bg-gray-50 text-left py-3 px-4 font-semibold text-gray-600 min-w-[180px] border-r ${tema.border}`}>Estudiante</th>
+            {registros.map(r => (
+              <th key={r.id} className="py-3 px-2 font-semibold text-gray-600 min-w-[90px] text-center whitespace-nowrap">
+                <p>{formatearFecha(r.fecha)}</p>
+                <p className="text-xs font-normal text-gray-400 truncate max-w-[90px]" title={r.modulo}>{r.modulo || 'N/A'}</p>
+              </th>
+            ))}
+            <th className="py-3 px-3 font-semibold text-gray-600 min-w-[90px] text-center">Faltas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {estudiantes.map(est => {
+            const registroIdsAusente = new Set((est.inasistencias || []).map(i => i.registro_id));
+            const faltasEnEsteGrupo = registros.filter(r => registroIdsAusente.has(r.id)).length;
+            return (
+              <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className={`sticky left-0 z-10 bg-white py-2.5 px-4 font-medium text-gray-800 border-r ${tema.border} whitespace-nowrap`}>
+                  {est.nombre_completo}
+                </td>
+                {registros.map(r => {
+                  const inasistencia = (est.inasistencias || []).find(i => i.registro_id === r.id);
+                  if (!inasistencia) {
+                    return (
+                      <td key={r.id} className="py-2.5 px-2 text-center">
+                        <span className="text-green-600" title="Asistió">✅</span>
+                      </td>
+                    );
+                  }
+                  const estado = inasistencia.estado_seguimiento;
+                  const titulo = estado === 'realizado' ? 'No asistió · seguimiento hecho' : estado === 'justificado' ? 'No asistió · justificado' : 'No asistió · pendiente';
+                  return (
+                    <td key={r.id} className="py-2.5 px-2 text-center">
+                      <span className="text-red-500" title={titulo}>❌</span>
+                    </td>
+                  );
+                })}
+                <td className="py-2.5 px-3 text-center">
+                  <span className={`font-semibold ${faltasEnEsteGrupo > 3 ? 'text-red-600' : 'text-gray-600'}`}>{faltasEnEsteGrupo}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

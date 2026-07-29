@@ -214,6 +214,28 @@ export function exportarNotasGrupoExcel(notasModulos, grupoNombre) {
 }
 
 /**
+ * Exporta la matriz de asistencia de un grupo a Excel: una fila por
+ * estudiante, una columna por sesión (fecha + módulo), celda "Asistió" /
+ * "No asistió". `registros` = [{id, fecha, modulo}], `estudiantes` = lista
+ * con `.inasistencias` conteniendo `registro_id` para cruzar cada celda.
+ */
+export function exportarAsistenciaGrupoExcel(registros, estudiantes, grupoNombre) {
+  const cabeceras = ['Estudiante', ...registros.map(r => `${formatearFecha(r.fecha)} - ${r.modulo || 'N/A'}`)];
+  const filas = estudiantes.map(est => {
+    const inasistenciasPorRegistro = new Set((est.inasistencias || []).map(i => i.registro_id));
+    return [
+      est.nombre_completo,
+      ...registros.map(r => inasistenciasPorRegistro.has(r.id) ? 'No asistió' : 'Asistió')
+    ];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([cabeceras, ...filas]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+  XLSX.writeFile(wb, `Asistencia_${grupoNombre?.replace(/\s+/g, '_') || 'grupo'}.xlsx`);
+}
+
+/**
  * Exporta historial académico de un estudiante a Excel
  */
 export function exportarNotasEstudianteExcel(notas, estudianteNombre) {
