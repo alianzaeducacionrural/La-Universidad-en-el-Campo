@@ -8,6 +8,7 @@ import { exportarEstudiantesExcel } from '../../utils/exportUtils';
 import ModalWhatsAppGrupos from './ModalWhatsAppGrupos';
 import ModalRegistrarAccion from './ModalRegistrarAccion';
 import ModalHistorialAcciones from './ModalHistorialAcciones';
+import ModalEnlacesInstituciones from './ModalEnlacesInstituciones';
 
 export default function GrupoInfo({ 
   grupo, 
@@ -20,6 +21,7 @@ export default function GrupoInfo({
   const [modalWhatsApp, setModalWhatsApp] = useState(false);
   const [modalRegistrarAccion, setModalRegistrarAccion] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
+  const [modalEnlaces, setModalEnlaces] = useState(false);
 
   useEffect(() => {
     if (grupo) cargarEnlaces();
@@ -124,12 +126,25 @@ export default function GrupoInfo({
         >
           💬 WhatsApp
         </button>
+
+        <button
+          onClick={() => setModalEnlaces(true)}
+          className="w-full lg:w-auto text-center bg-white hover:bg-gray-50 text-gray-700 px-2 py-2 lg:px-4 lg:py-2.5 rounded-lg text-xs lg:text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+        >
+          🔗 Instituciones
+        </button>
       </div>
 
       {/* MODALES */}
       <ModalWhatsAppGrupos isOpen={modalWhatsApp} onClose={() => setModalWhatsApp(false)} grupo={grupo} padrino={padrino} />
       <ModalRegistrarAccion isOpen={modalRegistrarAccion} onClose={() => setModalRegistrarAccion(false)} grupo={grupo} padrino={padrino} onAccionRegistrada={() => setModalAcciones(false)} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo} />
+      <ModalEnlacesInstituciones
+        isOpen={modalEnlaces}
+        onClose={() => setModalEnlaces(false)}
+        grupo={grupo}
+        institucionesPermitidas={grupo.instituciones_asignadas}
+      />
     </div>
   );
 }

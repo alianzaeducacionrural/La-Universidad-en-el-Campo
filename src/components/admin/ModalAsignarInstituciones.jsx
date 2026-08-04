@@ -6,7 +6,7 @@
 // varias instituciones específicas de ese grupo a un padrino (que puede ser
 // distinto del padrino general, o no tener padrino general en absoluto).
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
 
@@ -58,18 +58,29 @@ export default function ModalAsignarInstituciones({ isOpen, onClose, grupo }) {
   }
 
   async function handleAsignar() {
+    if (institucionesElegidas.length === 0) {
+      notificacion.warning('Selecciona al menos una institución.', 'Sin instituciones seleccionadas');
+      return;
+    }
     if (!padrinoElegido) {
       notificacion.warning('Selecciona un padrino.', 'Falta el padrino');
       return;
     }
-    if (institucionesElegidas.length === 0) {
-      notificacion.warning('Selecciona al menos una institución.', 'Sin instituciones seleccionadas');
+
+    // No duplicar filas para institución+padrino que ya existan
+    const yaAsignadas = new Set(
+      asignaciones.filter(a => a.padrinos?.id === padrinoElegido).map(a => a.institucion_educativa)
+    );
+    const nuevas = institucionesElegidas.filter(inst => !yaAsignadas.has(inst));
+
+    if (nuevas.length === 0) {
+      notificacion.warning('Este padrino ya tiene asignadas todas las instituciones seleccionadas.', 'Nada por hacer');
       return;
     }
 
     setGuardando(true);
 
-    const filas = institucionesElegidas.map(inst => ({
+    const filas = nuevas.map(inst => ({
       grupo_id: grupo.id,
       padrino_id: padrinoElegido,
       institucion_educativa: inst
@@ -80,7 +91,7 @@ export default function ModalAsignarInstituciones({ isOpen, onClose, grupo }) {
     setGuardando(false);
 
     if (error) {
-      notificacion.error('No se pudo asignar. Verifica que el padrino no tenga ya alguna de estas instituciones.', 'Error al asignar');
+      notificacion.error('No se pudo asignar.', 'Error al asignar');
       return;
     }
 
@@ -105,10 +116,16 @@ export default function ModalAsignarInstituciones({ isOpen, onClose, grupo }) {
     setAsignaciones(prev => prev.filter(a => a.id !== asignacionId));
   }
 
-  // Instituciones que el padrino elegido aún no tiene asignadas en este grupo
-  const institucionesDisponiblesParaElegido = instituciones.filter(
-    inst => !asignaciones.some(a => a.padrinos?.id === padrinoElegido && a.institucion_educativa === inst)
-  );
+  // Asignaciones agrupadas por padrino, para mostrar el padrino y debajo sus instituciones
+  const asignacionesPorPadrino = useMemo(() => {
+    const mapa = new Map();
+    asignaciones.forEach(a => {
+      if (!a.padrinos) return;
+      if (!mapa.has(a.padrinos.id)) mapa.set(a.padrinos.id, { padrino: a.padrinos, filas: [] });
+      mapa.get(a.padrinos.id).filas.push(a);
+    });
+    return [...mapa.values()].sort((a, b) => a.padrino.nombre_completo.localeCompare(b.padrino.nombre_completo));
+  }, [asignaciones]);
 
   if (!isOpen) return null;
 
@@ -132,67 +149,69 @@ export default function ModalAsignarInstituciones({ isOpen, onClose, grupo }) {
             </p>
           ) : (
             <>
-              {/* Asignaciones actuales */}
+              {/* Asignaciones actuales, agrupadas por padrino */}
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-2">
-                  Instituciones ya asignadas ({asignaciones.length}):
+                  Padrinos con instituciones asignadas ({asignacionesPorPadrino.length}):
                 </p>
-                {asignaciones.length === 0 ? (
-                  <p className="text-sm text-gray-400">Ninguna institución de este grupo tiene un padrino específico todavía.</p>
+                {asignacionesPorPadrino.length === 0 ? (
+                  <p className="text-sm text-gray-400">Ningún padrino tiene una institución específica asignada todavía.</p>
                 ) : (
-                  <div className="space-y-1">
-                    {asignaciones.map(a => (
-                      <div key={a.id} className="flex items-center justify-between bg-amber-50 border border-amber-200 p-2 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">🏫 {a.institucion_educativa}</p>
-                          <p className="text-xs text-gray-500">{a.padrinos.nombre_completo}</p>
+                  <div className="space-y-3">
+                    {asignacionesPorPadrino.map(({ padrino, filas }) => (
+                      <div key={padrino.id}>
+                        <p className="text-sm font-semibold text-gray-800">👤 {padrino.nombre_completo}</p>
+                        <div className="mt-1 space-y-1">
+                          {filas.map(a => (
+                            <div key={a.id} className="flex items-center justify-between bg-amber-50 border border-amber-200 p-2 rounded-lg">
+                              <span className="text-sm text-gray-700">🏫 {a.institucion_educativa}</span>
+                              <button
+                                onClick={() => handleQuitar(a.id)}
+                                disabled={quitando === a.id}
+                                className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 disabled:opacity-50"
+                              >
+                                {quitando === a.id ? '...' : 'Quitar'}
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <button
-                          onClick={() => handleQuitar(a.id)}
-                          disabled={quitando === a.id}
-                          className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 disabled:opacity-50"
-                        >
-                          {quitando === a.id ? '...' : 'Quitar'}
-                        </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Nueva asignación */}
+              {/* Nueva asignación: primero instituciones, luego padrino */}
               <div className="border-t pt-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Asignar institución(es) a un padrino:</p>
-
-                <select
-                  value={padrinoElegido}
-                  onChange={(e) => { setPadrinoElegido(e.target.value); setInstitucionesElegidas([]); }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
-                >
-                  <option value="">Selecciona un padrino...</option>
-                  {padrinos.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre_completo} — {p.correo}</option>
+                <p className="text-sm font-medium text-gray-700 mb-2">1. Selecciona la(s) institución(es):</p>
+                <div className="border border-gray-200 rounded-lg p-2 space-y-1 max-h-40 overflow-y-auto">
+                  {instituciones.map(inst => (
+                    <label key={inst} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={institucionesElegidas.includes(inst)}
+                        onChange={() => toggleInstitucion(inst)}
+                        className="rounded border-gray-300 text-amber-600"
+                      />
+                      <span className="text-sm text-gray-800">🏫 {inst}</span>
+                    </label>
                   ))}
-                </select>
+                </div>
 
-                {padrinoElegido && (
-                  institucionesDisponiblesParaElegido.length === 0 ? (
-                    <p className="text-xs text-gray-500">Este padrino ya tiene asignadas todas las instituciones del grupo.</p>
-                  ) : (
-                    <div className="border border-gray-200 rounded-lg p-2 space-y-1 max-h-40 overflow-y-auto">
-                      {institucionesDisponiblesParaElegido.map(inst => (
-                        <label key={inst} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={institucionesElegidas.includes(inst)}
-                            onChange={() => toggleInstitucion(inst)}
-                            className="rounded border-gray-300 text-amber-600"
-                          />
-                          <span className="text-sm text-gray-800">🏫 {inst}</span>
-                        </label>
+                {institucionesElegidas.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-700 mb-2">2. Selecciona el padrino:</p>
+                    <select
+                      value={padrinoElegido}
+                      onChange={(e) => setPadrinoElegido(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="">Selecciona un padrino...</option>
+                      {padrinos.map(p => (
+                        <option key={p.id} value={p.id}>{p.nombre_completo} — {p.correo}</option>
                       ))}
-                    </div>
-                  )
+                    </select>
+                  </div>
                 )}
               </div>
             </>

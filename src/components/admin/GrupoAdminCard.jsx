@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import ModalImportar from '../estudiantes/ModalImportar';
 import ModalGestionarPadrinos from './ModalGestionarPadrinos';
 import ModalAsignarInstituciones from './ModalAsignarInstituciones';
+import ModalEnlacesInstituciones from '../grupos/ModalEnlacesInstituciones';
 import ModalEditarGrupo from './ModalEditarGrupo';
 import ModalHistorialAsistencia from '../grupos/ModalHistorialAsistencia';
 import ModalPerfilEstudiante from '../estudiantes/ModalPerfilEstudiante';
@@ -33,6 +34,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   const [modalImportar, setModalImportar] = useState(false);
   const [modalPadrinos, setModalPadrinos] = useState(false);
   const [modalInstituciones, setModalInstituciones] = useState(false);
+  const [modalEnlaces, setModalEnlaces] = useState(false);
   const [modalEditar, setModalEditar] = useState(false);
   const [modalHistorial, setModalHistorial] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
@@ -293,6 +295,10 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
             </div>
           )}
 
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={(e) => { e.stopPropagation(); setModalEnlaces(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🔗 Enlaces de Instituciones</button>
+          </div>
+
           <div>
             <h4 className="font-medium text-gray-700 mb-2">📋 Estudiantes ({estudiantes.length})</h4>
             {importando ? (
@@ -332,6 +338,12 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
         isOpen={modalInstituciones}
         onClose={() => { setModalInstituciones(false); onRecargar(); }}
         grupo={grupo}
+      />
+      <ModalEnlacesInstituciones
+        isOpen={modalEnlaces}
+        onClose={() => setModalEnlaces(false)}
+        grupo={grupo}
+        municipiosPermitidos={municipiosPermitidos}
       />
       <ModalEditarGrupo isOpen={modalEditar} onClose={() => setModalEditar(false)} grupo={grupo} onRecargar={onRecargar} />
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />
