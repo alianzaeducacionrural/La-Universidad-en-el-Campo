@@ -16,8 +16,7 @@ export default function GestionInstituciones() {
   const notificacion = useNotificacion();
   const [instituciones, setInstituciones] = useState([]);
   const [conteos, setConteos] = useState({});
-  const [huerfanas, setHuerfanas] = useState([]);
-  const [municipios, setMunicipios] = useState([]);
+  const [conteosActivos, setConteosActivos] = useState({});
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [procesandoId, setProcesandoId] = useState(null);
@@ -35,7 +34,7 @@ export default function GestionInstituciones() {
     while (hasMore) {
       const { data } = await supabase
         .from('estudiantes')
-        .select('id, institucion_educativa, municipio')
+        .select('id, institucion_educativa, municipio, estado')
         .range(from, from + limit - 1);
       if (data && data.length > 0) {
         todos = [...todos, ...data];
@@ -48,37 +47,26 @@ export default function GestionInstituciones() {
 
   async function cargarDatos() {
     setCargando(true);
-    const [instRes, filasEstudiantes, muniRes] = await Promise.all([
+    const [instRes, filasEstudiantes] = await Promise.all([
       supabase.from('instituciones').select('*, municipios:municipio_id (nombre)').order('nombre'),
-      obtenerTodosLosEstudiantesBasico(),
-      supabase.from('municipios').select('id, nombre').order('nombre')
+      obtenerTodosLosEstudiantesBasico()
     ]);
 
     const listaInstituciones = instRes.data || [];
-    setMunicipios(muniRes.data || []);
 
     // Conteo real de estudiantes por institución (cruzando nombre + municipio,
     // porque hay nombres de institución repetidos en municipios distintos)
     const mapaConteo = {};
+    const mapaConteoActivos = {};
     filasEstudiantes.forEach(e => {
       const clave = `${e.institucion_educativa}|${e.municipio}`;
       mapaConteo[clave] = (mapaConteo[clave] || 0) + 1;
+      if (e.estado !== 'Desertor' && e.estado !== 'Graduado') {
+        mapaConteoActivos[clave] = (mapaConteoActivos[clave] || 0) + 1;
+      }
     });
     setConteos(mapaConteo);
-
-    // Instituciones "huérfanas": nombres usados en estudiantes que no existen
-    // en la tabla instituciones — ese estudiante nunca aparecerá en ningún portal.
-    const nombresInstituciones = new Set(listaInstituciones.map(i => i.nombre));
-    const huerfanasMap = new Map();
-    filasEstudiantes.forEach(e => {
-      if (!e.institucion_educativa || nombresInstituciones.has(e.institucion_educativa)) return;
-      const clave = `${e.institucion_educativa}|${e.municipio}`;
-      if (!huerfanasMap.has(clave)) {
-        huerfanasMap.set(clave, { nombre: e.institucion_educativa, municipio: e.municipio, count: 0 });
-      }
-      huerfanasMap.get(clave).count++;
-    });
-    setHuerfanas(Array.from(huerfanasMap.values()));
+    setConteosActivos(mapaConteoActivos);
 
     setInstituciones(listaInstituciones);
     setCargando(false);
@@ -123,28 +111,17 @@ export default function GestionInstituciones() {
       .catch(() => notificacion.error('No se pudo copiar el enlace'));
   }
 
-  async function crearInstitucionFaltante(huerfana) {
-    const municipio = municipios.find(m => m.nombre === huerfana.municipio);
-    if (!municipio) {
-      notificacion.error(`El municipio "${huerfana.municipio}" no existe en el catálogo.`, 'Error');
-      return;
-    }
-    const { error } = await supabase.from('instituciones').insert([{ nombre: huerfana.nombre, municipio_id: municipio.id }]);
-    if (error) {
-      notificacion.error(interpretarError(error), 'Error al crear la institución');
-    } else {
-      notificacion.success(`Institución "${huerfana.nombre}" creada`);
-      cargarDatos();
-    }
-  }
-
   const institucionesFiltradas = useMemo(() => {
-    if (!busqueda.trim()) return instituciones;
+    const conEstudiantesActivos = instituciones.filter(i => {
+      const clave = `${i.nombre}|${i.municipios?.nombre}`;
+      return (conteosActivos[clave] || 0) > 0;
+    });
+    if (!busqueda.trim()) return conEstudiantesActivos;
     const q = busqueda.toLowerCase();
-    return instituciones.filter(i =>
+    return conEstudiantesActivos.filter(i =>
       i.nombre.toLowerCase().includes(q) || i.municipios?.nombre?.toLowerCase().includes(q)
     );
-  }, [instituciones, busqueda]);
+  }, [instituciones, conteosActivos, busqueda]);
 
   const agrupadasPorMunicipio = useMemo(() => {
     const grupos = {};
@@ -170,30 +147,6 @@ export default function GestionInstituciones() {
         Genera un enlace de solo lectura para que cada institución vea únicamente la información
         de sus propios estudiantes y grupos, sin necesidad de iniciar sesión.
       </p>
-
-      {huerfanas.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-          <p className="text-sm font-semibold text-amber-800 mb-2">
-            ⚠️ {huerfanas.length} institución(es) usada(s) por estudiantes pero no registrada(s) en el catálogo
-          </p>
-          <p className="text-xs text-amber-700 mb-3">
-            Esos estudiantes no aparecerán en ningún portal hasta que la institución exista aquí.
-          </p>
-          <div className="space-y-2">
-            {huerfanas.map((h, i) => (
-              <div key={i} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-200">
-                <span className="text-sm text-gray-700">{h.nombre} · {h.municipio} ({h.count} estudiante{h.count !== 1 ? 's' : ''})</span>
-                <button
-                  onClick={() => crearInstitucionFaltante(h)}
-                  className="text-xs bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg transition"
-                >
-                  + Crear institución
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <input
         type="text"
