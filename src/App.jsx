@@ -9,6 +9,7 @@ import { NotificacionProvider } from './context/NotificacionContext';
 import { supabase } from './lib/supabaseClient';
 import Login from './pages/Login';
 import SplashScreen from './components/common/SplashScreen';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import ModalSeguimiento from './components/estudiantes/ModalSeguimiento';
 import ModalPerfilEstudiante from './components/estudiantes/ModalPerfilEstudiante';
 import ModalEditarEstudiante from './components/estudiantes/ModalEditarEstudiante';
@@ -366,32 +367,34 @@ function AppContent() {
   return (
     <>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-      <Suspense fallback={null}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          {/* Portal público de Instituciones Educativas — sin sesión, fuera de ProtectedRoute */}
-          <Route path="/ie/:token" element={<PortalInstitucion />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad /></ProtectedRoute>} />
-          <Route path="/panel" element={
-            <ProtectedRoute>
-              <PanelCoordinador
-                onSeguimiento={handleSeguimientoDesdePanel}
-                onVerPerfil={handleVerPerfilDesdePanel}
-              />
-            </ProtectedRoute>
-          } />
-          <Route path="/estadisticas" element={<ProtectedRoute><Estadisticas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-          <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-          <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-          <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-          <Route path="/desertores" element={<ProtectedRoute><GestionDesertores onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-          <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
-          <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
-          <Route path="/" element={<HomeRedirect />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            {/* Portal público de Instituciones Educativas — sin sesión, fuera de ProtectedRoute */}
+            <Route path="/ie/:token" element={<PortalInstitucion />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad /></ProtectedRoute>} />
+            <Route path="/panel" element={
+              <ProtectedRoute>
+                <PanelCoordinador
+                  onSeguimiento={handleSeguimientoDesdePanel}
+                  onVerPerfil={handleVerPerfilDesdePanel}
+                />
+              </ProtectedRoute>
+            } />
+            <Route path="/estadisticas" element={<ProtectedRoute><Estadisticas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/reportes" element={<ProtectedRoute><Reportes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/grupos" element={<ProtectedRoute><GestionGrupos onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/desertores" element={<ProtectedRoute><GestionDesertores onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
+            <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/" element={<HomeRedirect />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
 
       {/* MODALES DEL PANEL DE CONTROL */}
       <PanelModales
