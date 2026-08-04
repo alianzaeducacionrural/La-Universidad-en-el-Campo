@@ -25,8 +25,12 @@ export default function GrupoCard({ grupo, expandido, onToggle, onSeguimiento, o
       .select('*')
       .eq('grupo_id', grupo.grupo_id);
 
-    if (grupo.institucion_asignada) {
-      query = query.eq('institucion_educativa', grupo.institucion_asignada);
+    // El padrino puede tener acceso a todo el grupo (alguna asignación sin
+    // institución específica) o solo a una o varias instituciones dentro de él.
+    const tieneAccesoTotal = grupo.instituciones.some(i => !i.institucion_asignada);
+    const nombresInstituciones = grupo.instituciones.map(i => i.institucion_asignada).filter(Boolean);
+    if (!tieneAccesoTotal && nombresInstituciones.length > 0) {
+      query = query.in('institucion_educativa', nombresInstituciones);
     }
 
     const { data } = await query.order('fecha_inasistencia', { ascending: false });
@@ -65,11 +69,11 @@ export default function GrupoCard({ grupo, expandido, onToggle, onSeguimiento, o
                 <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
                   📅 Cohorte {grupo.cohorte}
                 </span>
-                {grupo.institucion_asignada && (
-                  <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
-                    🏫 {grupo.institucion_asignada}
+                {grupo.instituciones.filter(i => i.institucion_asignada).map(i => (
+                  <span key={i.institucion_asignada} className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
+                    🏫 {i.institucion_asignada}
                   </span>
-                )}
+                ))}
               </div>
             </div>
           </div>

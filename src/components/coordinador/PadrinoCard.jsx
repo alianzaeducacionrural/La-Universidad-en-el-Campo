@@ -20,16 +20,50 @@ export default function PadrinoCard({ padrino, expandido, onToggle, onSeguimient
 
   async function cargarGrupos() {
     setCargando(true);
-    
+
     const { data } = await supabase
       .from('vista_grupos_por_padrino')
       .select('*')
       .eq('padrino_id', padrino.padrino_id)
       .order('total_pendientes', { ascending: false });
-    
-    if (data) setGrupos(data);
+
+    if (data) setGrupos(agruparPorGrupo(data));
     setDatosCargados(true);
     setCargando(false);
+  }
+
+  // Un padrino puede tener varias filas para el mismo grupo (una por institución
+  // delegada dentro de ese grupo). Se fusionan en una sola tarjeta por grupo, con
+  // el detalle de instituciones adentro, para no contarlo ni mostrarlo como si
+  // fueran grupos distintos.
+  function agruparPorGrupo(filas) {
+    const mapa = new Map();
+    filas.forEach(fila => {
+      if (!mapa.has(fila.grupo_id)) {
+        mapa.set(fila.grupo_id, {
+          grupo_id: fila.grupo_id,
+          grupo_nombre: fila.grupo_nombre,
+          universidad: fila.universidad,
+          programa: fila.programa,
+          cohorte: fila.cohorte,
+          total_estudiantes: 0,
+          total_pendientes: 0,
+          instituciones: []
+        });
+      }
+      const grupo = mapa.get(fila.grupo_id);
+      grupo.total_estudiantes += fila.total_estudiantes;
+      grupo.total_pendientes += fila.total_pendientes;
+      grupo.instituciones.push({
+        asignacion_id: fila.asignacion_id,
+        institucion_asignada: fila.institucion_asignada,
+        total_estudiantes: fila.total_estudiantes,
+        total_pendientes: fila.total_pendientes
+      });
+    });
+    return [...mapa.values()].sort((a, b) =>
+      b.total_pendientes - a.total_pendientes || a.grupo_nombre.localeCompare(b.grupo_nombre)
+    );
   }
 
   const toggleGrupo = (grupoId) => {
@@ -113,10 +147,10 @@ export default function PadrinoCard({ padrino, expandido, onToggle, onSeguimient
             <div className="divide-y divide-gray-200">
               {grupos.map(grupo => (
                 <GrupoCard
-                  key={grupo.asignacion_id}
+                  key={grupo.grupo_id}
                   grupo={grupo}
-                  expandido={grupoExpandido === grupo.asignacion_id}
-                  onToggle={() => toggleGrupo(grupo.asignacion_id)}
+                  expandido={grupoExpandido === grupo.grupo_id}
+                  onToggle={() => toggleGrupo(grupo.grupo_id)}
                   onSeguimiento={onSeguimiento}
                   onVerPerfil={onVerPerfil}
                 />
