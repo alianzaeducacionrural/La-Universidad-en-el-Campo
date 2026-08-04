@@ -113,10 +113,10 @@ export default function PadrinoCard({ padrino, expandido, onToggle, onSeguimient
             <div className="divide-y divide-gray-200">
               {grupos.map(grupo => (
                 <GrupoCard
-                  key={grupo.grupo_id}
+                  key={grupo.asignacion_id}
                   grupo={grupo}
-                  expandido={grupoExpandido === grupo.grupo_id}
-                  onToggle={() => toggleGrupo(grupo.grupo_id)}
+                  expandido={grupoExpandido === grupo.asignacion_id}
+                  onToggle={() => toggleGrupo(grupo.asignacion_id)}
                   onSeguimiento={onSeguimiento}
                   onVerPerfil={onVerPerfil}
                 />

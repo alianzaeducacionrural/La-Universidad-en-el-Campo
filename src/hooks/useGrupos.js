@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { agruparInstitucionesPorGrupo } from '../utils/helpers';
 
 export function useGrupos(padrino) {
   const [grupos, setGrupos] = useState([]);
@@ -39,10 +40,22 @@ export function useGrupos(padrino) {
       .eq('padrino_id', padrino.id);
 
     if (data) {
-      const gruposFiltrados = data
-        .map(item => item.grupos ? { ...item.grupos, institucion_asignada: item.institucion_educativa } : null)
-        .filter(g => g !== null && g.activo === true);
-      
+      // Un padrino puede tener varias filas para el mismo grupo (una por institución que
+      // le fue delegada). Se agrupan por grupo_id: si alguna fila es general (institución
+      // null), el padrino ve todo el grupo; si no, ve la unión de sus instituciones.
+      const mapaInstituciones = agruparInstitucionesPorGrupo(data);
+      const gruposUnicos = new Map();
+      data.forEach(item => {
+        if (!item.grupos || item.grupos.activo !== true) return;
+        if (!gruposUnicos.has(item.grupo_id)) {
+          gruposUnicos.set(item.grupo_id, {
+            ...item.grupos,
+            instituciones_asignadas: mapaInstituciones.get(item.grupo_id)
+          });
+        }
+      });
+      const gruposFiltrados = [...gruposUnicos.values()];
+
       setGruposAsignados(gruposFiltrados);
       
       // Solo seleccionar el primer grupo si no hay uno seleccionado

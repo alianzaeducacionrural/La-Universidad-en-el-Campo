@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
-import { filtrarPorAlcancePadrino } from '../../utils/helpers';
+import { filtrarPorAlcancePadrino, agruparInstitucionesPorGrupo } from '../../utils/helpers';
 
 export default function BadgeNotificacion() {
   const { perfil } = useAuth();
@@ -28,7 +28,8 @@ export default function BadgeNotificacion() {
       .select('grupo_id, institucion_educativa')
       .eq('padrino_id', perfil.id);
 
-    const asignaciones = gruposPadrino?.map(g => ({ id: g.grupo_id, institucion_asignada: g.institucion_educativa })) || [];
+    const mapaInstituciones = agruparInstitucionesPorGrupo(gruposPadrino);
+    const asignaciones = [...mapaInstituciones.entries()].map(([id, instituciones_asignadas]) => ({ id, instituciones_asignadas }));
     const gruposIds = asignaciones.map(a => a.id);
 
     if (gruposIds.length === 0) {

@@ -25,6 +25,7 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
     const { data } = await supabase
       .from('grupo_padrino')
       .select(`
+        id,
         grupo_id,
         institucion_educativa,
         grupos:grupo_id (
@@ -39,33 +40,35 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
       .order('grupos(nombre)');
 
     if (data) {
+      // Un padrino puede tener varias filas de grupo_padrino para el mismo grupo (una por
+      // institución delegada), así que cada fila se muestra como su propia tarjeta,
+      // identificada por el id de la asignación (no del grupo, que puede repetirse).
       const gruposFormateados = data
         .filter(item => item.grupos !== null)
-        .map(item => ({ ...item.grupos, institucion_asignada: item.institucion_educativa }));
+        .map(item => ({ ...item.grupos, asignacion_id: item.id, institucion_asignada: item.institucion_educativa }));
       setGrupos(gruposFormateados);
     }
-    
+
     setDatosCargados(true);
     setCargando(false);
   }
 
-  async function handleQuitarGrupo(grupoId) {
-    if (!confirm('¿Estás seguro de quitar este grupo del padrino?')) return;
-    
-    setQuitando(grupoId);
-    
+  async function handleQuitarGrupo(asignacionId) {
+    if (!confirm('¿Estás seguro de quitar esta asignación del padrino?')) return;
+
+    setQuitando(asignacionId);
+
     const { error } = await supabase
       .from('grupo_padrino')
       .delete()
-      .eq('padrino_id', padrino.padrino_id)
-      .eq('grupo_id', grupoId);
-    
+      .eq('id', asignacionId);
+
     setQuitando(null);
-    
+
     if (error) {
       alert('Error al quitar grupo: ' + error.message);
     } else {
-      setGrupos(grupos.filter(g => g.id !== grupoId));
+      setGrupos(grupos.filter(g => g.asignacion_id !== asignacionId));
       onGrupoQuitado();
     }
   }
@@ -127,7 +130,7 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
                   <h5 className="font-medium text-gray-700 mb-3">Grupos asignados:</h5>
                   <div className="space-y-2">
                     {grupos.map(grupo => (
-                      <div key={grupo.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
+                      <div key={grupo.asignacion_id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
                         <div>
                           <p className="font-medium text-gray-800">{grupo.nombre}</p>
                           <div className="flex flex-wrap gap-2 mt-1">
@@ -145,11 +148,11 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
                           </div>
                         </div>
                         <button
-                          onClick={() => handleQuitarGrupo(grupo.id)}
-                          disabled={quitando === grupo.id}
+                          onClick={() => handleQuitarGrupo(grupo.asignacion_id)}
+                          disabled={quitando === grupo.asignacion_id}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm transition disabled:opacity-50"
                         >
-                          {quitando === grupo.id ? '...' : '❌ Quitar'}
+                          {quitando === grupo.asignacion_id ? '...' : '❌ Quitar'}
                         </button>
                       </div>
                     ))}

@@ -36,7 +36,7 @@ export default function NotasGrupoResumen({ grupo, modoModal = false }) {
         ...nm,
         notas_estudiantes: (nm.notas_estudiantes || []).filter(ne =>
           ne.estudiante?.grupo_id === grupoId &&
-          (!grupo.institucion_asignada || ne.estudiante?.institucion_educativa === grupo.institucion_asignada)
+          (!grupo.instituciones_asignadas || grupo.instituciones_asignadas.includes(ne.estudiante?.institucion_educativa))
         )
       }));
       setNotasModulos(filtrado);

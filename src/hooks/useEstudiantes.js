@@ -24,8 +24,8 @@ export function useEstudiantes(grupoSeleccionado) {
       .select('*')
       .eq('grupo_id', grupoSeleccionado.id);
 
-    if (grupoSeleccionado.institucion_asignada) {
-      query = query.eq('institucion_educativa', grupoSeleccionado.institucion_asignada);
+    if (grupoSeleccionado.instituciones_asignadas) {
+      query = query.in('institucion_educativa', grupoSeleccionado.instituciones_asignadas);
     }
 
     const { data, error } = await query.order('nombre_completo');

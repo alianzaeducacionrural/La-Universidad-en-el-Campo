@@ -19,13 +19,18 @@ export default function GrupoCard({ grupo, expandido, onToggle, onSeguimiento, o
 
   async function cargarEstudiantes() {
     setCargando(true);
-    
-    const { data } = await supabase
+
+    let query = supabase
       .from('vista_estudiantes_pendientes_grupo')
       .select('*')
-      .eq('grupo_id', grupo.grupo_id)
-      .order('fecha_inasistencia', { ascending: false });
-    
+      .eq('grupo_id', grupo.grupo_id);
+
+    if (grupo.institucion_asignada) {
+      query = query.eq('institucion_educativa', grupo.institucion_asignada);
+    }
+
+    const { data } = await query.order('fecha_inasistencia', { ascending: false });
+
     if (data) setEstudiantes(data);
     setDatosCargados(true);
     setCargando(false);
@@ -60,6 +65,11 @@ export default function GrupoCard({ grupo, expandido, onToggle, onSeguimiento, o
                 <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
                   📅 Cohorte {grupo.cohorte}
                 </span>
+                {grupo.institucion_asignada && (
+                  <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
+                    🏫 {grupo.institucion_asignada}
+                  </span>
+                )}
               </div>
             </div>
           </div>

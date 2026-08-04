@@ -8,6 +8,7 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
 import ModalImportar from '../estudiantes/ModalImportar';
 import ModalGestionarPadrinos from './ModalGestionarPadrinos';
+import ModalAsignarInstituciones from './ModalAsignarInstituciones';
 import ModalEditarGrupo from './ModalEditarGrupo';
 import ModalHistorialAsistencia from '../grupos/ModalHistorialAsistencia';
 import ModalPerfilEstudiante from '../estudiantes/ModalPerfilEstudiante';
@@ -31,6 +32,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   // Estados de modales del grupo
   const [modalImportar, setModalImportar] = useState(false);
   const [modalPadrinos, setModalPadrinos] = useState(false);
+  const [modalInstituciones, setModalInstituciones] = useState(false);
   const [modalEditar, setModalEditar] = useState(false);
   const [modalHistorial, setModalHistorial] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
@@ -282,6 +284,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
             <div className="flex flex-wrap gap-2 mb-4">
               <button onClick={(e) => { e.stopPropagation(); setModalEditar(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">✏️ Editar</button>
               <button onClick={(e) => { e.stopPropagation(); setModalPadrinos(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">👥 Gestionar Padrinos</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalInstituciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🏫 Asignar Instituciones</button>
               <button onClick={(e) => { e.stopPropagation(); setModalImportar(true); }} disabled={importando} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">{importando ? '⏳ Importando...' : '📥 Importar Estudiantes'}</button>
               <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
               <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
@@ -325,6 +328,11 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
       {/* MODALES */}
       <ModalImportar isOpen={modalImportar} onClose={() => setModalImportar(false)} onImportar={handleImportar} grupoSeleccionado={grupo} />
       <ModalGestionarPadrinos isOpen={modalPadrinos} onClose={() => setModalPadrinos(false)} grupo={grupo} onRecargar={onRecargar} />
+      <ModalAsignarInstituciones
+        isOpen={modalInstituciones}
+        onClose={() => { setModalInstituciones(false); onRecargar(); }}
+        grupo={grupo}
+      />
       <ModalEditarGrupo isOpen={modalEditar} onClose={() => setModalEditar(false)} grupo={grupo} onRecargar={onRecargar} />
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo}/>

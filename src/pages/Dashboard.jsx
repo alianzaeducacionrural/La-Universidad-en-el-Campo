@@ -109,18 +109,12 @@ export default function Dashboard() {
     if (padrino) {
       cargarTotalPendientes();
     }
-  }, [padrino, refreshInasistencias]);
+  }, [padrino, refreshInasistencias, gruposAsignados]);
 
   async function cargarTotalPendientes() {
     if (!padrino) return;
 
-    const { data: gruposPadrino } = await supabase
-      .from('grupo_padrino')
-      .select('grupo_id, institucion_educativa')
-      .eq('padrino_id', padrino.id);
-
-    const asignaciones = gruposPadrino?.map(g => ({ id: g.grupo_id, institucion_asignada: g.institucion_educativa })) || [];
-    const gruposIds = asignaciones.map(a => a.id);
+    const gruposIds = gruposAsignados.map(g => g.id);
 
     if (gruposIds.length === 0) {
       setTotalPendientes(0);
@@ -132,7 +126,7 @@ export default function Dashboard() {
       .select('grupo_id, institucion_educativa')
       .in('grupo_id', gruposIds);
 
-    setTotalPendientes(filtrarPorAlcancePadrino(pendientes || [], asignaciones).length);
+    setTotalPendientes(filtrarPorAlcancePadrino(pendientes || [], gruposAsignados).length);
   }
 
   // =============================================

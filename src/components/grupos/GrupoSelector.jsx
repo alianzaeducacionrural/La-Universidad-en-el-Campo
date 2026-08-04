@@ -31,15 +31,15 @@ export default function GrupoSelector({
           >
             {gruposAsignados.map(g => (
               <option key={g.id} value={g.id}>
-                {g.nombre}{g.institucion_asignada ? ` — 🏫 ${g.institucion_asignada}` : ''}
+                {g.nombre}{g.instituciones_asignadas ? ` — 🏫 ${g.instituciones_asignadas.join(', ')}` : ''}
               </option>
             ))}
           </select>
         </div>
       </div>
-      {grupoSeleccionado?.institucion_asignada && (
+      {grupoSeleccionado?.instituciones_asignadas && (
         <p className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 inline-block">
-          🏫 Solo ves los estudiantes de <strong>{grupoSeleccionado.institucion_asignada}</strong> en este grupo
+          🏫 Solo ves los estudiantes de <strong>{grupoSeleccionado.instituciones_asignadas.join(', ')}</strong> en este grupo
         </p>
       )}
     </div>

@@ -54,7 +54,7 @@ export default function ModalHistorialAsistencia({ isOpen, onClose, grupo }) {
         ...reporte,
         inasistencias: (reporte.inasistencias || []).filter(
           ina => ina.estudiantes?.grupo_id === grupo.id &&
-            (!grupo.institucion_asignada || ina.estudiantes?.institucion_educativa === grupo.institucion_asignada)
+            (!grupo.instituciones_asignadas || grupo.instituciones_asignadas.includes(ina.estudiantes?.institucion_educativa))
         )
       }));
       setReportes(conSoloGrupoActual);

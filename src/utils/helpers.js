@@ -48,18 +48,38 @@ export const getMunicipiosPermitidos = (perfil) => {
   return null;
 };
 
-// Un padrino puede tener asignado un grupo completo (institucion_asignada = null) o solo
-// una institución dentro de ese grupo. `gruposAsignados` es el array de useGrupos, donde
-// cada grupo lleva su propio `institucion_asignada`. `item` es cualquier registro con
-// `grupo_id` + `institucion_educativa` (estudiante, o fila ya hidratada con esos datos).
+// Un padrino puede tener asignado un grupo completo (instituciones_asignadas = null) o solo
+// una o varias instituciones dentro de ese grupo. `gruposAsignados` es el array de useGrupos,
+// donde cada grupo lleva su propio `instituciones_asignadas`. `item` es cualquier registro
+// con `grupo_id` + `institucion_educativa` (estudiante, o fila ya hidratada con esos datos).
 export const enAlcancePadrino = (item, gruposAsignados) => {
   const asignacion = gruposAsignados.find(g => g.id === item.grupo_id);
   if (!asignacion) return false;
-  return !asignacion.institucion_asignada || asignacion.institucion_asignada === item.institucion_educativa;
+  return !asignacion.instituciones_asignadas || asignacion.instituciones_asignadas.includes(item.institucion_educativa);
 };
 
 export const filtrarPorAlcancePadrino = (items, gruposAsignados) =>
   items.filter(item => enAlcancePadrino(item, gruposAsignados));
+
+// A partir de filas planas {grupo_id, institucion_educativa} de grupo_padrino (un padrino
+// puede tener varias filas para el mismo grupo, una por institución delegada), agrupa por
+// grupo devolviendo un Map(grupo_id -> instituciones_asignadas). Si hay alguna fila general
+// (institución null) para ese grupo, el valor queda en null (sin restricción); si no, es el
+// arreglo de instituciones delegadas.
+export const agruparInstitucionesPorGrupo = (filas) => {
+  const porGrupo = new Map();
+  (filas || []).forEach(({ grupo_id, institucion_educativa }) => {
+    const actual = porGrupo.get(grupo_id);
+    if (actual === undefined) {
+      porGrupo.set(grupo_id, institucion_educativa ? [institucion_educativa] : null);
+    } else if (actual && institucion_educativa) {
+      actual.push(institucion_educativa);
+    } else {
+      porGrupo.set(grupo_id, null);
+    }
+  });
+  return porGrupo;
+};
 
 // 🔥 UNA SOLA DECLARACIÓN DE formatearFecha
 export const formatearFecha = (fecha, formato = 'completa') => {
