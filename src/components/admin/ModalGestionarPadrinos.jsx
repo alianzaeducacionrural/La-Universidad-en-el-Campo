@@ -11,6 +11,9 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
   const [padrinosActuales, setPadrinosActuales] = useState([]);
   const [padrinosDisponibles, setPadrinosDisponibles] = useState([]);
   const [seleccionados, setSeleccionados] = useState([]);
+  const [instituciones, setInstituciones] = useState([]);
+  const [alcanceNuevos, setAlcanceNuevos] = useState({});
+  const [guardandoAlcance, setGuardandoAlcance] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [quitando, setQuitando] = useState(null);
 
@@ -23,17 +26,27 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
   async function cargarDatos() {
     setCargando(true);
 
-    // Cargar padrinos actuales del grupo
+    // Cargar padrinos actuales del grupo, con su alcance (institución o todo el grupo)
     const { data: actuales } = await supabase
       .from('grupo_padrino')
-      .select('padrino_id, padrinos:padrino_id (id, nombre_completo, correo)')
+      .select('padrino_id, institucion_educativa, padrinos:padrino_id (id, nombre_completo, correo)')
       .eq('grupo_id', grupo.id);
 
     if (actuales) {
-      const padrinosFormateados = actuales.map(a => a.padrinos).filter(p => p);
+      const padrinosFormateados = actuales
+        .filter(a => a.padrinos)
+        .map(a => ({ ...a.padrinos, institucion_educativa: a.institucion_educativa }));
       setPadrinosActuales(padrinosFormateados);
       setSeleccionados(padrinosFormateados.map(p => p.id));
     }
+
+    // Instituciones distintas presentes en el grupo, para ofrecer un alcance restringido
+    const { data: estudiantesGrupo } = await supabase
+      .from('estudiantes')
+      .select('institucion_educativa')
+      .eq('grupo_id', grupo.id);
+    const institucionesUnicas = [...new Set((estudiantesGrupo || []).map(e => e.institucion_educativa).filter(Boolean))].sort();
+    setInstituciones(institucionesUnicas);
 
     // Cargar todos los padrinos disponibles
     const { data: todos } = await supabase
@@ -48,6 +61,29 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
     }
 
     setCargando(false);
+  }
+
+  async function handleCambiarAlcance(padrinoId, nuevoValor) {
+    setGuardandoAlcance(padrinoId);
+    const { error } = await supabase
+      .from('grupo_padrino')
+      .update({ institucion_educativa: nuevoValor || null })
+      .eq('grupo_id', grupo.id)
+      .eq('padrino_id', padrinoId);
+
+    setGuardandoAlcance(null);
+
+    if (error) {
+      notificacion.error('No se pudo actualizar el alcance. Verifica tu conexión e intenta de nuevo.', 'Error al actualizar');
+      return;
+    }
+
+    setPadrinosActuales(prev =>
+      prev.map(p => p.id === padrinoId ? { ...p, institucion_educativa: nuevoValor || null } : p)
+    );
+    // No se llama a onRecargar() aquí: eso pone en `cargando` a GestionGrupos, que desmonta
+    // toda la grilla de tarjetas (y con ella este modal). La tarjeta de fondo se actualiza
+    // sola la próxima vez que se guarde o se reabra, igual que "Cancelar" ya se comporta hoy.
   }
 
   function togglePadrino(padrinoId) {
@@ -78,7 +114,8 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
     if (paraAgregar.length > 0) {
       const asignaciones = paraAgregar.map(padrinoId => ({
         grupo_id: grupo.id,
-        padrino_id: padrinoId
+        padrino_id: padrinoId,
+        institucion_educativa: alcanceNuevos[padrinoId] || null
       }));
       await supabase.from('grupo_padrino').insert(asignaciones);
     }
@@ -115,21 +152,39 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
                   </p>
                   <div className="space-y-1">
                     {padrinosActuales.map(p => (
-                      <div key={p.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{p.nombre_completo}</p>
-                          <p className="text-xs text-gray-500">{p.correo}</p>
+                      <div key={p.id} className="bg-gray-50 p-2 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{p.nombre_completo}</p>
+                            <p className="text-xs text-gray-500">{p.correo}</p>
+                          </div>
+                          <button
+                            onClick={() => togglePadrino(p.id)}
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              seleccionados.includes(p.id)
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {seleccionados.includes(p.id) ? 'Quitar' : 'Agregar'}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => togglePadrino(p.id)}
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            seleccionados.includes(p.id)
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-green-100 text-green-700'
-                          }`}
-                        >
-                          {seleccionados.includes(p.id) ? 'Quitar' : 'Agregar'}
-                        </button>
+                        {seleccionados.includes(p.id) && instituciones.length > 1 && (
+                          <div className="mt-2">
+                            <label className="text-xs text-gray-500">Alcance:</label>
+                            <select
+                              value={p.institucion_educativa || ''}
+                              onChange={(e) => handleCambiarAlcance(p.id, e.target.value)}
+                              disabled={guardandoAlcance === p.id}
+                              className="mt-1 w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white disabled:opacity-50"
+                            >
+                              <option value="">Todo el grupo</option>
+                              {instituciones.map(inst => (
+                                <option key={inst} value={inst}>🏫 {inst}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -145,18 +200,34 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
                   {padrinosDisponibles
                     .filter(p => !padrinosActuales.find(pa => pa.id === p.id))
                     .map(p => (
-                      <label key={p.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={seleccionados.includes(p.id)}
-                          onChange={() => togglePadrino(p.id)}
-                          className="rounded border-gray-300 text-purple-600"
-                        />
-                        <div>
-                          <p className="text-sm text-gray-800">{p.nombre_completo}</p>
-                          <p className="text-xs text-gray-500">{p.correo}</p>
-                        </div>
-                      </label>
+                      <div key={p.id} className="p-1 hover:bg-gray-50 rounded">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={seleccionados.includes(p.id)}
+                            onChange={() => togglePadrino(p.id)}
+                            className="rounded border-gray-300 text-purple-600"
+                          />
+                          <div>
+                            <p className="text-sm text-gray-800">{p.nombre_completo}</p>
+                            <p className="text-xs text-gray-500">{p.correo}</p>
+                          </div>
+                        </label>
+                        {seleccionados.includes(p.id) && instituciones.length > 1 && (
+                          <div className="mt-1 pl-6">
+                            <select
+                              value={alcanceNuevos[p.id] || ''}
+                              onChange={(e) => setAlcanceNuevos(prev => ({ ...prev, [p.id]: e.target.value || null }))}
+                              className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1"
+                            >
+                              <option value="">Todo el grupo</option>
+                              {instituciones.map(inst => (
+                                <option key={inst} value={inst}>🏫 {inst}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     ))}
                 </div>
               </div>

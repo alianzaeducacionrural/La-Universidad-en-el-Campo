@@ -35,12 +35,12 @@ export function useGrupos(padrino) {
     // Obtener grupos asignados al padrino
     const { data } = await supabase
       .from('grupo_padrino')
-      .select(`grupo_id, grupos:grupo_id (*)`)
+      .select(`grupo_id, institucion_educativa, grupos:grupo_id (*)`)
       .eq('padrino_id', padrino.id);
-    
+
     if (data) {
       const gruposFiltrados = data
-        .map(item => item.grupos)
+        .map(item => item.grupos ? { ...item.grupos, institucion_asignada: item.institucion_educativa } : null)
         .filter(g => g !== null && g.activo === true);
       
       setGruposAsignados(gruposFiltrados);

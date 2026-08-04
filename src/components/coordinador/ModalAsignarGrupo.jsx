@@ -10,6 +10,8 @@ export default function ModalAsignarGrupo({ isOpen, onClose, padrino, gruposActu
   const notificacion = useNotificacion();
   const [gruposDisponibles, setGruposDisponibles] = useState([]);
   const [gruposSeleccionados, setGruposSeleccionados] = useState([]);
+  const [institucionesPorGrupo, setInstitucionesPorGrupo] = useState({});
+  const [alcancePorGrupo, setAlcancePorGrupo] = useState({});
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
 
@@ -30,8 +32,29 @@ export default function ModalAsignarGrupo({ isOpen, onClose, padrino, gruposActu
     
     // Filtrar los que NO están ya asignados
     const disponibles = todosGrupos?.filter(g => !gruposActuales.includes(g.id)) || [];
-    
+
     setGruposDisponibles(disponibles);
+
+    // Instituciones distintas por grupo, para poder ofrecer un alcance restringido
+    if (disponibles.length > 0) {
+      const { data: estudiantesGrupos } = await supabase
+        .from('estudiantes')
+        .select('grupo_id, institucion_educativa')
+        .in('grupo_id', disponibles.map(g => g.id));
+
+      const porGrupo = {};
+      estudiantesGrupos?.forEach(e => {
+        if (!e.institucion_educativa) return;
+        if (!porGrupo[e.grupo_id]) porGrupo[e.grupo_id] = new Set();
+        porGrupo[e.grupo_id].add(e.institucion_educativa);
+      });
+      const institucionesOrdenadas = {};
+      Object.entries(porGrupo).forEach(([grupoId, set]) => {
+        institucionesOrdenadas[grupoId] = [...set].sort();
+      });
+      setInstitucionesPorGrupo(institucionesOrdenadas);
+    }
+
     setCargando(false);
   }
 
@@ -45,7 +68,8 @@ export default function ModalAsignarGrupo({ isOpen, onClose, padrino, gruposActu
 
     const asignaciones = gruposSeleccionados.map(grupoId => ({
       grupo_id: grupoId,
-      padrino_id: padrino.padrino_id
+      padrino_id: padrino.padrino_id,
+      institucion_educativa: alcancePorGrupo[grupoId] || null
     }));
 
     const { error } = await supabase
@@ -110,33 +134,52 @@ export default function ModalAsignarGrupo({ isOpen, onClose, padrino, gruposActu
             </div>
           ) : (
             <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-              {gruposFiltrados.map(grupo => (
-                <label 
-                  key={grupo.id} 
-                  className="flex items-start p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                >
-                  <input
-                    type="checkbox"
-                    checked={gruposSeleccionados.includes(grupo.id)}
-                    onChange={() => toggleGrupo(grupo.id)}
-                    className="mt-1 mr-3"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-800">{grupo.nombre}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                        🎓 {grupo.universidad}
-                      </span>
-                      <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
-                        📚 {grupo.programa}
-                      </span>
-                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                        📅 {grupo.cohorte}
-                      </span>
-                    </div>
+              {gruposFiltrados.map(grupo => {
+                const instituciones = institucionesPorGrupo[grupo.id] || [];
+                const seleccionado = gruposSeleccionados.includes(grupo.id);
+                return (
+                  <div key={grupo.id} className="border-b border-gray-100 last:border-b-0">
+                    <label className="flex items-start p-3 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={seleccionado}
+                        onChange={() => toggleGrupo(grupo.id)}
+                        className="mt-1 mr-3"
+                      />
+                      <div>
+                        <p className="font-medium text-gray-800">{grupo.nombre}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                            🎓 {grupo.universidad}
+                          </span>
+                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                            📚 {grupo.programa}
+                          </span>
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                            📅 {grupo.cohorte}
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+                    {seleccionado && instituciones.length > 1 && (
+                      <div className="pl-9 pb-3 -mt-1">
+                        <label className="text-xs text-gray-500">Alcance en este grupo:</label>
+                        <select
+                          value={alcancePorGrupo[grupo.id] || ''}
+                          onChange={(e) => setAlcancePorGrupo(prev => ({ ...prev, [grupo.id]: e.target.value || null }))}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1 w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5"
+                        >
+                          <option value="">Todo el grupo</option>
+                          {instituciones.map(inst => (
+                            <option key={inst} value={inst}>🏫 {inst}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
-                </label>
-              ))}
+                );
+              })}
             </div>
           )}
           

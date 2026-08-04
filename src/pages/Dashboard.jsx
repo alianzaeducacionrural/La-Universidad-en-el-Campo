@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useGrupos } from '../hooks/useGrupos';
 import { useEstudiantes } from '../hooks/useEstudiantes';
 import { useSeguimientos } from '../hooks/useSeguimientos';
-import { puedeGestionar } from '../utils/helpers';
+import { puedeGestionar, filtrarPorAlcancePadrino } from '../utils/helpers';
 
 // Componentes Common
 import Header from '../components/common/Header';
@@ -113,25 +113,26 @@ export default function Dashboard() {
 
   async function cargarTotalPendientes() {
     if (!padrino) return;
-    
+
     const { data: gruposPadrino } = await supabase
       .from('grupo_padrino')
-      .select('grupo_id')
+      .select('grupo_id, institucion_educativa')
       .eq('padrino_id', padrino.id);
-    
-    const gruposIds = gruposPadrino?.map(g => g.grupo_id) || [];
-    
+
+    const asignaciones = gruposPadrino?.map(g => ({ id: g.grupo_id, institucion_asignada: g.institucion_educativa })) || [];
+    const gruposIds = asignaciones.map(a => a.id);
+
     if (gruposIds.length === 0) {
       setTotalPendientes(0);
       return;
     }
-    
-    const { count } = await supabase
+
+    const { data: pendientes } = await supabase
       .from('vista_inasistencias_pendientes')
-      .select('*', { count: 'exact', head: true })
+      .select('grupo_id, institucion_educativa')
       .in('grupo_id', gruposIds);
-    
-    setTotalPendientes(count || 0);
+
+    setTotalPendientes(filtrarPorAlcancePadrino(pendientes || [], asignaciones).length);
   }
 
   // =============================================
@@ -261,8 +262,9 @@ export default function Dashboard() {
           )}
 
           {vistaActiva === 'inasistencias' && (
-            <InasistenciasPendientes 
+            <InasistenciasPendientes
               padrino={padrino}
+              gruposAsignados={gruposAsignados}
               onSeguimiento={handleSeguimiento}
               onVerPerfil={handleVerPerfilDesdeInasistencia}
               refresh={refreshInasistencias}

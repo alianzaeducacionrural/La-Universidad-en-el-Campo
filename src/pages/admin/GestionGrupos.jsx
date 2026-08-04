@@ -64,6 +64,7 @@ export default function GestionGrupos({ onVerPerfil }) {
         *,
         grupo_padrino (
           padrino_id,
+          institucion_educativa,
           padrinos:padrino_id (nombre_completo)
         ),
         estudiantes (count)
@@ -81,7 +82,9 @@ export default function GestionGrupos({ onVerPerfil }) {
       const gruposFormateados = data.map(g => ({
         ...g,
         total_estudiantes: g.estudiantes?.[0]?.count || 0,
-        padrinos: g.grupo_padrino?.map(gp => gp.padrinos).filter(p => p) || []
+        padrinos: g.grupo_padrino
+          ?.filter(gp => gp.padrinos)
+          .map(gp => ({ ...gp.padrinos, institucion_educativa: gp.institucion_educativa })) || []
       }));
       setGrupos(gruposFormateados);
     }

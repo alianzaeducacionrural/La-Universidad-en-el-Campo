@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
+import { filtrarPorAlcancePadrino } from '../../utils/helpers';
 
 export default function BadgeNotificacion() {
   const { perfil } = useAuth();
@@ -24,22 +25,23 @@ export default function BadgeNotificacion() {
 
     const { data: gruposPadrino } = await supabase
       .from('grupo_padrino')
-      .select('grupo_id')
+      .select('grupo_id, institucion_educativa')
       .eq('padrino_id', perfil.id);
 
-    const gruposIds = gruposPadrino?.map(g => g.grupo_id) || [];
-    
+    const asignaciones = gruposPadrino?.map(g => ({ id: g.grupo_id, institucion_asignada: g.institucion_educativa })) || [];
+    const gruposIds = asignaciones.map(a => a.id);
+
     if (gruposIds.length === 0) {
       setTotal(0);
       return;
     }
 
-    const { count } = await supabase
+    const { data: pendientes } = await supabase
       .from('vista_inasistencias_pendientes')
-      .select('*', { count: 'exact', head: true })
+      .select('grupo_id, institucion_educativa')
       .in('grupo_id', gruposIds);
 
-    setTotal(count || 0);
+    setTotal(filtrarPorAlcancePadrino(pendientes || [], asignaciones).length);
   }
 
   if (total === 0) return null;

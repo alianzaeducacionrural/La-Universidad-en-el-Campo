@@ -18,12 +18,17 @@ export function useEstudiantes(grupoSeleccionado) {
     }
     
     setCargando(true);
-    
-    const { data, error } = await supabase
+
+    let query = supabase
       .from('estudiantes')
       .select('*')
-      .eq('grupo_id', grupoSeleccionado.id)
-      .order('nombre_completo');
+      .eq('grupo_id', grupoSeleccionado.id);
+
+    if (grupoSeleccionado.institucion_asignada) {
+      query = query.eq('institucion_educativa', grupoSeleccionado.institucion_asignada);
+    }
+
+    const { data, error } = await query.order('nombre_completo');
     
     if (error) {
       console.error('❌ Error cargando estudiantes:', error.message);

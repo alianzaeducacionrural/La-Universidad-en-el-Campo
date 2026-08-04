@@ -30,11 +30,18 @@ export default function GrupoSelector({
             className="w-full max-w-2xl border border-gray-300 rounded-lg px-4 py-3 bg-white shadow-sm focus:ring-2 focus:ring-primary focus:border-primary text-base"
           >
             {gruposAsignados.map(g => (
-              <option key={g.id} value={g.id}>{g.nombre}</option>
+              <option key={g.id} value={g.id}>
+                {g.nombre}{g.institucion_asignada ? ` — 🏫 ${g.institucion_asignada}` : ''}
+              </option>
             ))}
           </select>
         </div>
       </div>
+      {grupoSeleccionado?.institucion_asignada && (
+        <p className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 inline-block">
+          🏫 Solo ves los estudiantes de <strong>{grupoSeleccionado.institucion_asignada}</strong> en este grupo
+        </p>
+      )}
     </div>
   );
 }

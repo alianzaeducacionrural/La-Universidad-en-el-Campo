@@ -4,11 +4,11 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { formatearFecha } from '../../utils/helpers';
+import { formatearFecha, filtrarPorAlcancePadrino } from '../../utils/helpers';
 import EmptyState from '../common/EmptyState';
 import ModalAsistenciaCompleta from './ModalAsistenciaCompleta';
 
-export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerPerfil, refresh = 0 }) {
+export default function InasistenciasPendientes({ padrino, gruposAsignados = [], onSeguimiento, onVerPerfil, refresh = 0 }) {
   const [inasistencias, setInasistencias] = useState([]);
   const [reportesCompletos, setReportesCompletos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -70,7 +70,11 @@ export default function InasistenciasPendientes({ padrino, onSeguimiento, onVerP
           return { ...item, estudiante };
         })
       );
-      setInasistencias(conEstudiante);
+      const enAlcance = filtrarPorAlcancePadrino(
+        conEstudiante.map(item => ({ ...item, grupo_id: item.estudiante?.grupo_id, institucion_educativa: item.estudiante?.institucion_educativa })),
+        gruposAsignados
+      );
+      setInasistencias(enAlcance);
     }
 
     // Filtrar registros con asistencia completa no reconocidos

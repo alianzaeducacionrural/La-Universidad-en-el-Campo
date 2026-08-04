@@ -26,6 +26,7 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
       .from('grupo_padrino')
       .select(`
         grupo_id,
+        institucion_educativa,
         grupos:grupo_id (
           id,
           nombre,
@@ -36,9 +37,11 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
       `)
       .eq('padrino_id', padrino.padrino_id)
       .order('grupos(nombre)');
-    
+
     if (data) {
-      const gruposFormateados = data.map(item => item.grupos).filter(g => g !== null);
+      const gruposFormateados = data
+        .filter(item => item.grupos !== null)
+        .map(item => ({ ...item.grupos, institucion_asignada: item.institucion_educativa }));
       setGrupos(gruposFormateados);
     }
     
@@ -134,6 +137,11 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
                             <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
                               📚 {grupo.programa}
                             </span>
+                            {grupo.institucion_asignada && (
+                              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
+                                🏫 {grupo.institucion_asignada}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button

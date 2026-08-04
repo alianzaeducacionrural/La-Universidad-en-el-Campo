@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { filtrarPorAlcancePadrino } from '../utils/helpers';
 
 export function useSeguimientos(padrino, gruposAsignados) {
   const [seguimientos, setSeguimientos] = useState([]);
@@ -22,13 +23,13 @@ export function useSeguimientos(padrino, gruposAsignados) {
       return;
     }
     
-    // Obtener IDs de estudiantes de esos grupos
+    // Obtener IDs de estudiantes de esos grupos, respetando el alcance por institución
     const { data: estudiantesData } = await supabase
       .from('estudiantes')
-      .select('id')
+      .select('id, grupo_id, institucion_educativa')
       .in('grupo_id', gruposIds);
-    
-    const estudiantesIds = estudiantesData?.map(e => e.id) || [];
+
+    const estudiantesIds = filtrarPorAlcancePadrino(estudiantesData || [], gruposAsignados).map(e => e.id);
     
     if (estudiantesIds.length === 0) {
       setSeguimientos([]);

@@ -48,6 +48,19 @@ export const getMunicipiosPermitidos = (perfil) => {
   return null;
 };
 
+// Un padrino puede tener asignado un grupo completo (institucion_asignada = null) o solo
+// una institución dentro de ese grupo. `gruposAsignados` es el array de useGrupos, donde
+// cada grupo lleva su propio `institucion_asignada`. `item` es cualquier registro con
+// `grupo_id` + `institucion_educativa` (estudiante, o fila ya hidratada con esos datos).
+export const enAlcancePadrino = (item, gruposAsignados) => {
+  const asignacion = gruposAsignados.find(g => g.id === item.grupo_id);
+  if (!asignacion) return false;
+  return !asignacion.institucion_asignada || asignacion.institucion_asignada === item.institucion_educativa;
+};
+
+export const filtrarPorAlcancePadrino = (items, gruposAsignados) =>
+  items.filter(item => enAlcancePadrino(item, gruposAsignados));
+
 // 🔥 UNA SOLA DECLARACIÓN DE formatearFecha
 export const formatearFecha = (fecha, formato = 'completa') => {
   if (!fecha) return 'N/A';

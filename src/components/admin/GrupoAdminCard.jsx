@@ -263,7 +263,9 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
                 <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">📅 Cohorte {grupo.cohorte}</span>
               </div>
               {grupo.padrinos?.length > 0 && (
-                <p className="text-xs text-gray-500 mt-1">👤 Padrinos: {grupo.padrinos.map(p => p.nombre_completo).join(', ')}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  👤 Padrinos: {grupo.padrinos.map(p => p.institucion_educativa ? `${p.nombre_completo} (🏫 ${p.institucion_educativa})` : p.nombre_completo).join(', ')}
+                </p>
               )}
             </div>
           </div>

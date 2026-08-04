@@ -21,7 +21,7 @@ export default function NotasGrupoResumen({ grupo, modoModal = false }) {
         *,
         notas_estudiantes (
           id, estudiante_id, nota, observaciones,
-          estudiante:estudiante_id ( id, nombre_completo, estado, grupo_id )
+          estudiante:estudiante_id ( id, nombre_completo, estado, grupo_id, institucion_educativa )
         )
       `)
       .eq('grupo_id', grupoId)
@@ -30,9 +30,14 @@ export default function NotasGrupoResumen({ grupo, modoModal = false }) {
       // Si un estudiante fue trasladado a otro grupo, su nota queda registrada
       // en el módulo del grupo donde se evaluó, pero ya no debe contarse en el
       // resumen/descarga del grupo actual (ver perfil del estudiante para su histórico).
+      // Si el padrino tiene alcance restringido a una institución, también se excluyen
+      // las notas de estudiantes de otras instituciones del mismo grupo.
       const filtrado = data.map(nm => ({
         ...nm,
-        notas_estudiantes: (nm.notas_estudiantes || []).filter(ne => ne.estudiante?.grupo_id === grupoId)
+        notas_estudiantes: (nm.notas_estudiantes || []).filter(ne =>
+          ne.estudiante?.grupo_id === grupoId &&
+          (!grupo.institucion_asignada || ne.estudiante?.institucion_educativa === grupo.institucion_asignada)
+        )
       }));
       setNotasModulos(filtrado);
     }
