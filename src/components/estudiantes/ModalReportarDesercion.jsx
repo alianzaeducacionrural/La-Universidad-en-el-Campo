@@ -81,84 +81,41 @@ export default function ModalReportarDesercion({
     }
     
     setCargando(true);
-    
+
     try {
-      // 1. Crear registro de deserción
-      const motivoFinal = motivo === 'Otro' ? motivoOtro : motivo;
-      
-      const { data: registro, error: errorRegistro } = await supabase
-        .from('registros_desercion')
-        .insert([{
-          estudiante_id: estudiante.id,
-          usuario_id: usuario.id,
-          tipo_desercion: tipoDesercion,
-          motivo_principal: motivo,
-          motivo_otro: motivo === 'Otro' ? motivoOtro : null,
-          observaciones: observaciones || null
-        }])
-        .select()
-        .single();
-      
-      if (errorRegistro) throw errorRegistro;
-      
-      // 2. Si es Sin Justificar, crear la multa
-      if (tipoDesercion === 'Sin Justificar') {
-        await supabase
-          .from('multas_desercion')
-          .insert([{
-            estudiante_id: estudiante.id,
-            registro_desercion_id: registro.id,
-            valor_total: parseFloat(valorMulta),
-            estado: 'pendiente'
-          }]);
-      }
-      
-      // 3. Subir carta de retiro
-      const cartaData = await subirArchivo(cartaRetiro, 'carta_retiro_ie', registro.id);
-      if (cartaData) {
-        await supabase.from('documentos_desercion').insert([{
-          registro_id: registro.id,
-          tipo_documento: 'carta_retiro_ie',
-          nombre_archivo: cartaData.nombre,
-          url_archivo: cartaData.url,
-          tamanio_bytes: cartaData.tamanio
-        }]);
-      }
-      
-      // 4. Subir soporte adicional (si hay)
-      if (soporteAdicional) {
-        const soporteData = await subirArchivo(soporteAdicional, 'soporte', registro.id);
-        if (soporteData) {
-          await supabase.from('documentos_desercion').insert([{
-            registro_id: registro.id,
-            tipo_documento: 'otro',
-            nombre_archivo: soporteData.nombre,
-            url_archivo: soporteData.url,
-            tamanio_bytes: soporteData.tamanio
-          }]);
-        }
-      }
-      
-      // 5. Actualizar historial de estados
-      await supabase.from('historial_estados').insert([{
-        estudiante_id: estudiante.id,
-        estado_anterior: estudiante.estado,
-        estado_nuevo: 'Desertor',
-        usuario_id: usuario.id,
-        registro_desercion_id: registro.id,
-        observaciones: `Deserción ${tipoDesercion} - ${motivoFinal}${tipoDesercion === 'Sin Justificar' ? ' | Multa: $' + valorMulta : ''}`
-      }]);
-      
-      // 6. Cambiar estado del estudiante
-      await supabase
-        .from('estudiantes')
-        .update({ estado: 'Desertor' })
-        .eq('id', estudiante.id);
-      
+      // Subir los archivos ANTES de escribir nada en la base de datos. La carpeta de
+      // almacenamiento se identifica con un id generado en el cliente (no el id real del
+      // registro, que todavía no existe) para poder subir sin depender de una fila creada.
+      // Así, si la subida falla, no queda ningún registro/multa huérfano para reintentar
+      // y terminar duplicando (esto era justo lo que generaba multas duplicadas).
+      const carpetaSubida = crypto.randomUUID();
+      const cartaData = await subirArchivo(cartaRetiro, 'carta_retiro_ie', carpetaSubida);
+      const soporteData = soporteAdicional ? await subirArchivo(soporteAdicional, 'soporte', carpetaSubida) : null;
+
+      // El resto (registro, multa, documentos, historial y cambio de estado) se hace en una
+      // sola transacción en la base de datos: o se guarda todo, o no se guarda nada.
+      const { error } = await supabase.rpc('reportar_desercion', {
+        p_estudiante_id: estudiante.id,
+        p_usuario_id: usuario.id,
+        p_tipo_desercion: tipoDesercion,
+        p_motivo_principal: motivo,
+        p_motivo_otro: motivo === 'Otro' ? motivoOtro : null,
+        p_observaciones: observaciones || null,
+        p_valor_multa: tipoDesercion === 'Sin Justificar' ? parseFloat(valorMulta) : null,
+        p_carta_nombre: cartaData?.nombre || null,
+        p_carta_url: cartaData?.url || null,
+        p_carta_tamanio: cartaData?.tamanio || null,
+        p_soporte_nombre: soporteData?.nombre || null,
+        p_soporte_url: soporteData?.url || null,
+        p_soporte_tamanio: soporteData?.tamanio || null
+      });
+
+      if (error) throw error;
+
       notificacion.success(`${estudiante.nombre_completo} ha sido reportado como Desertor`);
       onConfirmar();
       onClose();
-      
+
     } catch (error) {
       console.error('Error:', error);
       notificacion.error(interpretarError(error), 'Error al reportar deserción');

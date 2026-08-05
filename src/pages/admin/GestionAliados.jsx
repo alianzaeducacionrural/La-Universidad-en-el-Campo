@@ -11,6 +11,7 @@ import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ModalAliado from '../../components/admin/ModalAliado';
 import { useNotificacion } from '../../context/NotificacionContext';
+import { interpretarError } from '../../utils/helpers';
 
 export default function GestionAliados({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
@@ -57,6 +58,18 @@ export default function GestionAliados({ onVerPerfil }) {
       notificacion.error(error.message, 'Error al cambiar estado');
     } else {
       notificacion.success(aliado.activo ? 'Aliado desactivado' : 'Aliado activado');
+      cargarAliados();
+    }
+  }
+
+  async function handleEliminar(aliado) {
+    if (!confirm(`¿Eliminar definitivamente al aliado "${aliado.nombre_completo}"? Esta acción no se puede deshacer.`)) return;
+
+    const { error } = await supabase.from('padrinos').delete().eq('id', aliado.id);
+    if (error) {
+      notificacion.error(interpretarError(error), 'Error al eliminar');
+    } else {
+      notificacion.success(`Aliado "${aliado.nombre_completo}" eliminado`);
       cargarAliados();
     }
   }
@@ -171,6 +184,12 @@ export default function GestionAliados({ onVerPerfil }) {
                       className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
                     >
                       ✏️ Editar
+                    </button>
+                    <button
+                      onClick={() => handleEliminar(aliado)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition"
+                    >
+                      🗑️ Eliminar
                     </button>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { formatearFecha, interpretarError } from '../../utils/helpers';
+import ModalCrearInstitucion from './ModalCrearInstitucion';
 
 function generarToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
@@ -20,6 +21,8 @@ export default function GestionInstituciones() {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [procesandoId, setProcesandoId] = useState(null);
+  const [mostrarTodas, setMostrarTodas] = useState(false);
+  const [modalCrear, setModalCrear] = useState(false);
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -112,16 +115,18 @@ export default function GestionInstituciones() {
   }
 
   const institucionesFiltradas = useMemo(() => {
-    const conEstudiantesActivos = instituciones.filter(i => {
-      const clave = `${i.nombre}|${i.municipios?.nombre}`;
-      return (conteosActivos[clave] || 0) > 0;
-    });
-    if (!busqueda.trim()) return conEstudiantesActivos;
+    const base = mostrarTodas
+      ? instituciones
+      : instituciones.filter(i => {
+          const clave = `${i.nombre}|${i.municipios?.nombre}`;
+          return (conteosActivos[clave] || 0) > 0;
+        });
+    if (!busqueda.trim()) return base;
     const q = busqueda.toLowerCase();
-    return conEstudiantesActivos.filter(i =>
+    return base.filter(i =>
       i.nombre.toLowerCase().includes(q) || i.municipios?.nombre?.toLowerCase().includes(q)
     );
-  }, [instituciones, conteosActivos, busqueda]);
+  }, [instituciones, conteosActivos, busqueda, mostrarTodas]);
 
   const agrupadasPorMunicipio = useMemo(() => {
     const grupos = {};
@@ -143,18 +148,37 @@ export default function GestionInstituciones() {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-4">
-        Genera un enlace de solo lectura para que cada institución vea únicamente la información
-        de sus propios estudiantes y grupos, sin necesidad de iniciar sesión.
-      </p>
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <p className="text-sm text-gray-500">
+          Genera un enlace de solo lectura para que cada institución vea únicamente la información
+          de sus propios estudiantes y grupos, sin necesidad de iniciar sesión.
+        </p>
+        <button
+          onClick={() => setModalCrear(true)}
+          className="flex-shrink-0 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          ➕ Nueva Institución
+        </button>
+      </div>
 
-      <input
-        type="text"
-        value={busqueda}
-        onChange={e => setBusqueda(e.target.value)}
-        placeholder="🔍 Buscar institución o municipio..."
-        className="w-full max-w-md border border-gray-300 rounded-lg px-4 py-2.5 text-sm mb-4"
-      />
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          type="text"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="🔍 Buscar institución o municipio..."
+          className="w-full max-w-md border border-gray-300 rounded-lg px-4 py-2.5 text-sm"
+        />
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={mostrarTodas}
+            onChange={e => setMostrarTodas(e.target.checked)}
+            className="rounded border-gray-300"
+          />
+          Mostrar instituciones sin estudiantes activos
+        </label>
+      </div>
 
       <div className="space-y-6">
         {agrupadasPorMunicipio.map(([municipio, lista]) => (
@@ -220,6 +244,12 @@ export default function GestionInstituciones() {
           </div>
         ))}
       </div>
+
+      <ModalCrearInstitucion
+        isOpen={modalCrear}
+        onClose={() => setModalCrear(false)}
+        onCreada={() => { setModalCrear(false); cargarDatos(); }}
+      />
     </div>
   );
 }
