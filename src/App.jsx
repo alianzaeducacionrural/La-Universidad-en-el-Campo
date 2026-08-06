@@ -26,6 +26,7 @@ const GestionGrupos = lazy(() => import('./pages/admin/GestionGrupos'));
 const GestionMultas = lazy(() => import('./pages/admin/GestionMultas'));
 const HistorialReportesAsistencia = lazy(() => import('./pages/coordinador/HistorialReportesAsistencia'));
 const GestionAliados = lazy(() => import('./pages/admin/GestionAliados'));
+const GestionEquipo = lazy(() => import('./pages/admin/GestionEquipo'));
 const GestionDesertores = lazy(() => import('./pages/admin/GestionDesertores'));
 const PortalInstitucion = lazy(() => import('./pages/PortalInstitucion'));
 
@@ -389,6 +390,7 @@ function AppContent() {
             <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/desertores" element={<ProtectedRoute><GestionDesertores onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
+            <Route path="/equipo" element={<AdminRoute><GestionEquipo onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
             <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/" element={<HomeRedirect />} />
             <Route path="*" element={<Navigate to="/" replace />} />

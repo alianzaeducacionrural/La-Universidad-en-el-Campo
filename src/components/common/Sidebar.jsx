@@ -58,6 +58,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     if (path === '/grupos') return 'grupos-admin';
     if (path === '/desertores') return 'desertores';
     if (path === '/aliados') return 'aliados';
+    if (path === '/equipo') return 'equipo';
     return vistaActiva || 'grupos';
   };
 
@@ -84,6 +85,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: totalReportesNuevos, action: () => navigate('/historial-reportes') },
     { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
     { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => navigate('/aliados') },
+    { id: 'equipo',              label: 'Equipo',              mobileLabel: 'Equipo',    icon: '🧑‍💼', visible: esAdmin, badge: 0,                    action: () => navigate('/equipo') },
   ];
 
   const allVisibleItems = [...menuPadrino, ...menuAdmin].filter(i => i.visible);
