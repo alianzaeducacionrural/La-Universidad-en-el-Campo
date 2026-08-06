@@ -38,6 +38,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   const [modalEditar, setModalEditar] = useState(false);
   const [modalHistorial, setModalHistorial] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [eliminandoGrupo, setEliminandoGrupo] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
   const [modalNotas, setModalNotas] = useState(false);
 
@@ -247,6 +248,28 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
     }
   }
 
+  async function handleEliminarGrupo() {
+    const confirmacion = window.prompt(
+      `Esta acción borra el grupo "${grupo.nombre}", TODOS sus ${grupo.total_estudiantes} estudiantes y todo su historial (seguimientos, notas, asistencia, deserción, multas) de forma permanente. No se puede deshacer.\n\nEscribe el nombre del grupo para confirmar:`
+    );
+    if (confirmacion === null) return;
+    if (confirmacion.trim() !== grupo.nombre) {
+      notificacion.error('El nombre no coincide. No se eliminó el grupo.', 'Cancelado');
+      return;
+    }
+
+    setEliminandoGrupo(true);
+    const { error } = await supabase.rpc('eliminar_grupo_completo', { p_grupo_id: grupo.id });
+    setEliminandoGrupo(false);
+
+    if (error) {
+      notificacion.error(error.message, 'Error al eliminar');
+    } else {
+      notificacion.success(`Grupo "${grupo.nombre}" eliminado correctamente`);
+      onRecargar();
+    }
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       {/* Cabecera */}
@@ -292,6 +315,11 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
               <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
               <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
               <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🔄 Finalizar Grupo' : '✅ Reactivar Grupo'}</button>
+              {usuario?.rol === 'admin' && (
+                <button onClick={(e) => { e.stopPropagation(); handleEliminarGrupo(); }} disabled={eliminandoGrupo} className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition disabled:opacity-50">
+                  {eliminandoGrupo ? 'Eliminando...' : '🗑️ Eliminar Grupo'}
+                </button>
+              )}
             </div>
           )}
 
@@ -368,6 +396,8 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
         return result;
       }}
         onTrasladoCompletado={() => { cargarEstudiantes(); onRecargar(); }}
+        esAdmin={usuario?.rol === 'admin'}
+        onEstudianteEliminado={() => { setEstudianteSeleccionado(null); cargarEstudiantes(); onRecargar(); }}
       />
 
       <ModalSeguimiento

@@ -26,10 +26,13 @@ export default function ModalPerfilEstudiante({
   onReportarDesercion,
   puedeGestionar,
   onEstadoChange,
-  onTrasladoCompletado
+  onTrasladoCompletado,
+  esAdmin = false,
+  onEstudianteEliminado
 }) {
   const notificacion = useNotificacion();
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
   const [datosDesercion, setDatosDesercion] = useState(null);
   const [cargandoDesercion, setCargandoDesercion] = useState(false);
   const [modalEditarDesercion, setModalEditarDesercion] = useState(false);
@@ -108,6 +111,30 @@ export default function ModalPerfilEstudiante({
       .maybeSingle();
     if (registro) setDatosDesercion(registro);
     setCargandoDesercion(false);
+  }
+
+  async function handleEliminarEstudiante() {
+    const confirmacion = window.prompt(
+      `Esta acción borra a "${estudiante.nombre_completo}" y TODO su historial (seguimientos, notas, inasistencias, deserción, multas) de forma permanente. No se puede deshacer.\n\nEscribe el nombre completo del estudiante para confirmar:`
+    );
+    if (confirmacion === null) return;
+    if (confirmacion.trim() !== estudiante.nombre_completo) {
+      notificacion.error('El nombre no coincide. No se eliminó el estudiante.', 'Cancelado');
+      return;
+    }
+
+    setEliminando(true);
+    const { error } = await supabase.rpc('eliminar_estudiante_completo', { p_estudiante_id: estudiante.id });
+    setEliminando(false);
+
+    if (error) {
+      notificacion.error(error.message, 'Error al eliminar');
+      return;
+    }
+
+    notificacion.success(`"${estudiante.nombre_completo}" fue eliminado correctamente`);
+    onClose();
+    onEstudianteEliminado?.(estudiante.id);
   }
 
   useEffect(() => {
@@ -224,6 +251,16 @@ export default function ModalPerfilEstudiante({
                     🔄 Cambiar de Grupo
                   </button>
                 </>
+              )}
+
+              {esAdmin && (
+                <button
+                  onClick={handleEliminarEstudiante}
+                  disabled={eliminando}
+                  className="bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-red-200 shadow-sm disabled:opacity-50"
+                >
+                  {eliminando ? 'Eliminando...' : '🗑️ Eliminar Estudiante'}
+                </button>
               )}
 
               {/* BOTÓN EXPORTAR */}

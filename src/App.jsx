@@ -112,6 +112,8 @@ function PanelModales({
         onReportarDesercion={handleReportarDesercionDesdePanel}
         puedeGestionar={true}
         onEstadoChange={handleCambiarEstadoPanel}
+        esAdmin={usuario?.rol === 'admin'}
+        onEstudianteEliminado={() => setEstudianteSeleccionado(null)}
       />
       <ModalEditarEstudiante
         isOpen={modalEditarEstudiante}
@@ -195,6 +197,8 @@ function GlobalModales({
           notificacion.success(`Estado actualizado a: ${estado}`);
           return { success: true };
         }}
+        esAdmin={usuario?.rol === 'admin'}
+        onEstudianteEliminado={() => setEstudiantePerfilGlobal(null)}
       />
 
       <ModalSeguimiento
