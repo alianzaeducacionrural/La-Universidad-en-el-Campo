@@ -12,6 +12,7 @@ import VisorImagen from '../common/VisorImagen';
 import BotonWhatsApp from '../common/BotonWhatsApp';
 import ModalEditarDesercion from './ModalEditarDesercion';
 import ModalCambiarGrupo from './ModalCambiarGrupo';
+import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 
 export default function ModalPerfilEstudiante({
   isOpen,
@@ -33,6 +34,7 @@ export default function ModalPerfilEstudiante({
   const notificacion = useNotificacion();
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+  const [modalEliminarEstudiante, setModalEliminarEstudiante] = useState(false);
   const [datosDesercion, setDatosDesercion] = useState(null);
   const [cargandoDesercion, setCargandoDesercion] = useState(false);
   const [modalEditarDesercion, setModalEditarDesercion] = useState(false);
@@ -114,15 +116,6 @@ export default function ModalPerfilEstudiante({
   }
 
   async function handleEliminarEstudiante() {
-    const confirmacion = window.prompt(
-      `Esta acción borra a "${estudiante.nombre_completo}" y TODO su historial (seguimientos, notas, inasistencias, deserción, multas) de forma permanente. No se puede deshacer.\n\nEscribe el nombre completo del estudiante para confirmar:`
-    );
-    if (confirmacion === null) return;
-    if (confirmacion.trim() !== estudiante.nombre_completo) {
-      notificacion.error('El nombre no coincide. No se eliminó el estudiante.', 'Cancelado');
-      return;
-    }
-
     setEliminando(true);
     const { error } = await supabase.rpc('eliminar_estudiante_completo', { p_estudiante_id: estudiante.id });
     setEliminando(false);
@@ -132,6 +125,7 @@ export default function ModalPerfilEstudiante({
       return;
     }
 
+    setModalEliminarEstudiante(false);
     notificacion.success(`"${estudiante.nombre_completo}" fue eliminado correctamente`);
     onClose();
     onEstudianteEliminado?.(estudiante.id);
@@ -255,11 +249,10 @@ export default function ModalPerfilEstudiante({
 
               {esAdmin && (
                 <button
-                  onClick={handleEliminarEstudiante}
-                  disabled={eliminando}
-                  className="bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-red-200 shadow-sm disabled:opacity-50"
+                  onClick={() => setModalEliminarEstudiante(true)}
+                  className="bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-red-200 shadow-sm"
                 >
-                  {eliminando ? 'Eliminando...' : '🗑️ Eliminar Estudiante'}
+                  🗑️ Eliminar Estudiante
                 </button>
               )}
 
@@ -674,6 +667,15 @@ export default function ModalPerfilEstudiante({
           cargarNotasEstudiante(estudiante.id);
           onTrasladoCompletado?.();
         }}
+      />
+
+      <ModalConfirmarEliminacion
+        isOpen={modalEliminarEstudiante}
+        onClose={() => setModalEliminarEstudiante(false)}
+        onConfirmar={handleEliminarEstudiante}
+        cargando={eliminando}
+        titulo={`Eliminar a "${estudiante.nombre_completo}"`}
+        mensaje="Esta acción borra al estudiante y TODO su historial (seguimientos, notas, inasistencias, deserción, multas). No se puede deshacer."
       />
     </>
   );

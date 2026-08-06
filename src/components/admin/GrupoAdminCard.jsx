@@ -19,6 +19,7 @@ import ModalReportarDesercion from '../estudiantes/ModalReportarDesercion';
 import ModalEditarSeguimiento from '../seguimientos/ModalEditarSeguimiento';
 import ModalHistorialAcciones from '../grupos/ModalHistorialAcciones';
 import ModalNotasGrupo from '../notas/ModalNotasGrupo';
+import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 
 export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos = null, soloLectura = false }) {
   const notificacion = useNotificacion();
@@ -39,6 +40,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   const [modalHistorial, setModalHistorial] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [eliminandoGrupo, setEliminandoGrupo] = useState(false);
+  const [modalEliminarGrupo, setModalEliminarGrupo] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
   const [modalNotas, setModalNotas] = useState(false);
 
@@ -249,15 +251,6 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   }
 
   async function handleEliminarGrupo() {
-    const confirmacion = window.prompt(
-      `Esta acción borra el grupo "${grupo.nombre}", TODOS sus ${grupo.total_estudiantes} estudiantes y todo su historial (seguimientos, notas, asistencia, deserción, multas) de forma permanente. No se puede deshacer.\n\nEscribe el nombre del grupo para confirmar:`
-    );
-    if (confirmacion === null) return;
-    if (confirmacion.trim() !== grupo.nombre) {
-      notificacion.error('El nombre no coincide. No se eliminó el grupo.', 'Cancelado');
-      return;
-    }
-
     setEliminandoGrupo(true);
     const { error } = await supabase.rpc('eliminar_grupo_completo', { p_grupo_id: grupo.id });
     setEliminandoGrupo(false);
@@ -265,6 +258,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
     if (error) {
       notificacion.error(error.message, 'Error al eliminar');
     } else {
+      setModalEliminarGrupo(false);
       notificacion.success(`Grupo "${grupo.nombre}" eliminado correctamente`);
       onRecargar();
     }
@@ -316,8 +310,8 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
               <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
               <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🔄 Finalizar Grupo' : '✅ Reactivar Grupo'}</button>
               {usuario?.rol === 'admin' && (
-                <button onClick={(e) => { e.stopPropagation(); handleEliminarGrupo(); }} disabled={eliminandoGrupo} className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition disabled:opacity-50">
-                  {eliminandoGrupo ? 'Eliminando...' : '🗑️ Eliminar Grupo'}
+                <button onClick={(e) => { e.stopPropagation(); setModalEliminarGrupo(true); }} className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition">
+                  🗑️ Eliminar Grupo
                 </button>
               )}
             </div>
@@ -377,6 +371,15 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo}/>
       <ModalNotasGrupo isOpen={modalNotas} onClose={() => setModalNotas(false)} grupo={grupo} />
+
+      <ModalConfirmarEliminacion
+        isOpen={modalEliminarGrupo}
+        onClose={() => setModalEliminarGrupo(false)}
+        onConfirmar={handleEliminarGrupo}
+        cargando={eliminandoGrupo}
+        titulo={`Eliminar grupo "${grupo.nombre}"`}
+        mensaje={`Esta acción borra el grupo y TODOS sus ${grupo.total_estudiantes} estudiantes, junto con todo su historial (seguimientos, notas, asistencia, deserción, multas). No se puede deshacer.`}
+      />
 
       <ModalPerfilEstudiante
         isOpen={modalPerfil}
