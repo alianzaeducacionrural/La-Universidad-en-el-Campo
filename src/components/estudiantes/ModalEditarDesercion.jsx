@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { interpretarError } from '../../utils/helpers';
+import { TIPOS_DOCUMENTO_DESERCION } from '../../utils/constants';
 
 const MOTIVOS_DESERCION = [
   { value: 'Cambio de domicilio', label: 'Cambio de domicilio' },
@@ -20,15 +21,7 @@ const MOTIVOS_DESERCION = [
   { value: 'Otro', label: 'Otro' }
 ];
 
-const TIPOS_DOCUMENTO = [
-  { value: 'carta_retiro_ie', label: 'Carta de Retiro (Institución Educativa)' },
-  { value: 'certificado_vecindad', label: 'Certificado de Vecindad' },
-  { value: 'certificado_medico', label: 'Certificado Médico' },
-  { value: 'soporte_economico', label: 'Soporte Económico' },
-  { value: 'otro', label: 'Otro Documento' }
-];
-
-export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, onActualizado }) {
+export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, onActualizado, onDocumentoAgregado }) {
   const notificacion = useNotificacion();
   const [tipoDesercion, setTipoDesercion] = useState('');
   const [motivo, setMotivo] = useState('');
@@ -134,6 +127,9 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
       setDocumentos(prev => [...prev, nuevoDoc]);
       setNuevoArchivo(null);
       notificacion.success('Documento agregado correctamente');
+      // El checklist de pasos depende de qué documentos existen: avisar al padre de
+      // inmediato, sin esperar a que se guarde el resto del formulario.
+      onDocumentoAgregado?.();
     } catch (error) {
       console.error('Error:', error);
       notificacion.error(interpretarError(error), 'Error al subir documento');
@@ -148,13 +144,21 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
 
     try {
       // 1. Actualizar registro de deserción
+      const cambioDeRuta = tipoDesercion !== datosDesercion.tipo_desercion;
       const { error: errorDesercion } = await supabase
         .from('registros_desercion')
         .update({
           tipo_desercion: tipoDesercion,
           motivo_principal: motivo,
           motivo_otro: motivo === 'Otro' ? motivoOtro : null,
-          observaciones: observaciones || null
+          observaciones: observaciones || null,
+          // Cambiar de ruta (Justificada <-> Sin Justificar) cambia por completo el
+          // significado del paso manual del checklist, así que se resetea a pendiente.
+          ...(cambioDeRuta && {
+            paso_manual_completado: false,
+            paso_manual_completado_at: null,
+            paso_manual_completado_por: null
+          })
         })
         .eq('id', datosDesercion.id);
 
@@ -289,7 +293,7 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
                     <div className="flex-1 min-w-0">
                         <span className="text-sm text-gray-700 truncate block">{doc.nombre_archivo}</span>
                         <span className="text-xs text-gray-400">
-                        ({TIPOS_DOCUMENTO.find(t => t.value === doc.tipo_documento)?.label || doc.tipo_documento})
+                        ({TIPOS_DOCUMENTO_DESERCION.find(t => t.value === doc.tipo_documento)?.label || doc.tipo_documento})
                         </span>
                     </div>
                     </div>
@@ -342,7 +346,9 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
                 <p className="text-sm font-medium text-gray-700 mb-2">➕ Agregar nuevo documento</p>
                 <div className="space-y-2">
                   <select value={tipoNuevoDocumento} onChange={(e) => setTipoNuevoDocumento(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    {TIPOS_DOCUMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    {TIPOS_DOCUMENTO_DESERCION.filter(t => !t.aplicaA || t.aplicaA === tipoDesercion).map(t => (
+                      <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+                    ))}
                   </select>
                   <div className="flex items-center space-x-2">
                     <input type="file" accept=".pdf,image/*" onChange={(e) => setNuevoArchivo(e.target.files[0])} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />

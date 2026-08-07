@@ -16,6 +16,32 @@ export const getEstadoColor = (estado) => {
   return COLORES_ESTADO[estado] || 'bg-gray-100 text-gray-700 border-gray-300';
 };
 
+// Deriva el checklist de pasos del proceso de deserción a partir del registro (con su
+// `tipo_desercion`, `paso_manual_completado` y `documentos` embebidos) — no se guarda como
+// un texto de "estado actual" para evitar desincronización si se borra un documento.
+export const calcularPasosDesercion = (registro) => {
+  if (!registro || !registro.tipo_desercion) return [];
+  const docs = registro.documentos || [];
+  const tieneDoc = (tipo) => docs.some(d => d.tipo_documento === tipo);
+  const base = [{ key: 'retiro_ie', label: 'Retiro de la I.E.', tipo: 'auto', completado: true }];
+
+  if (registro.tipo_desercion === 'Sin Justificar') {
+    return [
+      ...base,
+      { key: 'confirmacion_retiro', label: 'Confirmación del retiro sin justificar', tipo: 'manual', completado: !!registro.paso_manual_completado },
+      { key: 'carta_cobro_1', label: 'Carta cobro 1', tipo: 'auto', completado: tieneDoc('carta_cobro_1') },
+      { key: 'carta_cobro_2', label: 'Carta cobro 2', tipo: 'auto', completado: tieneDoc('carta_cobro_2') },
+      { key: 'carta_cobro_3', label: 'Carta cobro 3', tipo: 'auto', completado: tieneDoc('carta_cobro_3') }
+    ];
+  }
+
+  return [
+    ...base,
+    { key: 'evidencia_justificado', label: 'Evidencia del Retiro Justificado', tipo: 'manual', completado: !!registro.paso_manual_completado },
+    { key: 'cierre_caso', label: 'Cierre de caso', tipo: 'auto', completado: tieneDoc('cierre_caso') }
+  ];
+};
+
 export const getRolColor = (rol) => {
   return COLORES_ROL[rol] || 'bg-gray-100 text-gray-700';
 };

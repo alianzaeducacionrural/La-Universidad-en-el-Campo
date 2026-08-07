@@ -15,6 +15,7 @@ import { useParams } from 'react-router-dom';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
 import { getEstadoColor, formatearFecha, limpiarEmojis } from '../utils/helpers';
+import { TIPOS_DOCUMENTO_DESERCION } from '../utils/constants';
 import {
   exportarEstudiantesExcel,
   exportarSeguimientosExcel,
@@ -1155,12 +1156,15 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
                     <div className="mt-4">
                       <p className="font-medium text-sm mb-2">📎 Documentos adjuntos:</p>
                       <div className="space-y-2">
-                        {estudiante.desercion.documentos.map(doc => (
-                          <div key={doc.id} className="flex items-center justify-between bg-white p-2 rounded-lg">
-                            <span className="text-sm">{doc.tipo_documento === 'carta_retiro_ie' ? '📄 Carta de Retiro' : '📎 Soporte Adicional'}</span>
-                            <a href={doc.url_archivo} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark text-sm font-medium">Ver →</a>
-                          </div>
-                        ))}
+                        {estudiante.desercion.documentos.map(doc => {
+                          const tipoDoc = TIPOS_DOCUMENTO_DESERCION.find(t => t.value === doc.tipo_documento);
+                          return (
+                            <div key={doc.id} className="flex items-center justify-between bg-white p-2 rounded-lg">
+                              <span className="text-sm">{tipoDoc ? `${tipoDoc.icon} ${tipoDoc.label}` : `📎 ${doc.tipo_documento}`}</span>
+                              <a href={doc.url_archivo} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark text-sm font-medium">Ver →</a>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

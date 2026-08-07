@@ -3,16 +3,18 @@
 // =============================================
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
-import { getEstadoColor, formatearFecha } from '../../utils/helpers';
-import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
+import { getEstadoColor, formatearFecha, calcularPasosDesercion } from '../../utils/helpers';
+import { ESTADOS_ESTUDIANTE, TIPOS_DOCUMENTO_DESERCION } from '../../utils/constants';
 import { exportarSeguimientosExcel, exportarNotasEstudianteExcel, exportarInasistenciasExcel } from '../../utils/exportUtils';
 import VisorImagen from '../common/VisorImagen';
 import BotonWhatsApp from '../common/BotonWhatsApp';
 import ModalEditarDesercion from './ModalEditarDesercion';
 import ModalCambiarGrupo from './ModalCambiarGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
+import PasosDesercion from './PasosDesercion';
 
 export default function ModalPerfilEstudiante({
   isOpen,
@@ -31,12 +33,14 @@ export default function ModalPerfilEstudiante({
   esAdmin = false,
   onEstudianteEliminado
 }) {
+  const { perfil: usuario } = useAuth();
   const notificacion = useNotificacion();
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
   const [eliminando, setEliminando] = useState(false);
   const [modalEliminarEstudiante, setModalEliminarEstudiante] = useState(false);
   const [datosDesercion, setDatosDesercion] = useState(null);
   const [cargandoDesercion, setCargandoDesercion] = useState(false);
+  const [guardandoPasoManual, setGuardandoPasoManual] = useState(false);
   const [modalEditarDesercion, setModalEditarDesercion] = useState(false);
   const [modalCambiarGrupo, setModalCambiarGrupo] = useState(false);
   const [notasEstudiante, setNotasEstudiante] = useState([]);
@@ -113,6 +117,26 @@ export default function ModalPerfilEstudiante({
       .maybeSingle();
     if (registro) setDatosDesercion(registro);
     setCargandoDesercion(false);
+  }
+
+  async function handleTogglePasoManual() {
+    const nuevoValor = !datosDesercion.paso_manual_completado;
+    setGuardandoPasoManual(true);
+    const { error } = await supabase
+      .from('registros_desercion')
+      .update({
+        paso_manual_completado: nuevoValor,
+        paso_manual_completado_at: nuevoValor ? new Date().toISOString() : null,
+        paso_manual_completado_por: nuevoValor ? usuario?.id : null
+      })
+      .eq('id', datosDesercion.id);
+    setGuardandoPasoManual(false);
+
+    if (error) {
+      notificacion.error(error.message, 'Error al actualizar');
+      return;
+    }
+    cargarDatosDesercion(estudiante.id);
   }
 
   async function handleEliminarEstudiante() {
@@ -363,6 +387,29 @@ export default function ModalPerfilEstudiante({
                   </div>
                 ) : datosDesercion ? (
                   <div className="space-y-3">
+                    <div>
+                      <p className="font-medium text-sm text-gray-700 mb-2">📋 Progreso del proceso:</p>
+                      <PasosDesercion pasos={calcularPasosDesercion(datosDesercion)} />
+                      {puedeGestionar && (
+                        <button
+                          onClick={handleTogglePasoManual}
+                          disabled={guardandoPasoManual}
+                          className={`mt-2 text-xs px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50 ${
+                            datosDesercion.paso_manual_completado
+                              ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                              : 'bg-amber-600 hover:bg-amber-700 text-white'
+                          }`}
+                        >
+                          {guardandoPasoManual
+                            ? 'Guardando...'
+                            : datosDesercion.paso_manual_completado
+                              ? '↩️ Desmarcar'
+                              : datosDesercion.tipo_desercion === 'Sin Justificar'
+                                ? '✅ Marcar confirmación del retiro'
+                                : '✅ Marcar evidencia del retiro justificado'}
+                        </button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       <p><strong>Tipo:</strong> {datosDesercion.tipo_desercion}</p>
                       <p><strong>Fecha de reporte:</strong> {formatearFecha(datosDesercion.fecha_reporte)}</p>
@@ -376,12 +423,15 @@ export default function ModalPerfilEstudiante({
                       <div className="mt-4">
                         <p className="font-medium text-sm mb-2">📎 Documentos adjuntos:</p>
                         <div className="space-y-2">
-                          {datosDesercion.documentos.map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between bg-white p-2 rounded-lg">
-                              <span className="text-sm">{doc.tipo_documento === 'carta_retiro_ie' ? '📄 Carta de Retiro' : '📎 Soporte Adicional'}</span>
-                              <a href={doc.url_archivo} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark text-sm font-medium">Ver →</a>
-                            </div>
-                          ))}
+                          {datosDesercion.documentos.map((doc) => {
+                            const tipoDoc = TIPOS_DOCUMENTO_DESERCION.find(t => t.value === doc.tipo_documento);
+                            return (
+                              <div key={doc.id} className="flex items-center justify-between bg-white p-2 rounded-lg">
+                                <span className="text-sm">{tipoDoc ? `${tipoDoc.icon} ${tipoDoc.label}` : `📎 ${doc.tipo_documento}`}</span>
+                                <a href={doc.url_archivo} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark text-sm font-medium">Ver →</a>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -655,6 +705,7 @@ export default function ModalPerfilEstudiante({
             onCargarHistorial(estudiante.id);
           }
         }}
+        onDocumentoAgregado={() => cargarDatosDesercion(estudiante.id)}
       />
 
       <ModalCambiarGrupo

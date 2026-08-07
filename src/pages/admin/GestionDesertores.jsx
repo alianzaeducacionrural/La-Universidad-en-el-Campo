@@ -10,7 +10,8 @@ import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
-import { formatearFecha, getMunicipiosPermitidos } from '../../utils/helpers';
+import { formatearFecha, getMunicipiosPermitidos, calcularPasosDesercion } from '../../utils/helpers';
+import PasosDesercion from '../../components/estudiantes/PasosDesercion';
 import * as XLSX from 'xlsx';
 
 export default function GestionDesertores({ onVerPerfil }) {
@@ -37,7 +38,7 @@ export default function GestionDesertores({ onVerPerfil }) {
       .select(`
         *,
         grupos:grupo_id ( nombre ),
-        registros_desercion ( id, fecha_reporte, tipo_desercion, motivo_principal, motivo_otro, observaciones, usuario:usuario_id ( nombre_completo ) )
+        registros_desercion ( id, fecha_reporte, tipo_desercion, motivo_principal, motivo_otro, observaciones, paso_manual_completado, documentos:documentos_desercion ( tipo_documento ), usuario:usuario_id ( nombre_completo ) )
       `)
       .eq('estado', 'Desertor')
       .order('nombre_completo');
@@ -230,6 +231,7 @@ export default function GestionDesertores({ onVerPerfil }) {
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Municipio</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Universidad / Grupo</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Tipo</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-gray-600">Progreso</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Motivo</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Fecha</th>
                       <th className="px-4 py-2.5 text-center font-medium text-gray-600">Multa</th>
@@ -265,6 +267,9 @@ export default function GestionDesertores({ onVerPerfil }) {
                               Sin registro
                             </span>
                           )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <PasosDesercion pasos={calcularPasosDesercion(d.registro)} compacto />
                         </td>
                         <td className="px-4 py-2.5 text-gray-600">{d.registro?.motivo_principal || '—'}</td>
                         <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">

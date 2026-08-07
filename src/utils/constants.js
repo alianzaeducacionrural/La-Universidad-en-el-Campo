@@ -64,6 +64,20 @@ export const TIPOS_GESTION = [
   { value: '🏫 Visita Institución', label: '🏫 Visita Institución' }
 ];
 
+// Tipos de documento para el proceso de deserción. `aplicaA` restringe la opción a una
+// ruta (tipo_desercion) específica; null significa que aplica a ambas.
+export const TIPOS_DOCUMENTO_DESERCION = [
+  { value: 'carta_retiro_ie', label: 'Carta de Retiro (Institución Educativa)', icon: '📄', aplicaA: null },
+  { value: 'certificado_vecindad', label: 'Certificado de Vecindad', icon: '📎', aplicaA: null },
+  { value: 'certificado_medico', label: 'Certificado Médico', icon: '📎', aplicaA: null },
+  { value: 'soporte_economico', label: 'Soporte Económico', icon: '📎', aplicaA: null },
+  { value: 'carta_cobro_1', label: 'Carta de Cobro 1', icon: '💰', aplicaA: 'Sin Justificar' },
+  { value: 'carta_cobro_2', label: 'Carta de Cobro 2', icon: '💰', aplicaA: 'Sin Justificar' },
+  { value: 'carta_cobro_3', label: 'Carta de Cobro 3', icon: '💰', aplicaA: 'Sin Justificar' },
+  { value: 'cierre_caso', label: 'Carta de cierre de caso', icon: '✅', aplicaA: 'Justificada' },
+  { value: 'otro', label: 'Otro Documento', icon: '📎', aplicaA: null }
+];
+
 // Causas de ausencia
 export const CAUSAS_AUSENCIA = [
   { value: '📡 Conectividad', label: '📡 Conectividad / Sin Señal' },
