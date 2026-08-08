@@ -11,6 +11,7 @@ import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { formatearFecha, interpretarError } from '../../utils/helpers';
+import { generarCartaCobro1 } from '../../utils/docxCartaCobro';
 import jsPDF from 'jspdf';
 
 export default function GestionMultas({ onVerPerfil }) {
@@ -82,8 +83,24 @@ export default function GestionMultas({ onVerPerfil }) {
     const { error } = await supabase
       .from('cartas_cobro')
       .insert([{ multa_id: multaSeleccionada.id, numero_carta: numeroCarta, fecha_emision: fechaCarta }]);
-    if (error) { notificacion.error(interpretarError(error), 'Error al generar carta'); }
-    else { notificacion.success(`Carta de Cobro #${numeroCarta} generada correctamente`); setModalCarta(false); cargarMultas(); }
+    if (error) { notificacion.error(interpretarError(error), 'Error al generar carta'); return; }
+
+    notificacion.success(`Carta de Cobro #${numeroCarta} generada correctamente`);
+    setModalCarta(false);
+
+    if (numeroCarta === 1) {
+      try {
+        await generarCartaCobro1({
+          estudiante: multaSeleccionada.estudiante,
+          valorTotal: multaSeleccionada.valor_total,
+          fechaEmision: fechaCarta
+        });
+      } catch (errorDocx) {
+        notificacion.error(errorDocx.message, 'Error al generar el .docx');
+      }
+    }
+
+    cargarMultas();
   }
 
   async function handleRegistrarPago(e) {
@@ -497,25 +514,44 @@ export default function GestionMultas({ onVerPerfil }) {
                 
                 {/* Acciones */}
                 <div className="flex justify-center space-x-3 pt-2">
-                  <button
-                    onClick={() => {
-                      // Generar PDF básico de la carta
-                      const doc = new jsPDF();
-                      doc.setFontSize(16);
-                      doc.text('CARTA DE COBRO', 14, 20);
-                      doc.setFontSize(12);
-                      doc.text(`Carta #${cartaSeleccionada.numero_carta} de 3`, 14, 30);
-                      doc.text(`Fecha: ${formatearFecha(cartaSeleccionada.fecha_emision)}`, 14, 38);
-                      doc.text(`Estudiante: ${multaSeleccionada.estudiante?.nombre_completo}`, 14, 46);
-                      doc.text(`Documento: ${multaSeleccionada.estudiante?.documento || 'N/A'}`, 14, 54);
-                      doc.text(`Valor de la multa: $${multaSeleccionada.valor_total?.toLocaleString()}`, 14, 62);
-                      doc.text(`Saldo pendiente: $${multaSeleccionada.saldo?.toLocaleString()}`, 14, 70);
-                      doc.save(`Carta_Cobro_${cartaSeleccionada.numero_carta}_${multaSeleccionada.estudiante?.nombre_completo?.replace(/\s+/g, '_')}.pdf`);
-                    }}
-                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                  >
-                    📥 Descargar PDF
-                  </button>
+                  {cartaSeleccionada.numero_carta === 1 ? (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await generarCartaCobro1({
+                            estudiante: multaSeleccionada.estudiante,
+                            valorTotal: multaSeleccionada.valor_total,
+                            fechaEmision: cartaSeleccionada.fecha_emision
+                          });
+                        } catch (errorDocx) {
+                          notificacion.error(errorDocx.message, 'Error al generar el .docx');
+                        }
+                      }}
+                      className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      📥 Descargar .docx
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        // Generar PDF básico de la carta
+                        const doc = new jsPDF();
+                        doc.setFontSize(16);
+                        doc.text('CARTA DE COBRO', 14, 20);
+                        doc.setFontSize(12);
+                        doc.text(`Carta #${cartaSeleccionada.numero_carta} de 3`, 14, 30);
+                        doc.text(`Fecha: ${formatearFecha(cartaSeleccionada.fecha_emision)}`, 14, 38);
+                        doc.text(`Estudiante: ${multaSeleccionada.estudiante?.nombre_completo}`, 14, 46);
+                        doc.text(`Documento: ${multaSeleccionada.estudiante?.documento || 'N/A'}`, 14, 54);
+                        doc.text(`Valor de la multa: $${multaSeleccionada.valor_total?.toLocaleString()}`, 14, 62);
+                        doc.text(`Saldo pendiente: $${multaSeleccionada.saldo?.toLocaleString()}`, 14, 70);
+                        doc.save(`Carta_Cobro_${cartaSeleccionada.numero_carta}_${multaSeleccionada.estudiante?.nombre_completo?.replace(/\s+/g, '_')}.pdf`);
+                      }}
+                      className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      📥 Descargar PDF
+                    </button>
+                  )}
                 </div>
               </div>
               
