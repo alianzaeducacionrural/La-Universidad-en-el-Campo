@@ -696,6 +696,7 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
 
   const notasModulos = grupo.notas_modulos || [];
   const registrosAsistencia = grupo.registros_asistencia || [];
+  const cronograma = grupo.cronograma || [];
 
   function descargarSubTabActual() {
     if (subTab === 'notas') {
@@ -720,6 +721,7 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
     { id: 'estudiantes', label: '👥 Estudiantes' },
     { id: 'notas', label: '🎓 Notas del Grupo' },
     { id: 'asistencia', label: '📅 Asistencia del Grupo' },
+    { id: 'cronograma', label: '🗓️ Cronograma de Clases' },
   ];
 
   return (
@@ -747,28 +749,32 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
         ))}
       </div>
 
-      {/* Buscador local + descarga (aplica a la sub-pestaña activa) */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          type="text"
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder="🔍 Buscar en este grupo..."
-          className={`border ${tema.border} rounded-lg px-4 py-2.5 text-sm flex-1 min-w-[200px] max-w-md bg-white focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
-        />
-        <button
-          onClick={descargarSubTabActual}
-          disabled={estudiantes.length === 0}
-          className={`${tema.solido} text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 hover:brightness-95`}
-        >
-          📥 {subTab === 'notas' ? 'Descargar notas del grupo' : subTab === 'asistencia' ? 'Descargar asistencia del grupo' : 'Descargar Excel del grupo'}
-        </button>
-      </div>
+      {/* Buscador local + descarga (aplica a la sub-pestaña activa; el cronograma no tiene ninguna de las dos) */}
+      {subTab !== 'cronograma' && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <input
+            type="text"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="🔍 Buscar en este grupo..."
+            className={`border ${tema.border} rounded-lg px-4 py-2.5 text-sm flex-1 min-w-[200px] max-w-md bg-white focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
+          />
+          <button
+            onClick={descargarSubTabActual}
+            disabled={estudiantes.length === 0}
+            className={`${tema.solido} text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 hover:brightness-95`}
+          >
+            📥 {subTab === 'notas' ? 'Descargar notas del grupo' : subTab === 'asistencia' ? 'Descargar asistencia del grupo' : 'Descargar Excel del grupo'}
+          </button>
+        </div>
+      )}
 
       {subTab === 'notas' ? (
         <TablaNotasGrupo tema={tema} estudiantes={estudiantes} notasModulos={notasModulos} />
       ) : subTab === 'asistencia' ? (
         <TablaAsistenciaGrupo tema={tema} estudiantes={estudiantes} registros={registrosAsistencia} />
+      ) : subTab === 'cronograma' ? (
+        <TablaCronogramaGrupo tema={tema} cronograma={cronograma} />
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
           {estudiantes.length === 0 ? (
@@ -1002,6 +1008,41 @@ function TablaAsistenciaGrupo({ tema, estudiantes, registros }) {
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TablaCronogramaGrupo({ tema, cronograma }) {
+  if (cronograma.length === 0) {
+    return (
+      <div className="text-center py-10 bg-white rounded-lg border border-gray-200 text-sm text-gray-500">
+        Este grupo aún no tiene cronograma de clases cargado
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className={`bg-gray-50 border-b ${tema.border}`}>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">Fecha</th>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">Módulo</th>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">Docente</th>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">Teléfono de contacto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cronograma.map(c => (
+            <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <td className="py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap">{formatearFecha(c.fecha)}</td>
+              <td className="py-2.5 px-4 text-gray-700">{c.modulo || '—'}</td>
+              <td className="py-2.5 px-4 text-gray-700">{c.docente_universitario || '—'}</td>
+              <td className="py-2.5 px-4 text-gray-700">{c.telefono_contacto || '—'}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
