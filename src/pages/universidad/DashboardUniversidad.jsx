@@ -2,7 +2,7 @@
 // DASHBOARD PARA UNIVERSIDADES (CON HISTORIAL COMPLETO)
 // =============================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -11,10 +11,19 @@ import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
 import { formatearFecha, interpretarError } from '../../utils/helpers';
 import { exportarNotasGrupoExcel } from '../../utils/exportUtils';
+import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
+import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
+import GraficoGeneroDoughnut from '../../components/estadisticas/GraficoGeneroDoughnut';
+import GraficoBarrasHorizontal from '../../components/estadisticas/GraficoBarrasHorizontal';
+import ComparativoCohortes from '../../components/estadisticas/ComparativoCohortes';
+import RankingDeserciones from '../../components/estadisticas/RankingDeserciones';
+import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCausasInasistencia';
+import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
 
-export default function DashboardUniversidad() {
+export default function DashboardUniversidad({ onVerPerfil }) {
   const notificacion = useNotificacion();
   const { perfil: usuario } = useAuth();
+  const esCoordinadorUniversidad = usuario?.rol === 'coordinador_universidad';
   
   const [grupos, setGrupos] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
@@ -54,7 +63,42 @@ export default function DashboardUniversidad() {
   const [modalResumen, setModalResumen] = useState(false);
   const [resumenSesion, setResumenSesion] = useState(null);
 
+  // ESTADOS PARA LA PESTAÑA DE ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD)
+  const [kpisUniversidad, setKpisUniversidad] = useState(null);
+  const [gruposTotalesUniversidad, setGruposTotalesUniversidad] = useState(0);
+  const [cargandoKpis, setCargandoKpis] = useState(true);
+  const filtrosUniversidad = useMemo(
+    () => ({ universidades: usuario ? [usuario.universidad] : [] }),
+    [usuario?.universidad]
+  );
+
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
+
+  useEffect(() => {
+    if (usuario && esCoordinadorUniversidad) cargarKpisUniversidad();
+  }, [usuario, esCoordinadorUniversidad]);
+
+  async function cargarKpisUniversidad() {
+    setCargandoKpis(true);
+    const [{ data: estudiantesData }, { count: totalGrupos }] = await Promise.all([
+      supabase.from('estudiantes').select('estado').eq('universidad', usuario.universidad),
+      supabase.from('grupos').select('*', { count: 'exact', head: true }).eq('universidad', usuario.universidad)
+    ]);
+
+    if (estudiantesData) {
+      const total = estudiantesData.length;
+      const contar = (estado) => estudiantesData.filter(e => e.estado === estado).length;
+      setKpisUniversidad({
+        total,
+        activos: contar('Activo'),
+        enRiesgo: contar('En Riesgo'),
+        desertores: contar('Desertor'),
+        graduados: contar('Graduado')
+      });
+    }
+    setGruposTotalesUniversidad(totalGrupos || 0);
+    setCargandoKpis(false);
+  }
   
   useEffect(() => {
     if (grupoSeleccionado) {
@@ -442,6 +486,11 @@ export default function DashboardUniversidad() {
             <button onClick={() => setVistaActiva('estudiantes')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estudiantes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
               👥 Estudiantes
             </button>
+            {esCoordinadorUniversidad && (
+              <button onClick={() => setVistaActiva('estadisticas')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estadisticas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
+                📈 Estadísticas
+              </button>
+            )}
           </nav>
         </div>
 
@@ -817,6 +866,7 @@ export default function DashboardUniversidad() {
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
                       <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Inasistencias</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                      {onVerPerfil && <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -845,6 +895,16 @@ export default function DashboardUniversidad() {
                               {est.estado || 'Activo'}
                             </span>
                           </td>
+                          {onVerPerfil && (
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => onVerPerfil(est)}
+                                className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                              >
+                                👁️ Ver Perfil
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -875,6 +935,14 @@ export default function DashboardUniversidad() {
                           ❌ {faltas} inasistencia{faltas !== 1 ? 's' : ''}
                         </span>
                       </div>
+                      {onVerPerfil && (
+                        <button
+                          onClick={() => onVerPerfil(est)}
+                          className="mt-3 w-full bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-xs font-medium transition"
+                        >
+                          👁️ Ver Perfil
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -882,6 +950,48 @@ export default function DashboardUniversidad() {
             </div>
           );
         })()}
+
+        {/* VISTA: ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD) */}
+        {vistaActiva === 'estadisticas' && esCoordinadorUniversidad && (
+          cargandoKpis || !kpisUniversidad ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-gray-500 mt-2">Cargando estadísticas...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+                <TarjetaKPI titulo="Total Estudiantes" valor={kpisUniversidad.total} color="from-blue-400 to-blue-500" />
+                <TarjetaKPI titulo="Activos" valor={kpisUniversidad.activos} color="from-emerald-400 to-emerald-500" />
+                <TarjetaKPI titulo="En Riesgo" valor={kpisUniversidad.enRiesgo} color="from-amber-300 to-amber-400" />
+                <TarjetaKPI titulo="Desertores" valor={kpisUniversidad.desertores} color="from-rose-400 to-rose-500" />
+                <TarjetaKPI titulo="Graduados" valor={kpisUniversidad.graduados} color="from-sky-400 to-sky-500" />
+                <TarjetaKPI titulo="Grupos Totales" valor={gruposTotalesUniversidad} color="from-purple-400 to-purple-500" />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <GraficoEstadosDoughnut filtros={filtrosUniversidad} />
+                <GraficoGeneroDoughnut filtros={filtrosUniversidad} />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <GraficoBarrasHorizontal titulo="Estudiantes por Municipio" campo="municipio" icono="📍" filtros={filtrosUniversidad} limite={10} />
+                <GraficoBarrasHorizontal titulo="Estudiantes por Institución" campo="institucion_educativa" icono="🏫" filtros={filtrosUniversidad} limite={10} />
+              </div>
+
+              <GraficoBarrasHorizontal titulo="Estudiantes por Programa" campo="programa" icono="📚" filtros={filtrosUniversidad} limite={10} />
+
+              <ComparativoCohortes filtros={filtrosUniversidad} />
+
+              <RankingDeserciones filtros={filtrosUniversidad} />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <GraficoCausasInasistencia filtros={filtrosUniversidad} />
+                <GraficoInasistenciasMensual filtros={filtrosUniversidad} />
+              </div>
+            </div>
+          )
+        )}
 
       </div>
 

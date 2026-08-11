@@ -150,7 +150,7 @@ function GlobalModales({
   usuario
 }) {
   const notificacion = useNotificacion();
-  const esLector = usuario?.rol === 'aliado';
+  const esLector = ['aliado', 'docente', 'coordinador_universidad'].includes(usuario?.rol);
 
   return (
     <>
@@ -379,7 +379,7 @@ function AppContent() {
             {/* Portal público de Instituciones Educativas — sin sesión, fuera de ProtectedRoute */}
             <Route path="/ie/:token" element={<PortalInstitucion />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad /></ProtectedRoute>} />
+            <Route path="/universidad/dashboard" element={<ProtectedRoute><DashboardUniversidad onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/panel" element={
               <ProtectedRoute>
                 <PanelCoordinador
