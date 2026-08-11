@@ -21,9 +21,12 @@ import RankingDeserciones from '../../components/estadisticas/RankingDeserciones
 import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCausasInasistencia';
 import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
 
-export default function DashboardUniversidad({ onVerPerfil }) {
+export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
   const notificacion = useNotificacion();
-  const { perfil: usuario } = useAuth();
+  const { perfil: usuarioAuth } = useAuth();
+  // usuarioForzado permite que el admin "vea como" una universidad/rol específico
+  // desde VerComoUniversidad.jsx, sin necesidad de iniciar sesión con esa cuenta.
+  const usuario = usuarioForzado || usuarioAuth;
   const esCoordinadorUniversidad = usuario?.rol === 'coordinador_universidad';
   
   const [grupos, setGrupos] = useState([]);

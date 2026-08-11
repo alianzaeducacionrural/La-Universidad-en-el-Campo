@@ -38,11 +38,14 @@ import ModalEditarSeguimiento from '../components/seguimientos/ModalEditarSeguim
 import InasistenciasPendientes from '../components/padrino/InasistenciasPendientes';
 import NotasGrupoResumen from '../components/notas/NotasGrupoResumen';
 
-export default function Dashboard() {
+export default function Dashboard({ padrinoForzado = null }) {
   // =============================================
   // AUTENTICACIÓN
   // =============================================
-  const { perfil: padrino, loading: authLoading } = useAuth();
+  const { perfil: padrinoAuth, loading: authLoading } = useAuth();
+  // padrinoForzado permite que el admin "vea como" un padrino específico desde
+  // VerComoPadrino.jsx, sin necesidad de iniciar sesión con esa cuenta.
+  const padrino = padrinoForzado || padrinoAuth;
 
   // =============================================
   // HOOKS PERSONALIZADOS

@@ -29,6 +29,8 @@ const GestionAliados = lazy(() => import('./pages/admin/GestionAliados'));
 const GestionEquipo = lazy(() => import('./pages/admin/GestionEquipo'));
 const GestionDesertores = lazy(() => import('./pages/admin/GestionDesertores'));
 const PortalInstitucion = lazy(() => import('./pages/PortalInstitucion'));
+const VerComoUniversidad = lazy(() => import('./pages/admin/VerComoUniversidad'));
+const VerComoPadrino = lazy(() => import('./pages/admin/VerComoPadrino'));
 
 // Rutas a las que un aliado (solo lectura) tiene acceso
 const RUTAS_ALIADO = ['/estadisticas', '/reportes', '/grupos'];
@@ -395,6 +397,8 @@ function AppContent() {
             <Route path="/desertores" element={<ProtectedRoute><GestionDesertores onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
             <Route path="/equipo" element={<AdminRoute><GestionEquipo onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
+            <Route path="/ver-como-universidad" element={<AdminRoute><VerComoUniversidad /></AdminRoute>} />
+            <Route path="/ver-como-padrino" element={<AdminRoute><VerComoPadrino /></AdminRoute>} />
             <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/" element={<HomeRedirect />} />
             <Route path="*" element={<Navigate to="/" replace />} />

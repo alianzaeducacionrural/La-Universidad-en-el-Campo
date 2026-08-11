@@ -86,6 +86,8 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
     { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => navigate('/aliados') },
     { id: 'equipo',              label: 'Equipo',              mobileLabel: 'Equipo',    icon: '🧑‍💼', visible: esAdmin, badge: 0,                    action: () => navigate('/equipo') },
+    { id: 'ver-universidad',     label: 'Ver Universidad',     mobileLabel: 'Univ.',     icon: '🎓', visible: esAdmin, badge: 0,                          action: () => navigate('/ver-como-universidad') },
+    { id: 'ver-padrino',         label: 'Ver Padrino',         mobileLabel: 'Padrino',   icon: '👤', visible: esAdmin, badge: 0,                          action: () => navigate('/ver-como-padrino') },
   ];
 
   const allVisibleItems = [...menuPadrino, ...menuAdmin].filter(i => i.visible);
