@@ -8,16 +8,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { formatearFecha } from '../../utils/helpers';
+import { formatearFecha, obtenerFechaColombiaHoy, normalizarTexto as normalizar } from '../../utils/helpers';
 import * as XLSX from 'xlsx';
 import ModalCronogramaMasivo from './ModalCronogramaMasivo';
 import ModalCronogramaGrupo from './ModalCronogramaGrupo';
-
-// Marcas diacríticas combinantes (U+0300–U+036F) que quedan sueltas tras normalize('NFD')
-const DIACRITICOS = new RegExp('[\\u0300-\\u036f]', 'g');
-function normalizar(txt) {
-  return (txt || '').toString().trim().toLowerCase().normalize('NFD').replace(DIACRITICOS, '');
-}
 
 export default function CumplimientoCronograma() {
   const [grupos, setGrupos] = useState([]);
@@ -49,6 +43,7 @@ export default function CumplimientoCronograma() {
 
   // Cálculo de cumplimiento por grupo
   const resumenPorGrupo = useMemo(() => {
+    const hoy = obtenerFechaColombiaHoy();
     return grupos.map(g => {
       const programadas = cronograma
         .filter(c => c.grupo_id === g.id)
@@ -60,7 +55,7 @@ export default function CumplimientoCronograma() {
         const reportadaExacta = registrosGrupo.some(r =>
           r.fecha === prog.fecha && (sinModulo || normalizar(r.modulo) === normalizar(prog.modulo))
         );
-        let estado = 'pendiente';
+        let estado = prog.fecha > hoy ? 'programada' : 'pendiente';
         let moduloReportado = null;
         if (reportadaExacta) {
           estado = 'reportada';
@@ -80,7 +75,9 @@ export default function CumplimientoCronograma() {
 
       const totalProgramadas = fechas.length;
       const totalReportadas = fechas.filter(f => f.estado === 'reportada' || f.estado === 'otro_modulo').length;
-      const totalPendientes = totalProgramadas - totalReportadas;
+      // Solo cuentan como "pendientes" las fechas de hoy o anteriores sin reportar —
+      // una sesión futura todavía no debería mostrarse como incumplimiento.
+      const totalPendientes = fechas.filter(f => f.estado === 'pendiente').length;
 
       let semaforo = 'verde';
       if (totalProgramadas === 0) semaforo = 'rojo';
@@ -243,7 +240,7 @@ export default function CumplimientoCronograma() {
                             <div className="flex items-center justify-between">
                               <span className="font-medium text-gray-700">{formatearFecha(f.fecha)}</span>
                               <span>
-                                {f.estado === 'reportada' ? '✅' : f.estado === 'otro_modulo' ? '⚠️' : '⏳'}
+                                {f.estado === 'reportada' ? '✅' : f.estado === 'otro_modulo' ? '⚠️' : f.estado === 'programada' ? '📅' : '⏳'}
                               </span>
                             </div>
                             {f.modulo && <p className="text-xs text-gray-500 mt-0.5">Programado: {f.modulo}</p>}

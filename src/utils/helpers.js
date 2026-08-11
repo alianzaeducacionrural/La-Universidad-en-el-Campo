@@ -107,6 +107,64 @@ export const agruparInstitucionesPorGrupo = (filas) => {
   return porGrupo;
 };
 
+// Fecha de "hoy" en la zona horaria de Colombia (America/Bogota), como
+// 'YYYY-MM-DD'. new Date().toISOString() usa UTC, que va varias horas
+// adelante de Colombia y puede hacer que una fecha de "mañana" en Bogotá
+// se cuente como si ya hubiera pasado — usar esto para comparar contra
+// columnas `date` (fecha de cronograma, asistencia, etc.).
+export const obtenerFechaColombiaHoy = () => {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+};
+
+const DIACRITICOS_REGEX = /[̀-ͯ]/g;
+
+// Normaliza texto para comparar sin distinguir mayúsculas/acentos — nombres de
+// módulo que el docente escribió ligeramente distinto al programado siguen
+// contando como la misma sesión.
+export const normalizarTexto = (txt) => {
+  return (txt || '').toString().trim().toLowerCase().normalize('NFD').replace(DIACRITICOS_REGEX, '');
+};
+
+// Cruza el cronograma de un grupo contra lo efectivamente reportado en
+// registros_asistencia. La fecha es la clave confiable — la asistencia se
+// sube el día de la clase — así que primero se busca un reporte de esa
+// fecha con el mismo módulo (normalizado) y, si no hay, se usa igual
+// cualquier reporte de esa fecha (se asume la misma sesión, escrita
+// distinto). Cuando hay reporte, sus datos (módulo, docente, teléfono) son
+// los que se muestran: reflejan lo que realmente pasó, no lo planeado con
+// anticipación. Lo programado originalmente (columnas *_original, fijadas
+// una sola vez al crear la fila) queda disponible aparte para que se pueda
+// comparar qué cambió.
+export const cruzarCronogramaConAsistencia = (cronograma = [], registrosAsistencia = [], hoy = obtenerFechaColombiaHoy()) => {
+  return cronograma.map(c => {
+    const delDia = registrosAsistencia.filter(r => r.fecha === c.fecha);
+    const reportado = delDia.find(r => normalizarTexto(r.modulo) === normalizarTexto(c.modulo)) || delDia[0] || null;
+
+    const estado = reportado ? 'confirmada' : c.fecha <= hoy ? 'pendiente' : 'programada';
+    const moduloEfectivo = reportado?.modulo || c.modulo;
+    const docenteEfectivo = reportado?.docente_nombre || c.docente_universitario;
+    const telefonoEfectivo = reportado?.docente_telefono || c.telefono_contacto;
+
+    const moduloOriginal = c.modulo_original ?? c.modulo;
+    const docenteOriginal = c.docente_original ?? c.docente_universitario;
+    const telefonoOriginal = c.telefono_original ?? c.telefono_contacto;
+
+    const huboAjuste = !!reportado && (
+      normalizarTexto(moduloEfectivo) !== normalizarTexto(moduloOriginal) ||
+      normalizarTexto(docenteEfectivo) !== normalizarTexto(docenteOriginal) ||
+      (telefonoEfectivo || '') !== (telefonoOriginal || '')
+    );
+
+    return {
+      ...c,
+      estado,
+      moduloEfectivo, docenteEfectivo, telefonoEfectivo,
+      moduloOriginal, docenteOriginal, telefonoOriginal,
+      huboAjuste
+    };
+  });
+};
+
 // 🔥 UNA SOLA DECLARACIÓN DE formatearFecha
 export const formatearFecha = (fecha, formato = 'completa') => {
   if (!fecha) return 'N/A';

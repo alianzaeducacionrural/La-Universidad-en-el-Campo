@@ -2,14 +2,16 @@
 // MODAL: CRONOGRAMA DE UN GRUPO (EDICIÓN INDIVIDUAL)
 // =============================================
 // Línea de tiempo del cronograma: cada sesión programada se cruza contra
-// registros_asistencia (misma fecha + módulo) para saber si esa clase ya
-// se dictó Y quedó su asistencia registrada, o si ya pasó su fecha y sigue
-// pendiente de subir — eso es lo que el marcador de color realmente dice.
+// registros_asistencia (misma fecha, módulo tolerante a variaciones de
+// escritura) para saber si esa clase ya se dictó, y en ese caso se muestra
+// lo que el docente realmente reportó (módulo/docente/teléfono), no lo
+// planeado con anticipación. Lo planeado queda guardado aparte
+// (columnas *_original) y se muestra como referencia si hubo un ajuste.
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
-import { formatearFecha, interpretarError } from '../../utils/helpers';
+import { formatearFecha, interpretarError, cruzarCronogramaConAsistencia } from '../../utils/helpers';
 
 const ESTILOS_ESTADO = {
   confirmada: {
@@ -56,8 +58,8 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
   async function cargarFechas() {
     setCargando(true);
     const [{ data: cronograma }, { data: asistencias }] = await Promise.all([
-      supabase.from('cronograma_clases').select('id, fecha, modulo, docente_universitario, telefono_contacto').eq('grupo_id', grupo.id).order('fecha'),
-      supabase.from('registros_asistencia').select('fecha, modulo').eq('grupo_id', grupo.id)
+      supabase.from('cronograma_clases').select('id, fecha, modulo, docente_universitario, telefono_contacto, modulo_original, docente_original, telefono_original').eq('grupo_id', grupo.id).order('fecha'),
+      supabase.from('registros_asistencia').select('fecha, modulo, docente_nombre, docente_telefono').eq('grupo_id', grupo.id)
     ]);
     setFechas(cronograma || []);
     setRegistrosAsistencia(asistencias || []);
@@ -68,12 +70,21 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
     e.preventDefault();
     if (!nuevaFecha || !nuevoModulo.trim()) return;
     setGuardando(true);
+    const modulo = nuevoModulo.trim();
+    const docente = nuevoDocente.trim() || null;
+    const telefono = nuevoTelefono.trim() || null;
     const { error } = await supabase.from('cronograma_clases').insert([{
       grupo_id: grupo.id,
       fecha: nuevaFecha,
-      modulo: nuevoModulo.trim(),
-      docente_universitario: nuevoDocente.trim() || null,
-      telefono_contacto: nuevoTelefono.trim() || null
+      modulo,
+      docente_universitario: docente,
+      telefono_contacto: telefono,
+      // El snapshot original se fija una sola vez, al crear la fila — las
+      // ediciones posteriores (o la reconciliación con lo reportado) nunca
+      // lo tocan, así queda registro de lo que se programó al inicio.
+      modulo_original: modulo,
+      docente_original: docente,
+      telefono_original: telefono
     }]);
     if (error) {
       notificacion.error(interpretarError(error), 'Error al agregar fecha');
@@ -90,10 +101,13 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
 
   function abrirEdicion(f) {
     setEditandoId(f.id);
+    // Se precarga con lo efectivo (lo reportado, si lo hay) — si el docente
+    // ya subió la asistencia con otro módulo/teléfono, guardar así reconcilia
+    // el cronograma con la realidad en un clic, sin perder lo original.
     setDetalleEditado({
-      modulo: f.modulo || '',
-      docente_universitario: f.docente_universitario || '',
-      telefono_contacto: f.telefono_contacto || ''
+      modulo: f.moduloEfectivo || '',
+      docente_universitario: f.docenteEfectivo || '',
+      telefono_contacto: f.telefonoEfectivo || ''
     });
   }
 
@@ -132,12 +146,7 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
 
   if (!isOpen || !grupo) return null;
 
-  const hoy = new Date().toISOString().split('T')[0];
-  const fechasConEstado = fechas.map(f => {
-    const asistenciaRegistrada = registrosAsistencia.some(r => r.fecha === f.fecha && r.modulo === f.modulo);
-    const estado = asistenciaRegistrada ? 'confirmada' : f.fecha <= hoy ? 'pendiente' : 'programada';
-    return { ...f, estado };
-  });
+  const fechasConEstado = cruzarCronogramaConAsistencia(fechas, registrosAsistencia);
   const resumen = {
     confirmadas: fechasConEstado.filter(f => f.estado === 'confirmada').length,
     pendientes: fechasConEstado.filter(f => f.estado === 'pendiente').length,
@@ -296,10 +305,17 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
                                   onClick={() => puedeGestionar && abrirEdicion(f)}
                                 >
                                   <p className="text-xs text-gray-700 mt-1 font-medium">
-                                    {f.modulo ? `📚 ${f.modulo}` : '— Sin módulo —'}
+                                    {f.moduloEfectivo ? `📚 ${f.moduloEfectivo}` : '— Sin módulo —'}
                                   </p>
-                                  {f.docente_universitario && <p className="text-xs text-gray-500 mt-0.5">👨‍🏫 {f.docente_universitario}</p>}
-                                  {f.telefono_contacto && <p className="text-xs text-gray-500 mt-0.5">📞 {f.telefono_contacto}</p>}
+                                  {f.docenteEfectivo && <p className="text-xs text-gray-500 mt-0.5">👨‍🏫 {f.docenteEfectivo}</p>}
+                                  {f.telefonoEfectivo && <p className="text-xs text-gray-500 mt-0.5">📞 {f.telefonoEfectivo}</p>}
+                                  {f.huboAjuste && (
+                                    <p className="text-[10px] text-blue-500 mt-1">
+                                      🕘 Programado originalmente: {f.moduloOriginal || '—'}
+                                      {f.docenteOriginal ? ` · ${f.docenteOriginal}` : ''}
+                                      {f.telefonoOriginal ? ` · ${f.telefonoOriginal}` : ''}
+                                    </p>
+                                  )}
                                   {puedeGestionar && (
                                     <p className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition mt-1">✏️ Clic para editar</p>
                                   )}

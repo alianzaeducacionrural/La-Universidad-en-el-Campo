@@ -14,7 +14,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
-import { getEstadoColor, formatearFecha, limpiarEmojis } from '../utils/helpers';
+import { getEstadoColor, formatearFecha, limpiarEmojis, cruzarCronogramaConAsistencia, normalizarTexto } from '../utils/helpers';
 import { TIPOS_DOCUMENTO_DESERCION } from '../utils/constants';
 import {
   exportarEstudiantesExcel,
@@ -1023,7 +1023,7 @@ function TablaCronogramaGrupo({ tema, cronograma, registrosAsistencia }) {
     );
   }
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const filas = cruzarCronogramaConAsistencia(cronograma, registrosAsistencia);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-x-auto">
@@ -1038,32 +1038,37 @@ function TablaCronogramaGrupo({ tema, cronograma, registrosAsistencia }) {
           </tr>
         </thead>
         <tbody>
-          {cronograma.map(c => {
-            const vista = registrosAsistencia.some(r => r.fecha === c.fecha && r.modulo === c.modulo);
-            return (
-              <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap">{formatearFecha(c.fecha)}</td>
-                <td className="py-2.5 px-4 text-gray-700">{c.modulo || '—'}</td>
-                <td className="py-2.5 px-4 text-gray-700">{c.docente_universitario || '—'}</td>
-                <td className="py-2.5 px-4 text-gray-700">{c.telefono_contacto || '—'}</td>
-                <td className="py-2.5 px-4 text-center">
-                  {vista ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary-dark px-2.5 py-1 rounded-full">
-                      ✅ Vista
-                    </span>
-                  ) : c.fecha <= hoy ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
-                      ⏳ Pendiente
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
-                      📅 Próxima
-                    </span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
+          {filas.map(c => (
+            <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <td className="py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap align-top">{formatearFecha(c.fecha)}</td>
+              <td className="py-2.5 px-4 text-gray-700 align-top">
+                {c.moduloEfectivo || '—'}
+                {c.huboAjuste && <p className="text-[11px] text-blue-500 mt-0.5">🕘 Programado: {c.moduloOriginal || '—'}</p>}
+              </td>
+              <td className="py-2.5 px-4 text-gray-700 align-top">
+                {c.docenteEfectivo || '—'}
+                {c.huboAjuste && c.docenteOriginal && normalizarTexto(c.docenteEfectivo) !== normalizarTexto(c.docenteOriginal) && (
+                  <p className="text-[11px] text-blue-500 mt-0.5">🕘 Programado: {c.docenteOriginal}</p>
+                )}
+              </td>
+              <td className="py-2.5 px-4 text-gray-700 align-top">{c.telefonoEfectivo || '—'}</td>
+              <td className="py-2.5 px-4 text-center align-top">
+                {c.estado === 'confirmada' ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary-dark px-2.5 py-1 rounded-full">
+                    ✅ Vista
+                  </span>
+                ) : c.estado === 'pendiente' ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
+                    ⏳ Pendiente
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
+                    📅 Próxima
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

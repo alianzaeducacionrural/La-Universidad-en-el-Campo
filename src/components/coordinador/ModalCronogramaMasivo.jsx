@@ -197,7 +197,13 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
             fecha: fechaISO,
             modulo: valorModulo,
             docente_universitario: valorDocente || null,
-            telefono_contacto: valorTelefono || null
+            telefono_contacto: valorTelefono || null,
+            // Snapshot de lo cargado — el upsert con ignoreDuplicates nunca
+            // pisa una fila ya existente, así que esto solo aplica a filas
+            // realmente nuevas y queda como registro de lo programado.
+            modulo_original: valorModulo,
+            docente_original: valorDocente || null,
+            telefono_original: valorTelefono || null
           });
         }
       });
