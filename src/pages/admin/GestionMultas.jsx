@@ -39,13 +39,26 @@ export default function GestionMultas({ onVerPerfil }) {
     setCargando(true);
     const { data } = await supabase
       .from('multas_desercion')
-      .select(`*, estudiante:estudiante_id (*), cartas:cartas_cobro(*), pagos:pagos_multa(*)`)
+      .select(`
+        *,
+        estudiante:estudiante_id (*, registros_desercion (id, tipo_desercion, fecha_reporte)),
+        cartas:cartas_cobro(*),
+        pagos:pagos_multa(*)
+      `)
       .order('created_at', { ascending: false });
     if (data) {
-      // Si el estudiante se reintegró (ya no es Desertor), su multa deja de
-      // mostrarse aquí — no interesa mezclar deudas de gente que ya no desertó.
+      // Una multa solo debe mostrarse si: el estudiante sigue siendo Desertor,
+      // Y la multa pertenece a su registro de deserción MÁS RECIENTE, Y ese
+      // registro sigue siendo "Sin Justificar". Si luego se reclasificó como
+      // Justificada (editando el registro existente o creando uno nuevo), la
+      // multa queda obsoleta y desaparece de aquí sin tocar la fila en la BD.
       setMultas(data
-        .filter(m => m.estudiante?.estado === 'Desertor')
+        .filter(m => {
+          if (m.estudiante?.estado !== 'Desertor') return false;
+          const registros = m.estudiante?.registros_desercion || [];
+          const registroActual = [...registros].sort((a, b) => (b.fecha_reporte || '').localeCompare(a.fecha_reporte || ''))[0];
+          return registroActual?.id === m.registro_desercion_id && registroActual?.tipo_desercion === 'Sin Justificar';
+        })
         .map(m => ({
           ...m,
           total_pagado: (m.pagos || []).reduce((sum, p) => sum + (p.valor || 0), 0),
