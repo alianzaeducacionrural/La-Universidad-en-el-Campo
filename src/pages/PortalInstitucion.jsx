@@ -774,7 +774,7 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
       ) : subTab === 'asistencia' ? (
         <TablaAsistenciaGrupo tema={tema} estudiantes={estudiantes} registros={registrosAsistencia} />
       ) : subTab === 'cronograma' ? (
-        <TablaCronogramaGrupo tema={tema} cronograma={cronograma} />
+        <TablaCronogramaGrupo tema={tema} cronograma={cronograma} registrosAsistencia={registrosAsistencia} />
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
           {estudiantes.length === 0 ? (
@@ -1014,7 +1014,7 @@ function TablaAsistenciaGrupo({ tema, estudiantes, registros }) {
   );
 }
 
-function TablaCronogramaGrupo({ tema, cronograma }) {
+function TablaCronogramaGrupo({ tema, cronograma, registrosAsistencia }) {
   if (cronograma.length === 0) {
     return (
       <div className="text-center py-10 bg-white rounded-lg border border-gray-200 text-sm text-gray-500">
@@ -1022,6 +1022,8 @@ function TablaCronogramaGrupo({ tema, cronograma }) {
       </div>
     );
   }
+
+  const hoy = new Date().toISOString().split('T')[0];
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-x-auto">
@@ -1032,17 +1034,36 @@ function TablaCronogramaGrupo({ tema, cronograma }) {
             <th className="text-left py-3 px-4 font-semibold text-gray-600">Módulo</th>
             <th className="text-left py-3 px-4 font-semibold text-gray-600">Docente</th>
             <th className="text-left py-3 px-4 font-semibold text-gray-600">Teléfono de contacto</th>
+            <th className="text-center py-3 px-4 font-semibold text-gray-600">Clase Vista</th>
           </tr>
         </thead>
         <tbody>
-          {cronograma.map(c => (
-            <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap">{formatearFecha(c.fecha)}</td>
-              <td className="py-2.5 px-4 text-gray-700">{c.modulo || '—'}</td>
-              <td className="py-2.5 px-4 text-gray-700">{c.docente_universitario || '—'}</td>
-              <td className="py-2.5 px-4 text-gray-700">{c.telefono_contacto || '—'}</td>
-            </tr>
-          ))}
+          {cronograma.map(c => {
+            const vista = registrosAsistencia.some(r => r.fecha === c.fecha && r.modulo === c.modulo);
+            return (
+              <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap">{formatearFecha(c.fecha)}</td>
+                <td className="py-2.5 px-4 text-gray-700">{c.modulo || '—'}</td>
+                <td className="py-2.5 px-4 text-gray-700">{c.docente_universitario || '—'}</td>
+                <td className="py-2.5 px-4 text-gray-700">{c.telefono_contacto || '—'}</td>
+                <td className="py-2.5 px-4 text-center">
+                  {vista ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary-dark px-2.5 py-1 rounded-full">
+                      ✅ Vista
+                    </span>
+                  ) : c.fecha <= hoy ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
+                      ⏳ Pendiente
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
+                      📅 Próxima
+                    </span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
