@@ -288,6 +288,7 @@ export default function CumplimientoCronograma() {
         onClose={() => setModalGrupo(null)}
         grupo={modalGrupo}
         onActualizado={cargarTodo}
+        puedeGestionar={true}
       />
     </div>
   );

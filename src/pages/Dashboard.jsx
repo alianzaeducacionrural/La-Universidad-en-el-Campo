@@ -239,6 +239,7 @@ export default function Dashboard() {
                 estudiantes={estudiantes}
                 onVerHistorialAsistencia={() => setModalHistorialAsistencia(true)}
                 padrino={padrino}
+                puedeGestionar={puedeGestionarGrupo}
               />
 
               <TablaEstudiantes

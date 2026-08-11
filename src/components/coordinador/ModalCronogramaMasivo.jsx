@@ -3,10 +3,12 @@
 // =============================================
 //
 // 1. Se elige una universidad y se descarga una plantilla con una fila por
-//    grupo activo y columnas Fecha 1/Módulo 1 ... Fecha 20/Módulo 20.
-// 2. Se sube el archivo diligenciado: solo la fecha es obligatoria por par,
-//    el módulo es opcional. Se muestra una vista previa con errores antes
-//    de escribir en la base de datos.
+//    grupo activo y columnas Fecha 1/Módulo 1/Docente 1/Teléfono 1 ... por
+//    sesión. Las sesiones ya cargadas en el grupo salen pre-llenas con su
+//    histórico real, y quedan columnas vacías al final para seguir agregando.
+// 2. Se sube el archivo diligenciado: fecha y módulo son obligatorios por
+//    par, docente y teléfono son opcionales. Se muestra una vista previa con
+//    errores antes de escribir en la base de datos.
 
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
@@ -15,6 +17,9 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { interpretarError } from '../../utils/helpers';
 
 const MAX_PARES = 20;
+const COLUMNA_MODULO = 'Módulo';
+const COLUMNA_DOCENTE = 'Docente';
+const COLUMNA_TELEFONO = 'Teléfono';
 
 function parsearFecha(valor) {
   if (valor === null || valor === undefined || valor === '') return null;
@@ -38,6 +43,11 @@ function parsearFecha(valor) {
   return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
 }
 
+function formatearFechaDDMMYYYY(fechaISO) {
+  const [y, m, d] = fechaISO.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
   const notificacion = useNotificacion();
   const [universidades, setUniversidades] = useState([]);
@@ -45,6 +55,7 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
   const [preview, setPreview] = useState(null); // { filas, errores, gruposCount, fechasCount, nombreArchivo }
   const [modoReemplazar, setModoReemplazar] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   const [gruposTodos, setGruposTodos] = useState([]);
 
   useEffect(() => {
@@ -67,7 +78,7 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
     setGruposTodos(data || []);
   }
 
-  function descargarPlantilla() {
+  async function descargarPlantilla() {
     if (!universidadSeleccionada) {
       notificacion.warning('Selecciona una universidad primero.', 'Campo requerido');
       return;
@@ -77,11 +88,37 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
       notificacion.warning('Esa universidad no tiene grupos activos.', 'Sin datos');
       return;
     }
+
+    setDescargando(true);
+    const { data: historico, error } = await supabase
+      .from('cronograma_clases')
+      .select('grupo_id, fecha, modulo, docente_universitario, telefono_contacto')
+      .in('grupo_id', grupos.map(g => g.id))
+      .order('fecha');
+    setDescargando(false);
+
+    if (error) {
+      notificacion.error(interpretarError(error), 'Error al cargar el histórico');
+      return;
+    }
+
+    const historicoPorGrupo = {};
+    (historico || []).forEach(h => {
+      (historicoPorGrupo[h.grupo_id] ||= []).push(h);
+    });
+
+    const mayorHistorial = Math.max(0, ...Object.values(historicoPorGrupo).map(arr => arr.length));
+    const paresNecesarios = Math.max(MAX_PARES, mayorHistorial + 5);
+
     const filas = grupos.map(g => {
       const fila = { 'Grupo': g.nombre, 'Cohorte': g.cohorte, 'Programa': g.programa };
-      for (let n = 1; n <= MAX_PARES; n++) {
-        fila[`Fecha ${n}`] = '';
-        fila[`Módulo ${n}`] = '';
+      const historialGrupo = historicoPorGrupo[g.id] || [];
+      for (let n = 1; n <= paresNecesarios; n++) {
+        const sesion = historialGrupo[n - 1];
+        fila[`Fecha ${n}`] = sesion ? formatearFechaDDMMYYYY(sesion.fecha) : '';
+        fila[`${COLUMNA_MODULO} ${n}`] = sesion ? (sesion.modulo || '') : '';
+        fila[`${COLUMNA_DOCENTE} ${n}`] = sesion ? (sesion.docente_universitario || '') : '';
+        fila[`${COLUMNA_TELEFONO} ${n}`] = sesion ? (sesion.telefono_contacto || '') : '';
       }
       return fila;
     });
@@ -99,6 +136,16 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
       const hoja = workbook.Sheets[workbook.SheetNames[0]];
       const filas = XLSX.utils.sheet_to_json(hoja, { defval: '' });
 
+      // El número de pares por fila es dinámico (la plantilla puede traer más
+      // de MAX_PARES si un grupo ya tiene mucho histórico) — se detecta a
+      // partir de las columnas "Fecha N" realmente presentes en el archivo.
+      const columnas = filas.length > 0 ? Object.keys(filas[0]) : [];
+      const numerosDetectados = columnas
+        .map(c => c.match(/^Fecha (\d+)$/))
+        .filter(Boolean)
+        .map(m => Number(m[1]));
+      const maxPar = numerosDetectados.length > 0 ? Math.max(...numerosDetectados) : MAX_PARES;
+
       const filasParaInsertar = [];
       const errores = [];
       const gruposEncontrados = new Set();
@@ -114,14 +161,16 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
         }
         gruposEncontrados.add(grupo.id);
 
-        for (let n = 1; n <= MAX_PARES; n++) {
+        for (let n = 1; n <= maxPar; n++) {
           const valorFecha = fila[`Fecha ${n}`];
-          const valorModulo = (fila[`Módulo ${n}`] || '').toString().trim();
+          const valorModulo = (fila[`${COLUMNA_MODULO} ${n}`] || '').toString().trim();
+          const valorDocente = (fila[`${COLUMNA_DOCENTE} ${n}`] || '').toString().trim();
+          const valorTelefono = (fila[`${COLUMNA_TELEFONO} ${n}`] || '').toString().trim();
           const fechaVacia = valorFecha === '' || valorFecha === null || valorFecha === undefined;
 
           if (fechaVacia) {
-            if (valorModulo) {
-              errores.push(`Fila ${idx + 2} (${nombreGrupo}): "Módulo ${n}" tiene valor pero "Fecha ${n}" está vacía`);
+            if (valorModulo || valorDocente || valorTelefono) {
+              errores.push(`Fila ${idx + 2} (${nombreGrupo}): la columna "Fecha ${n}" está vacía pero tiene otros datos de esa sesión`);
             }
             continue;
           }
@@ -132,13 +181,24 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
             continue;
           }
 
+          if (!valorModulo) {
+            errores.push(`Fila ${idx + 2} (${nombreGrupo}): "${COLUMNA_MODULO} ${n}" es obligatorio porque "Fecha ${n}" tiene valor`);
+            continue;
+          }
+
           const clave = `${grupo.id}|${fechaISO}|${valorModulo}`;
           if (clavesVistas.has(clave)) {
-            errores.push(`Fila ${idx + 2} (${nombreGrupo}): la fecha ${valorFecha} con módulo "${valorModulo || 'sin módulo'}" está repetida`);
+            errores.push(`Fila ${idx + 2} (${nombreGrupo}): la fecha ${valorFecha} con módulo "${valorModulo}" está repetida`);
             continue;
           }
           clavesVistas.add(clave);
-          filasParaInsertar.push({ grupo_id: grupo.id, fecha: fechaISO, modulo: valorModulo });
+          filasParaInsertar.push({
+            grupo_id: grupo.id,
+            fecha: fechaISO,
+            modulo: valorModulo,
+            docente_universitario: valorDocente || null,
+            telefono_contacto: valorTelefono || null
+          });
         }
       });
 
@@ -207,13 +267,15 @@ export default function ModalCronogramaMasivo({ isOpen, onClose, onCargado }) {
               </select>
               <button
                 onClick={descargarPlantilla}
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+                disabled={descargando}
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
               >
-                📥 Descargar
+                {descargando ? 'Preparando...' : '📥 Descargar'}
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Solo la columna "Fecha N" es obligatoria por sesión, en formato dd/mm/aaaa. "Módulo N" es opcional.
+              Por cada sesión: "Fecha N" y "Módulo N" son obligatorios, "Docente N" y "Teléfono N" son opcionales.
+              Las sesiones ya cargadas salen pre-llenas con su histórico — solo agrega las fechas nuevas al final.
             </p>
           </div>
 
