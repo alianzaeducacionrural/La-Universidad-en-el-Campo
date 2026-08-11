@@ -1,16 +1,14 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import { formatearFecha } from '../../utils/helpers';
 import CumplimientoCronograma from '../../components/coordinador/CumplimientoCronograma';
 
 export default function HistorialReportesAsistencia({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
-  const { marcarComoVisto, getLastSeen } = useReportesNuevos();
   const [tab, setTab] = useState('reportes');
   const [reportes, setReportes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -19,12 +17,8 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [expandido, setExpandido] = useState(null);
-  const prevLastSeen = useRef(null);
-  const cantidadNuevos = useRef(0);
 
   useEffect(() => {
-    prevLastSeen.current = getLastSeen();
-    marcarComoVisto();
     cargarReportes();
   }, []);
 
@@ -35,14 +29,7 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
       .select('id, fecha, modulo, docente_nombre, created_at, grupo:grupo_id(nombre, universidad), inasistencias(id, estudiantes:estudiante_id(nombre_completo))')
       .order('created_at', { ascending: false });
 
-    if (data) {
-      const con_nuevo = data.map(r => ({
-        ...r,
-        esNuevo: new Date(r.created_at) > new Date(prevLastSeen.current)
-      }));
-      cantidadNuevos.current = con_nuevo.filter(r => r.esNuevo).length;
-      setReportes(con_nuevo);
-    }
+    if (data) setReportes(data);
     setCargando(false);
   }
 
@@ -77,7 +64,6 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
         vistaActiva="historial-reportes"
         setVistaActiva={() => {}}
         rol={usuario.rol}
-        totalReportesNuevos={0}
       />
 
       <div className="flex-1 min-w-0">
@@ -112,16 +98,6 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
 
           {tab === 'reportes' && (
           <>
-          {/* Banner de nuevos */}
-          {cantidadNuevos.current > 0 && (
-            <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center gap-2">
-              <span className="text-amber-600 text-lg">🔔</span>
-              <p className="text-amber-800 text-sm font-medium">
-                {cantidadNuevos.current} reporte{cantidadNuevos.current > 1 ? 's' : ''} nuevo{cantidadNuevos.current > 1 ? 's' : ''} desde tu última visita
-              </p>
-            </div>
-          )}
-
           {/* Filtros */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm space-y-3">
             <div className="flex flex-col sm:flex-row gap-3">
@@ -195,20 +171,11 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
                       {/* Fila principal — clickeable */}
                       <div
                         onClick={() => setExpandido(estaExpandido ? null : r.id)}
-                        className={`px-5 py-4 cursor-pointer transition select-none ${
-                          r.esNuevo
-                            ? 'bg-amber-50 border-l-4 border-amber-400 hover:bg-amber-100/60'
-                            : 'bg-white hover:bg-gray-50 border-l-4 border-transparent'
-                        }`}
+                        className="px-5 py-4 cursor-pointer transition select-none bg-white hover:bg-gray-50 border-l-4 border-transparent"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              {r.esNuevo && (
-                                <span className="text-[10px] font-bold bg-amber-400 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                                  Nuevo
-                                </span>
-                              )}
                               <span className="font-semibold text-gray-800 text-sm truncate">
                                 {r.grupo?.nombre || 'Grupo desconocido'}
                               </span>
@@ -248,7 +215,7 @@ export default function HistorialReportesAsistencia({ onVerPerfil }) {
 
                       {/* Detalle expandido */}
                       {estaExpandido && (
-                        <div className={`px-5 pb-4 pt-2 border-t border-gray-100 ${r.esNuevo ? 'bg-amber-50/60' : 'bg-gray-50'}`}>
+                        <div className="px-5 pb-4 pt-2 border-t border-gray-100 bg-gray-50">
                           {ausentes === 0 ? (
                             <p className="text-sm text-green-700 font-medium py-2">
                               ✅ Asistencia completa — ningún estudiante ausente en este reporte.

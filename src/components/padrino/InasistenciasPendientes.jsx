@@ -16,7 +16,7 @@ export default function InasistenciasPendientes({ padrino, gruposAsignados = [],
 
   useEffect(() => {
     if (padrino) cargarDatos();
-  }, [padrino?.id, refresh]);
+  }, [padrino?.id, refresh, gruposAsignados]);
 
   async function cargarDatos() {
     setCargando(true);

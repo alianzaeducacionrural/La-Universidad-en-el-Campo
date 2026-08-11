@@ -5,7 +5,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { useReportesNuevos } from '../hooks/useReportesNuevos';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
@@ -15,7 +14,6 @@ import { ESTADOS_ESTUDIANTE } from '../utils/constants';
 
 export default function Reportes({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
-  const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('reportes');
 
   const [cargandoDatos, setCargandoDatos] = useState(true);
@@ -595,7 +593,7 @@ export default function Reportes({ onVerPerfil }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario?.rol} totalReportesNuevos={totalReportesNuevos} />
+      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario?.rol} />
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Header onVerPerfil={onVerPerfil} />
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">

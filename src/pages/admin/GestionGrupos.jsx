@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
-import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -20,7 +19,6 @@ export default function GestionGrupos({ onVerPerfil }) {
   const notificacion = useNotificacion();
   const [grupos, setGrupos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('grupos-admin');
   const [filtros, setFiltros] = useState({
     universidad: '',
@@ -140,7 +138,6 @@ export default function GestionGrupos({ onVerPerfil }) {
         vistaActiva={vistaActiva}
         setVistaActiva={setVistaActiva}
         rol={usuario.rol}
-        totalReportesNuevos={totalReportesNuevos}
       />
 
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">

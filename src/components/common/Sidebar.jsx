@@ -22,7 +22,7 @@ function useBreakpoint() {
   return bp;
 }
 
-export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendientes = 0, totalReportesNuevos = 0 }) {
+export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendientes = 0 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { perfil } = useAuth();
@@ -82,7 +82,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/reportes') },
     { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador || esAliado, badge: 0,                   action: () => navigate('/grupos') },
     { id: 'desertores',          label: 'Desertores',          mobileLabel: 'Desert.',   icon: '🚨', visible: esCoordinador, badge: 0,                   action: () => navigate('/desertores') },
-    { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: totalReportesNuevos, action: () => navigate('/historial-reportes') },
+    { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: 0,                   action: () => navigate('/historial-reportes') },
     { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
     { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => navigate('/aliados') },
     { id: 'equipo',              label: 'Equipo',              mobileLabel: 'Equipo',    icon: '🧑‍💼', visible: esAdmin, badge: 0,                    action: () => navigate('/equipo') },

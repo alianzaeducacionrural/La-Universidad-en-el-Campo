@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
-import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -16,7 +15,6 @@ import { interpretarError } from '../../utils/helpers';
 export default function GestionAliados({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const notificacion = useNotificacion();
-  const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('aliados');
   const [aliados, setAliados] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -96,7 +94,6 @@ export default function GestionAliados({ onVerPerfil }) {
         vistaActiva={vistaActiva}
         setVistaActiva={setVistaActiva}
         rol={usuario.rol}
-        totalReportesNuevos={totalReportesNuevos}
       />
 
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">

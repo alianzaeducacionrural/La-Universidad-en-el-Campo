@@ -5,7 +5,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
-import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -16,7 +15,6 @@ import * as XLSX from 'xlsx';
 
 export default function GestionDesertores({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
-  const { count: totalReportesNuevos } = useReportesNuevos();
   const [vistaActiva, setVistaActiva] = useState('desertores');
   const [desertores, setDesertores] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -154,7 +152,7 @@ export default function GestionDesertores({ onVerPerfil }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario.rol} totalReportesNuevos={totalReportesNuevos} />
+      <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol={usuario.rol} />
 
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         <Header onVerPerfil={onVerPerfil} />

@@ -12,12 +12,10 @@ import GestionPadrinos from '../../components/coordinador/GestionPadrinos';
 import GestionUniversidades from '../../components/coordinador/GestionUniversidades';
 import PanelMonitoreoAcciones from '../../components/coordinador/PanelMonitoreoAcciones';
 import GestionInstituciones from '../../components/coordinador/GestionInstituciones';
-import { useReportesNuevos } from '../../hooks/useReportesNuevos';
 
 export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const [vistaActiva, setVistaActiva] = useState('seguimientos');
-  const { count: totalReportesNuevos } = useReportesNuevos();
 
   if (!usuario) {
     return <LoadingSpinner mensaje="Cargando panel..." />;
@@ -29,7 +27,6 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
         vistaActiva="panel"
         setVistaActiva={() => {}}
         rol={usuario.rol}
-        totalReportesNuevos={totalReportesNuevos}
       />
       
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">
