@@ -42,11 +42,15 @@ export default function GestionMultas({ onVerPerfil }) {
       .select(`*, estudiante:estudiante_id (*), cartas:cartas_cobro(*), pagos:pagos_multa(*)`)
       .order('created_at', { ascending: false });
     if (data) {
-      setMultas(data.map(m => ({
-        ...m,
-        total_pagado: (m.pagos || []).reduce((sum, p) => sum + (p.valor || 0), 0),
-        saldo: m.valor_total - (m.pagos || []).reduce((sum, p) => sum + (p.valor || 0), 0)
-      })));
+      // Si el estudiante se reintegró (ya no es Desertor), su multa deja de
+      // mostrarse aquí — no interesa mezclar deudas de gente que ya no desertó.
+      setMultas(data
+        .filter(m => m.estudiante?.estado === 'Desertor')
+        .map(m => ({
+          ...m,
+          total_pagado: (m.pagos || []).reduce((sum, p) => sum + (p.valor || 0), 0),
+          saldo: m.valor_total - (m.pagos || []).reduce((sum, p) => sum + (p.valor || 0), 0)
+        })));
     }
     setCargando(false);
   }

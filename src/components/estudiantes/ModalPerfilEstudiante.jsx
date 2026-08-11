@@ -385,6 +385,17 @@ export default function ModalPerfilEstudiante({
                     <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                     <p className="text-sm text-gray-500 mt-2">Cargando datos...</p>
                   </div>
+                ) : datosDesercion && !datosDesercion.tipo_desercion ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <p className="text-sm font-medium text-amber-800">
+                      ⏳ Este reporte está pendiente de información
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      {puedeGestionar
+                        ? 'Usa "Editar" para completar el tipo, motivo y documentos.'
+                        : 'Un coordinador o administrador debe completar el tipo, motivo y documentos.'}
+                    </p>
+                  </div>
                 ) : datosDesercion ? (
                   <div className="space-y-3">
                     <div>

@@ -121,8 +121,9 @@ export default function GestionDesertores({ onVerPerfil }) {
     const justificadas = desertoresFiltrados.filter(d => d.registro?.tipo_desercion === 'Justificada').length;
     const sinJustificar = desertoresFiltrados.filter(d => d.registro?.tipo_desercion === 'Sin Justificar').length;
     const sinRegistro = desertoresFiltrados.filter(d => !d.registro).length;
+    const pendienteInfo = desertoresFiltrados.filter(d => d.registro && !d.registro.tipo_desercion).length;
     const conMulta = desertoresFiltrados.filter(d => d.tieneMultaPendiente).length;
-    return { total, justificadas, sinJustificar, sinRegistro, conMulta };
+    return { total, justificadas, sinJustificar, sinRegistro, pendienteInfo, conMulta };
   }, [desertoresFiltrados]);
 
   function descargarExcel() {
@@ -173,7 +174,7 @@ export default function GestionDesertores({ onVerPerfil }) {
           </div>
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
               <p className="text-2xl font-bold text-gray-800">{kpis.total}</p>
               <p className="text-xs text-gray-500">Total</p>
@@ -189,6 +190,10 @@ export default function GestionDesertores({ onVerPerfil }) {
             <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-200">
               <p className="text-2xl font-bold text-amber-700">{kpis.sinRegistro}</p>
               <p className="text-xs text-amber-600">Sin Registro Formal</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-200">
+              <p className="text-2xl font-bold text-amber-700">{kpis.pendienteInfo}</p>
+              <p className="text-xs text-amber-600">Pendiente de Información</p>
             </div>
             <div className="bg-purple-50 rounded-xl p-4 text-center border border-purple-200">
               <p className="text-2xl font-bold text-purple-700">{kpis.conMulta}</p>
@@ -252,17 +257,21 @@ export default function GestionDesertores({ onVerPerfil }) {
                           <p className="text-xs text-gray-400">{d.grupo_nombre}</p>
                         </td>
                         <td className="px-4 py-2.5">
-                          {d.registro ? (
+                          {!d.registro ? (
+                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
+                              Sin registro
+                            </span>
+                          ) : !d.registro.tipo_desercion ? (
+                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
+                              ⏳ Pendiente de información
+                            </span>
+                          ) : (
                             <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                               d.registro.tipo_desercion === 'Justificada'
                                 ? 'bg-blue-100 text-blue-700'
                                 : 'bg-red-100 text-red-700'
                             }`}>
                               {d.registro.tipo_desercion}
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
-                              Sin registro
                             </span>
                           )}
                         </td>

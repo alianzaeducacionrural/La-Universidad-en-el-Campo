@@ -29,6 +29,7 @@ export default function ModalReportarDesercion({
 }) {
   const notificacion = useNotificacion();
   const [cargando, setCargando] = useState(false);
+  const [sinDatos, setSinDatos] = useState(false);
   const [tipoDesercion, setTipoDesercion] = useState('Sin Justificar');
   const [motivo, setMotivo] = useState('');
   const [motivoOtro, setMotivoOtro] = useState('');
@@ -61,12 +62,45 @@ export default function ModalReportarDesercion({
 
   async function handleSubmit(e) {
     e.preventDefault();
-    
+
+    if (sinDatos) {
+      setCargando(true);
+      try {
+        const { error } = await supabase.rpc('reportar_desercion', {
+          p_estudiante_id: estudiante.id,
+          p_usuario_id: usuario.id,
+          p_tipo_desercion: null,
+          p_motivo_principal: null,
+          p_motivo_otro: null,
+          p_observaciones: observaciones || null,
+          p_valor_multa: null,
+          p_carta_nombre: null,
+          p_carta_url: null,
+          p_carta_tamanio: null,
+          p_soporte_nombre: null,
+          p_soporte_url: null,
+          p_soporte_tamanio: null
+        });
+
+        if (error) throw error;
+
+        notificacion.success(`${estudiante.nombre_completo} quedó reportado como Desertor, pendiente de información`);
+        onConfirmar();
+        onClose();
+      } catch (error) {
+        console.error('Error:', error);
+        notificacion.error(interpretarError(error), 'Error al reportar deserción');
+      } finally {
+        setCargando(false);
+      }
+      return;
+    }
+
     if (!cartaRetiro) {
       notificacion.warning('La carta de retiro de la institución educativa es obligatoria', 'Documento requerido');
       return;
     }
-    
+
     if (tipoDesercion === 'Justificada' && !soporteAdicional) {
       notificacion.warning('Para deserción justificada, debe adjuntar un soporte adicional', 'Documento requerido');
       return;
@@ -79,7 +113,7 @@ export default function ModalReportarDesercion({
         return;
       }
     }
-    
+
     setCargando(true);
 
     try {
@@ -141,7 +175,24 @@ export default function ModalReportarDesercion({
         
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-5">
+            {/* Reportar sin datos (solo admin) */}
+            {usuario?.rol === 'admin' && (
+              <label className="flex items-start gap-2 bg-gray-50 border border-gray-200 rounded-lg p-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sinDatos}
+                  onChange={(e) => setSinDatos(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-gray-700">
+                  📋 Reportar sin información todavía (pendiente) — se podrá completar después con "Editar"
+                </span>
+              </label>
+            )}
+
             {/* Tipo de Deserción */}
+            {!sinDatos && (
+            <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Deserción *
@@ -204,20 +255,6 @@ export default function ModalReportarDesercion({
                 />
               </div>
             )}
-            
-            {/* Observaciones */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observaciones
-              </label>
-              <textarea
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                rows={3}
-                placeholder="Información adicional sobre la deserción..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none"
-              />
-            </div>
 
             {/* VALOR DE MULTA (Solo si es Sin Justificar) */}
             {tipoDesercion === 'Sin Justificar' && (
@@ -279,12 +316,31 @@ export default function ModalReportarDesercion({
                 )}
               </div>
             </div>
-            
+            </>
+            )}
+
+            {/* Observaciones */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Observaciones
+              </label>
+              <textarea
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                rows={3}
+                placeholder="Información adicional sobre la deserción..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none"
+              />
+            </div>
+
             {/* Advertencia */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <p className="text-sm text-amber-800">
-                ⚠️ Esta acción cambiará el estado del estudiante a <strong>"Desertor"</strong>.
-                Esta acción quedará registrada y no podrá deshacerse fácilmente.
+                {sinDatos ? (
+                  <>⚠️ Esta acción cambiará el estado del estudiante a <strong>"Desertor"</strong> sin información todavía. Recuerda completarla luego con "Editar".</>
+                ) : (
+                  <>⚠️ Esta acción cambiará el estado del estudiante a <strong>"Desertor"</strong>. Esta acción quedará registrada y no podrá deshacerse fácilmente.</>
+                )}
               </p>
             </div>
           </div>
