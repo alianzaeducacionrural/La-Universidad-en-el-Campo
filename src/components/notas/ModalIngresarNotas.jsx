@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
-import { interpretarError } from '../../utils/helpers';
+import { interpretarError, derivarModulosYDocentes } from '../../utils/helpers';
+import SelectConOtro from '../common/SelectConOtro';
 
 export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId, estudiantes, notaEditando = null }) {
   const notificacion = useNotificacion();
@@ -11,8 +12,23 @@ export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId
   const [docente, setDocente] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [notas, setNotas] = useState({});
+  const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
+  const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
+    () => derivarModulosYDocentes(cronogramaGrupo),
+    [cronogramaGrupo]
+  );
 
   const fechaHoy = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (!isOpen || !grupoId) return;
+    supabase
+      .from('cronograma_clases')
+      .select('modulo, docente_universitario')
+      .eq('grupo_id', grupoId)
+      .order('fecha', { ascending: false })
+      .then(({ data }) => setCronogramaGrupo(data || []));
+  }, [isOpen, grupoId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -135,17 +151,18 @@ export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Módulo / Materia *</label>
-                <input
-                  type="text"
-                  value={modulo}
-                  onChange={e => setModulo(e.target.value)}
-                  required
-                  placeholder="Ej: Matemáticas Básicas"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
-                />
-              </div>
+              <SelectConOtro
+                label="Módulo / Materia *"
+                options={modulosDisponibles}
+                value={modulo}
+                onChange={val => {
+                  setModulo(val);
+                  if (docentePorModulo[val]) setDocente(docentePorModulo[val]);
+                }}
+                required
+                placeholder="Seleccionar módulo..."
+                otroPlaceholder="Ej: Matemáticas Básicas"
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Evaluación *</label>
                 <input
@@ -159,17 +176,15 @@ export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Docente *</label>
-              <input
-                type="text"
-                value={docente}
-                onChange={e => setDocente(e.target.value)}
-                required
-                placeholder="Nombre completo del docente"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
-              />
-            </div>
+            <SelectConOtro
+              label="Docente *"
+              options={docentesDisponibles}
+              value={docente}
+              onChange={setDocente}
+              required
+              placeholder="Seleccionar docente..."
+              otroPlaceholder="Nombre completo del docente"
+            />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>

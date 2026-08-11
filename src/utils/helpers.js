@@ -142,6 +142,21 @@ export const formatearFechaInput = (fecha) => {
   return adjustedDate.toISOString().split('T')[0];
 };
 
+// A partir de las filas de cronograma_clases de un grupo (esperadas ordenadas
+// por fecha descendente), arma las listas de módulos/docentes conocidos y el
+// docente más reciente asociado a cada módulo, para precargar formularios.
+export const derivarModulosYDocentes = (cronograma = []) => {
+  const modulos = [...new Set(cronograma.map(c => c.modulo).filter(Boolean))].sort();
+  const docentes = [...new Set(cronograma.map(c => c.docente_universitario).filter(Boolean))].sort();
+  const docentePorModulo = {};
+  cronograma.forEach(c => {
+    if (c.modulo && c.docente_universitario && !docentePorModulo[c.modulo]) {
+      docentePorModulo[c.modulo] = c.docente_universitario;
+    }
+  });
+  return { modulos, docentes, docentePorModulo };
+};
+
 export const truncarTexto = (texto, maxLength = 100) => {
   if (!texto || texto.length <= maxLength) return texto;
   return texto.substring(0, maxLength) + '...';

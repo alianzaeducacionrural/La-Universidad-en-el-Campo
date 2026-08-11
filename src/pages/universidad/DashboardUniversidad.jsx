@@ -9,7 +9,8 @@ import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/common/Header';
 import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
-import { formatearFecha, interpretarError } from '../../utils/helpers';
+import SelectConOtro from '../../components/common/SelectConOtro';
+import { formatearFecha, interpretarError, derivarModulosYDocentes } from '../../utils/helpers';
 import { exportarNotasGrupoExcel } from '../../utils/exportUtils';
 import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
@@ -43,6 +44,11 @@ export default function DashboardUniversidad({ onVerPerfil }) {
 
   const [enlacesGrupo, setEnlacesGrupo] = useState({ estudiantes: null, acudientes: null });
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
+  const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
+  const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
+    () => derivarModulosYDocentes(cronogramaGrupo),
+    [cronogramaGrupo]
+  );
 
   // 🔥 ESTADOS PARA HISTORIAL
   const [historial, setHistorial] = useState([]);
@@ -107,6 +113,7 @@ export default function DashboardUniversidad({ onVerPerfil }) {
       cargarPadrinosGrupo(grupoSeleccionado.id);
       cargarHistorial(grupoSeleccionado.id);
       cargarNotasGrupo(grupoSeleccionado.id);
+      cargarCronogramaGrupo(grupoSeleccionado.id);
     }
   }, [grupoSeleccionado]);
 
@@ -146,6 +153,15 @@ export default function DashboardUniversidad({ onVerPerfil }) {
       .select(`padrinos:padrino_id (id, nombre_completo, telefono, correo)`)
       .eq('grupo_id', grupoId);
     if (data) setPadrinosGrupo(data.map(d => d.padrinos).filter(p => p));
+  }
+
+  async function cargarCronogramaGrupo(grupoId) {
+    const { data } = await supabase
+      .from('cronograma_clases')
+      .select('modulo, docente_universitario')
+      .eq('grupo_id', grupoId)
+      .order('fecha', { ascending: false });
+    setCronogramaGrupo(data || []);
   }
 
   async function cargarNotasGrupo(grupoId) {
@@ -499,9 +515,28 @@ export default function DashboardUniversidad({ onVerPerfil }) {
           <div className="space-y-6">
             <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-                <div><label className="block text-xs text-gray-500 mb-1">Módulo/Clase *</label><input type="text" value={modulo} onChange={e => setModulo(e.target.value)} placeholder="Ej: Matemáticas" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <SelectConOtro
+                  label="Módulo/Clase *"
+                  options={modulosDisponibles}
+                  value={modulo}
+                  onChange={val => {
+                    setModulo(val);
+                    if (docentePorModulo[val]) setDocenteNombre(docentePorModulo[val]);
+                  }}
+                  required
+                  placeholder="Seleccionar módulo..."
+                  otroPlaceholder="Ej: Matemáticas"
+                />
                 <div><label className="block text-xs text-gray-500 mb-1">Fecha *</label><input type="date" value={fechaAsistencia} onChange={e => setFechaAsistencia(e.target.value)} max={new Date().toISOString().split('T')[0]} className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
-                <div><label className="block text-xs text-gray-500 mb-1">Nombre del Docente *</label><input type="text" value={docenteNombre} onChange={e => setDocenteNombre(e.target.value)} placeholder="Nombre completo" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
+                <SelectConOtro
+                  label="Nombre del Docente *"
+                  options={docentesDisponibles}
+                  value={docenteNombre}
+                  onChange={setDocenteNombre}
+                  required
+                  placeholder="Seleccionar docente..."
+                  otroPlaceholder="Nombre completo"
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div><label className="block text-xs text-gray-500 mb-1">Teléfono</label><input type="text" value={docenteTelefono} onChange={e => setDocenteTelefono(e.target.value)} placeholder="3115551234" className="w-full border rounded-lg px-3 py-2.5 text-sm" /></div>
@@ -1087,21 +1122,34 @@ export default function DashboardUniversidad({ onVerPerfil }) {
             <form onSubmit={guardarEdicion}>
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Módulo/Clase *</label>
-                    <input type="text" value={modulo} onChange={e => setModulo(e.target.value)} required className="w-full border rounded-lg px-3 py-2.5 text-sm" />
-                  </div>
+                  <SelectConOtro
+                    label="Módulo/Clase *"
+                    options={modulosDisponibles}
+                    value={modulo}
+                    onChange={val => {
+                      setModulo(val);
+                      if (docentePorModulo[val]) setDocenteNombre(docentePorModulo[val]);
+                    }}
+                    required
+                    placeholder="Seleccionar módulo..."
+                    otroPlaceholder="Ej: Matemáticas"
+                  />
                   <div>
                     <label className="block text-sm font-medium mb-1">Fecha *</label>
                     <input type="date" value={fechaAsistencia} onChange={e => setFechaAsistencia(e.target.value)} max={new Date().toISOString().split('T')[0]} required className="w-full border rounded-lg px-3 py-2.5 text-sm" />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Nombre del Docente *</label>
-                    <input type="text" value={docenteNombre} onChange={e => setDocenteNombre(e.target.value)} required className="w-full border rounded-lg px-3 py-2.5 text-sm" />
-                  </div>
+                  <SelectConOtro
+                    label="Nombre del Docente *"
+                    options={docentesDisponibles}
+                    value={docenteNombre}
+                    onChange={setDocenteNombre}
+                    required
+                    placeholder="Seleccionar docente..."
+                    otroPlaceholder="Nombre completo"
+                  />
                   <div>
                     <label className="block text-sm font-medium mb-1">Observaciones</label>
                     <input type="text" value={observaciones} onChange={e => setObservaciones(e.target.value)} className="w-full border rounded-lg px-3 py-2.5 text-sm" />
