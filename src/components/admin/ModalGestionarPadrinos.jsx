@@ -40,7 +40,7 @@ export default function ModalGestionarPadrinos({ isOpen, onClose, grupo, onRecar
       .from('padrinos')
       .select('id, nombre_completo, correo')
       .eq('activo', true)
-      .eq('rol', 'padrino')
+      .neq('rol', 'aliado')
       .order('nombre_completo');
 
     if (todos) {
