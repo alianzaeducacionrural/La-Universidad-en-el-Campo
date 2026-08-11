@@ -25,6 +25,7 @@ export default function CumplimientoCronograma() {
   const [busqueda, setBusqueda] = useState('');
   const [modalMasivo, setModalMasivo] = useState(false);
   const [modalGrupo, setModalGrupo] = useState(null);
+  const [fechaEnfocadaId, setFechaEnfocadaId] = useState(null);
 
   useEffect(() => { cargarTodo(); }, []);
 
@@ -71,7 +72,9 @@ export default function CumplimientoCronograma() {
 
       // Reportes que no corresponden a ninguna fecha programada
       const fechasProgramadas = new Set(programadas.map(p => p.fecha));
-      const fueraDeCronograma = registrosGrupo.filter(r => !fechasProgramadas.has(r.fecha));
+      const fueraDeCronograma = registrosGrupo
+        .filter(r => !fechasProgramadas.has(r.fecha))
+        .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
       const totalProgramadas = fechas.length;
       const totalReportadas = fechas.filter(f => f.estado === 'reportada' || f.estado === 'otro_modulo').length;
@@ -219,7 +222,7 @@ export default function CumplimientoCronograma() {
                         <div className="h-full bg-green-500 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setModalGrupo(r.grupo); }}
+                        onClick={(e) => { e.stopPropagation(); setFechaEnfocadaId(null); setModalGrupo(r.grupo); }}
                         className="text-xs bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
                       >
                         ✏️ Cronograma
@@ -235,20 +238,35 @@ export default function CumplimientoCronograma() {
                       <p className="text-sm text-gray-500">Este grupo no tiene cronograma cargado.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {r.fechas.map(f => (
-                          <div key={f.id} className="bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-gray-700">{formatearFecha(f.fecha)}</span>
-                              <span>
-                                {f.estado === 'reportada' ? '✅' : f.estado === 'otro_modulo' ? '⚠️' : f.estado === 'programada' ? '📅' : '⏳'}
-                              </span>
-                            </div>
-                            {f.modulo && <p className="text-xs text-gray-500 mt-0.5">Programado: {f.modulo}</p>}
-                            {f.estado === 'otro_modulo' && (
-                              <p className="text-xs text-blue-600 mt-0.5">Reportado con otro módulo: {f.moduloReportado}</p>
-                            )}
-                          </div>
-                        ))}
+                        {r.fechas.map(f => {
+                          // Reportada u otro_modulo = la asistencia sí se subió (verde), aunque el
+                          // módulo se haya escrito distinto. Pendiente = ya pasó la fecha y no hay
+                          // nada reportado (rojo). Programada = todavía no aplica (neutro).
+                          const colorTarjeta =
+                            f.estado === 'pendiente' ? 'bg-red-50 border-red-300 hover:border-red-400' :
+                            f.estado === 'programada' ? 'bg-white border-gray-200 hover:border-primary' :
+                            'bg-green-50 border-green-300 hover:border-green-400';
+                          return (
+                            <button
+                              key={f.id}
+                              onClick={() => { setFechaEnfocadaId(f.id); setModalGrupo(r.grupo); }}
+                              title="Clic para editar esta fecha del cronograma"
+                              className={`text-left rounded-lg border px-3 py-2 text-sm hover:shadow-sm transition group ${colorTarjeta}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-gray-700">{formatearFecha(f.fecha)}</span>
+                                <span className="flex items-center gap-1">
+                                  <span className="opacity-0 group-hover:opacity-100 transition text-xs">✏️</span>
+                                  {f.estado === 'reportada' ? '✅' : f.estado === 'otro_modulo' ? '⚠️' : f.estado === 'programada' ? '📅' : '⏳'}
+                                </span>
+                              </div>
+                              {f.modulo && <p className="text-xs text-gray-500 mt-0.5">Programado: {f.modulo}</p>}
+                              {f.estado === 'otro_modulo' && (
+                                <p className="text-xs text-blue-600 mt-0.5">Reportado con otro módulo: {f.moduloReportado}</p>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                     {r.fueraDeCronograma.length > 0 && (
@@ -258,10 +276,15 @@ export default function CumplimientoCronograma() {
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                           {r.fueraDeCronograma.map((rep, i) => (
-                            <div key={i} className="bg-blue-50 rounded-lg border border-blue-200 px-3 py-2 text-sm">
+                            <button
+                              key={i}
+                              onClick={() => { setFechaEnfocadaId(null); setModalGrupo(r.grupo); }}
+                              title="Clic para agregar esta fecha al cronograma"
+                              className="text-left bg-blue-50 rounded-lg border border-blue-200 px-3 py-2 text-sm hover:border-blue-400 hover:shadow-sm transition"
+                            >
                               <span className="font-medium text-gray-700">{formatearFecha(rep.fecha)}</span>
                               {rep.modulo && <p className="text-xs text-gray-500 mt-0.5">{rep.modulo}</p>}
-                            </div>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -282,10 +305,11 @@ export default function CumplimientoCronograma() {
 
       <ModalCronogramaGrupo
         isOpen={!!modalGrupo}
-        onClose={() => setModalGrupo(null)}
+        onClose={() => { setModalGrupo(null); setFechaEnfocadaId(null); }}
         grupo={modalGrupo}
         onActualizado={cargarTodo}
         puedeGestionar={true}
+        idFechaEnfocada={fechaEnfocadaId}
       />
     </div>
   );

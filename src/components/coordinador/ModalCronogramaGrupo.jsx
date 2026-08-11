@@ -37,7 +37,7 @@ const ESTILOS_ESTADO = {
   }
 };
 
-export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActualizado, puedeGestionar = true }) {
+export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActualizado, puedeGestionar = true, idFechaEnfocada = null }) {
   const notificacion = useNotificacion();
   const [fechas, setFechas] = useState([]);
   const [registrosAsistencia, setRegistrosAsistencia] = useState([]);
@@ -99,6 +99,21 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
     setGuardando(false);
   }
 
+  // Si se abrió el modal apuntando a una fecha específica (desde Cumplimiento
+  // del Cronograma), entra directo en modo edición sobre esa fecha y la
+  // lleva a la vista, en vez de dejar al coordinador a buscarla en la lista.
+  useEffect(() => {
+    if (cargando || !idFechaEnfocada || !puedeGestionar) return;
+    const enfocada = cruzarCronogramaConAsistencia(fechas, registrosAsistencia).find(f => f.id === idFechaEnfocada);
+    if (enfocada) {
+      abrirEdicion(enfocada);
+      requestAnimationFrame(() => {
+        document.getElementById(`cronograma-fecha-${idFechaEnfocada}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cargando, idFechaEnfocada]);
+
   function abrirEdicion(f) {
     setEditandoId(f.id);
     // Se precarga con lo efectivo (lo reportado, si lo hay) — si el docente
@@ -156,9 +171,20 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-xl animate-scale-in">
-        <div className="p-6 border-b border-gray-200 sticky top-0 bg-gradient-to-r from-primary/10 to-primary/5 z-10">
-          <h3 className="text-lg font-bold text-gray-800">🗓️ Cronograma de Clases</h3>
-          <p className="text-sm text-gray-500 mt-1">{grupo.nombre}</p>
+        <div className="p-6 border-b border-gray-200 sticky top-0 bg-warm-light z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold text-gray-800">🗓️ Cronograma de Clases</h3>
+              <p className="text-sm text-gray-500 mt-1 truncate">{grupo.nombre}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl leading-none hover:bg-white/60 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0"
+              title="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="p-6">
@@ -254,7 +280,7 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
                   {fechasConEstado.map(f => {
                     const estilo = ESTILOS_ESTADO[f.estado];
                     return (
-                      <div key={f.id} className="relative flex items-start pl-12">
+                      <div key={f.id} id={`cronograma-fecha-${f.id}`} className="relative flex items-start pl-12">
                         <div
                           className={`absolute left-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm flex-shrink-0 ${estilo.marcador}`}
                           title={estilo.texto}
