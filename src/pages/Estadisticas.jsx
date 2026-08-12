@@ -19,8 +19,11 @@ import RankingDeserciones from '../components/estadisticas/RankingDeserciones';
 import GraficoCausasInasistencia from '../components/estadisticas/GraficoCausasInasistencia';
 import GraficoInasistenciasMensual from '../components/estadisticas/GraficoInasistenciasMensual';
 
-export default function Estadisticas({ onVerPerfil }) {
-  const { perfil: usuario } = useAuth();
+export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simulando = false }) {
+  const { perfil: usuarioAuth } = useAuth();
+  // usuarioForzado permite que el admin "vea como" un aliado específico
+  // desde VerComo.jsx, sin necesidad de iniciar sesión con esa cuenta.
+  const usuario = usuarioForzado || usuarioAuth;
   const [kpis, setKpis] = useState(null);
   const [gruposTotales, setGruposTotales] = useState(0);
   const [cargando, setCargando] = useState(true);
@@ -152,6 +155,7 @@ export default function Estadisticas({ onVerPerfil }) {
         vistaActiva={vistaActiva}
         setVistaActiva={setVistaActiva}
         rol={usuario.rol}
+        simulando={simulando}
       />
 
       <div className="flex-1 min-w-0 pb-24 lg:pb-0">

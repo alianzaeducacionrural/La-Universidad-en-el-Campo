@@ -31,8 +31,7 @@ const GestionEquipo = lazy(() => import('./pages/admin/GestionEquipo'));
 const GestionDesertores = lazy(() => import('./pages/admin/GestionDesertores'));
 const ListadoEstudiantes = lazy(() => import('./pages/admin/ListadoEstudiantes'));
 const PortalInstitucion = lazy(() => import('./pages/PortalInstitucion'));
-const VerComoUniversidad = lazy(() => import('./pages/admin/VerComoUniversidad'));
-const VerComoPadrino = lazy(() => import('./pages/admin/VerComoPadrino'));
+const VerComo = lazy(() => import('./pages/admin/VerComo'));
 
 // Rutas a las que un aliado (solo lectura) tiene acceso
 const RUTAS_ALIADO = ['/estadisticas', '/reportes', '/grupos'];
@@ -403,8 +402,7 @@ function AppContent() {
             <Route path="/estudiantes" element={<ProtectedRoute><ListadoEstudiantes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
             <Route path="/equipo" element={<AdminRoute><GestionEquipo onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
-            <Route path="/ver-como-universidad" element={<AdminRoute><VerComoUniversidad /></AdminRoute>} />
-            <Route path="/ver-como-padrino" element={<AdminRoute><VerComoPadrino /></AdminRoute>} />
+            <Route path="/ver-como" element={<AdminRoute><VerComo /></AdminRoute>} />
             <Route path="/historial-reportes" element={<ProtectedRoute><HistorialReportesAsistencia onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/" element={<HomeRedirect />} />
             <Route path="*" element={<Navigate to="/" replace />} />

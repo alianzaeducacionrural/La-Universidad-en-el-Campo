@@ -60,6 +60,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     if (path === '/estudiantes') return 'estudiantes';
     if (path === '/aliados') return 'aliados';
     if (path === '/equipo') return 'equipo';
+    if (path === '/ver-como') return 'ver-como';
     return vistaActiva || 'grupos';
   };
 
@@ -67,12 +68,19 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
 
   function handleMiGestionClick(tabId) {
     setVistaActiva(tabId);
-    // En modo "ver como" (admin simulando un padrino) no se navega de verdad —
-    // ya estamos en la ruta de simulación, y un navigate('/dashboard') real
-    // sacaría al admin de esa vista hacia su propio /dashboard.
+    // En modo "ver como" (admin simulando otro rol) no se navega de verdad —
+    // ya estamos en la ruta de simulación, y un navigate real sacaría al
+    // admin de esa vista hacia su propia página.
     if (simulando) return;
     sessionStorage.setItem('vistaActivaDashboard', tabId);
     navigate('/dashboard');
+  }
+
+  // Igual que handleMiGestionClick pero para los ítems de menuAdmin, que
+  // navegan a páginas distintas en vez de pestañas dentro de /dashboard.
+  function irA(path) {
+    if (simulando) return;
+    navigate(path);
   }
 
   const menuPadrino = [
@@ -82,18 +90,17 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
   ];
 
   const menuAdmin = [
-    { id: 'panel',       label: 'Panel de Control', mobileLabel: 'Panel',    icon: '📊', visible: esCoordinador, badge: 0, action: () => navigate('/panel') },
-    { id: 'estadisticas',label: 'Estadísticas',     mobileLabel: 'Stats',    icon: '📈', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/estadisticas') },
-    { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador || esAliado, badge: 0, action: () => navigate('/reportes') },
-    { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador || esAliado, badge: 0,                   action: () => navigate('/grupos') },
-    { id: 'desertores',          label: 'Desertores',          mobileLabel: 'Desert.',   icon: '🚨', visible: esCoordinador, badge: 0,                   action: () => navigate('/desertores') },
-    { id: 'estudiantes',         label: 'Estudiantes',         mobileLabel: 'Estud.',    icon: '👥', visible: esCoordinador, badge: 0,                   action: () => navigate('/estudiantes') },
-    { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: 0,                   action: () => navigate('/historial-reportes') },
-    { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => navigate('/multas') },
-    { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => navigate('/aliados') },
-    { id: 'equipo',              label: 'Equipo',              mobileLabel: 'Equipo',    icon: '🧑‍💼', visible: esAdmin, badge: 0,                    action: () => navigate('/equipo') },
-    { id: 'ver-universidad',     label: 'Ver Universidad',     mobileLabel: 'Univ.',     icon: '🎓', visible: esAdmin, badge: 0,                          action: () => navigate('/ver-como-universidad') },
-    { id: 'ver-padrino',         label: 'Ver Padrino',         mobileLabel: 'Padrino',   icon: '👤', visible: esAdmin, badge: 0,                          action: () => navigate('/ver-como-padrino') },
+    { id: 'panel',       label: 'Panel de Control', mobileLabel: 'Panel',    icon: '📊', visible: esCoordinador, badge: 0, action: () => irA('/panel') },
+    { id: 'estadisticas',label: 'Estadísticas',     mobileLabel: 'Stats',    icon: '📈', visible: esCoordinador || esAliado, badge: 0, action: () => irA('/estadisticas') },
+    { id: 'reportes',    label: 'Reportes',          mobileLabel: 'Reportes', icon: '📑', visible: esCoordinador || esAliado, badge: 0, action: () => irA('/reportes') },
+    { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador || esAliado, badge: 0,                   action: () => irA('/grupos') },
+    { id: 'desertores',          label: 'Desertores',          mobileLabel: 'Desert.',   icon: '🚨', visible: esCoordinador, badge: 0,                   action: () => irA('/desertores') },
+    { id: 'estudiantes',         label: 'Estudiantes',         mobileLabel: 'Estud.',    icon: '👥', visible: esCoordinador, badge: 0,                   action: () => irA('/estudiantes') },
+    { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: 0,                   action: () => irA('/historial-reportes') },
+    { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => irA('/multas') },
+    { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => irA('/aliados') },
+    { id: 'equipo',              label: 'Equipo',              mobileLabel: 'Equipo',    icon: '🧑‍💼', visible: esAdmin, badge: 0,                    action: () => irA('/equipo') },
+    { id: 'ver-como',            label: 'Ver como...',         mobileLabel: 'Ver como',  icon: '🔎', visible: esAdmin, badge: 0,                          action: () => irA('/ver-como') },
   ];
 
   const allVisibleItems = [...menuPadrino, ...menuAdmin].filter(i => i.visible);
