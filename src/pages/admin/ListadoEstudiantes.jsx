@@ -208,7 +208,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Municipio</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Universidad / Grupo</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Estado</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-gray-600">Faltas</th>
+                      <th className="px-4 py-2.5 text-center font-medium text-gray-600">Perfil</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -222,7 +222,10 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                           <p className="font-medium text-gray-800">{e.nombre_completo}</p>
                           <p className="text-xs text-gray-400">{e.documento}</p>
                         </td>
-                        <td className="px-4 py-2.5 text-gray-600">{e.municipio}</td>
+                        <td className="px-4 py-2.5 text-gray-600">
+                          <p>{e.municipio}</p>
+                          <p className="text-xs text-gray-400">{e.institucion_educativa}</p>
+                        </td>
                         <td className="px-4 py-2.5 text-gray-600">
                           <p>{e.universidad}</p>
                           <p className="text-xs text-gray-400">{e.grupo_nombre}</p>
@@ -232,7 +235,15 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                             {e.estado || 'Activo'}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 text-gray-600">{e.total_faltas || 0}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); onVerPerfil?.(e); }}
+                            className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 w-8 h-8 rounded-full inline-flex items-center justify-center transition"
+                            title="Ver perfil"
+                          >
+                            👁️
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
