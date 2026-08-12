@@ -9,7 +9,7 @@ import CumplimientoCronograma from '../../components/coordinador/CumplimientoCro
 
 export default function HistorialReportesAsistencia({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
-  const [tab, setTab] = useState('reportes');
+  const [tab, setTab] = useState('cronograma');
   const [reportes, setReportes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtroUniversidad, setFiltroUniversidad] = useState('');
