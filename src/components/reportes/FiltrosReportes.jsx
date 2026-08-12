@@ -11,6 +11,7 @@ export const FILTROS_VACIOS = {
   programas: [],
   cohortes: [],
   grupoIds: [],
+  instituciones: [],
   estados: [],
   fechaInicio: '',
   fechaFin: ''
@@ -21,7 +22,8 @@ const CATEGORIA_A_GETTER = {
   universidades: 'universidad',
   programas: 'programa',
   cohortes: 'cohorte',
-  grupoIds: 'grupoId'
+  grupoIds: 'grupoId',
+  instituciones: 'institucion'
 };
 
 const LABELS_CATEGORIA = {
@@ -30,6 +32,7 @@ const LABELS_CATEGORIA = {
   programas: 'Programa',
   cohortes: 'Cohorte',
   grupoIds: 'Grupo',
+  instituciones: 'Institución',
   estados: 'Estado'
 };
 
@@ -61,6 +64,9 @@ export function aplicarFiltrosGenerico(filas, getters, filtros, municipiosPermit
   }
   if (filtros.grupoIds.length > 0) {
     resultado = resultado.filter(r => filtros.grupoIds.includes(getters.grupoId(r)));
+  }
+  if (getters.institucion && filtros.instituciones.length > 0) {
+    resultado = resultado.filter(r => filtros.instituciones.includes(getters.institucion(r)));
   }
   if (getters.estado && filtros.estados.length > 0) {
     resultado = resultado.filter(r => filtros.estados.includes(getters.estado(r)));
@@ -173,9 +179,10 @@ export default function FiltrosReportes({
   getters,
   municipiosPermitidos = null,
   mostrarEstado = true,
-  mostrarFecha = true
+  mostrarFecha = true,
+  mostrarInstitucion = false
 }) {
-  const categorias = ['municipios', 'universidades', 'programas', 'cohortes', 'grupoIds'];
+  const categorias = ['municipios', 'universidades', 'programas', 'cohortes', 'grupoIds', 'instituciones'];
   const hayFiltros = Object.entries(filtros).some(([, v]) =>
     Array.isArray(v) ? v.length > 0 : Boolean(v)
   );
@@ -227,12 +234,15 @@ export default function FiltrosReportes({
         )}
       </div>
 
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${mostrarEstado ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-2`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${mostrarEstado && mostrarInstitucion ? 'lg:grid-cols-7' : mostrarEstado || mostrarInstitucion ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-2`}>
         <MultiSelect label="Municipio" icon="📍" opciones={opciones.municipios} seleccionados={filtros.municipios} onChange={v => set('municipios', v)} disponibles={disponiblesPara('municipios')} />
         <MultiSelect label="Universidad" icon="🎓" opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />
         <MultiSelect label="Programa" icon="📘" opciones={opciones.programas} seleccionados={filtros.programas} onChange={v => set('programas', v)} disponibles={disponiblesPara('programas')} />
         <MultiSelect label="Cohorte" icon="📅" opciones={opciones.cohortes} seleccionados={filtros.cohortes} onChange={v => set('cohortes', v)} disponibles={disponiblesPara('cohortes')} />
         <MultiSelect label="Grupo" icon="👥" opciones={opciones.grupos} seleccionados={filtros.grupoIds} onChange={v => set('grupoIds', v)} disponibles={disponiblesPara('grupoIds')} />
+        {mostrarInstitucion && (
+          <MultiSelect label="Institución" icon="🏫" opciones={opciones.instituciones} seleccionados={filtros.instituciones} onChange={v => set('instituciones', v)} disponibles={disponiblesPara('instituciones')} />
+        )}
         {mostrarEstado && (
           <MultiSelect label="Estado" icon="📊" opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} />
         )}

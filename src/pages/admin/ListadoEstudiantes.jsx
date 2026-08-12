@@ -90,6 +90,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     programa: e => e.programa,
     cohorte: e => e.cohorte,
     grupoId: e => e.grupo_id,
+    institucion: e => e.institucion_educativa,
     estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO
   };
 
@@ -110,6 +111,11 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     return Array.from(set).sort();
   }, [rawEstudiantes]);
 
+  const institucionesDisponibles = useMemo(() => {
+    const set = new Set(rawEstudiantes.map(e => e.institucion_educativa).filter(Boolean));
+    return Array.from(set).sort();
+  }, [rawEstudiantes]);
+
   const opcionesFiltro = useMemo(() => ({
     municipios: municipiosDb
       .filter(m => !municipiosPermitidos || municipiosPermitidos.includes(m.nombre))
@@ -118,8 +124,9 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     programas: programasDb.map(p => ({ valor: p.nombre, label: p.nombre })),
     cohortes: cohortesDisponibles.map(c => ({ valor: c, label: c })),
     grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}` })),
+    instituciones: institucionesDisponibles.map(i => ({ valor: i, label: i })),
     estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
-  }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, municipiosPermitidos]);
+  }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, institucionesDisponibles, municipiosPermitidos]);
 
   const kpis = useMemo(() => ({
     total: estudiantesFiltrados.length,
@@ -176,6 +183,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
             getters={getters}
             municipiosPermitidos={municipiosPermitidos}
             mostrarFecha={false}
+            mostrarInstitucion
           />
 
           <div className="mb-4">
@@ -207,6 +215,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Estudiante</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Municipio</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Universidad / Grupo</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-gray-600">Cohorte</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Estado</th>
                       <th className="px-4 py-2.5 text-center font-medium text-gray-600">Perfil</th>
                     </tr>
@@ -230,6 +239,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                           <p>{e.universidad}</p>
                           <p className="text-xs text-gray-400">{e.grupo_nombre}</p>
                         </td>
+                        <td className="px-4 py-2.5 text-gray-600">{e.cohorte}</td>
                         <td className="px-4 py-2.5">
                           <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${getEstadoColor(e.estado)}`}>
                             {e.estado || 'Activo'}
