@@ -22,7 +22,7 @@ function useBreakpoint() {
   return bp;
 }
 
-export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendientes = 0 }) {
+export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendientes = 0, simulando = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { perfil } = useAuth();
@@ -66,6 +66,10 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
 
   function handleMiGestionClick(tabId) {
     setVistaActiva(tabId);
+    // En modo "ver como" (admin simulando un padrino) no se navega de verdad —
+    // ya estamos en la ruta de simulación, y un navigate('/dashboard') real
+    // sacaría al admin de esa vista hacia su propio /dashboard.
+    if (simulando) return;
     sessionStorage.setItem('vistaActivaDashboard', tabId);
     navigate('/dashboard');
   }

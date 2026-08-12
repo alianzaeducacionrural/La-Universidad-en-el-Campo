@@ -48,7 +48,7 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
   const [nuevoTelefono, setNuevoTelefono] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
-  const [detalleEditado, setDetalleEditado] = useState({ modulo: '', docente_universitario: '', telefono_contacto: '' });
+  const [detalleEditado, setDetalleEditado] = useState({ fecha: '', modulo: '', docente_universitario: '', telefono_contacto: '' });
 
   useEffect(() => {
     if (isOpen && grupo) cargarFechas();
@@ -120,6 +120,10 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
     // ya subió la asistencia con otro módulo/teléfono, guardar así reconcilia
     // el cronograma con la realidad en un clic, sin perder lo original.
     setDetalleEditado({
+      // La fecha es la clave de cruce con la asistencia, no algo que se
+      // "reporte" — siempre se precarga con la del cronograma, nunca la
+      // efectiva/reportada.
+      fecha: f.fecha || '',
       modulo: f.moduloEfectivo || '',
       docente_universitario: f.docenteEfectivo || '',
       telefono_contacto: f.telefonoEfectivo || ''
@@ -127,6 +131,10 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
   }
 
   async function guardarDetalle(id) {
+    if (!detalleEditado.fecha) {
+      notificacion.warning('La fecha es obligatoria', 'Campo requerido');
+      return;
+    }
     if (!detalleEditado.modulo.trim()) {
       notificacion.warning('El módulo es obligatorio', 'Campo requerido');
       return;
@@ -134,6 +142,7 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
     const { error } = await supabase
       .from('cronograma_clases')
       .update({
+        fecha: detalleEditado.fecha,
         modulo: detalleEditado.modulo.trim(),
         docente_universitario: detalleEditado.docente_universitario.trim() || null,
         telefono_contacto: detalleEditado.telefono_contacto.trim() || null
@@ -298,6 +307,12 @@ export default function ModalCronogramaGrupo({ isOpen, onClose, grupo, onActuali
 
                               {editandoId === f.id ? (
                                 <div className="space-y-1.5 mt-2">
+                                  <input
+                                    type="date"
+                                    value={detalleEditado.fecha}
+                                    onChange={e => setDetalleEditado(d => ({ ...d, fecha: e.target.value }))}
+                                    className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white"
+                                  />
                                   <input
                                     type="text"
                                     value={detalleEditado.modulo}

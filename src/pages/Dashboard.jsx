@@ -216,10 +216,11 @@ export default function Dashboard({ padrinoForzado = null }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* SIDEBAR LATERAL */}
-      <Sidebar 
-        vistaActiva={vistaActiva} 
+      <Sidebar
+        vistaActiva={vistaActiva}
         setVistaActiva={setVistaActiva}
         rol={padrino.rol}
+        simulando={!!padrinoForzado}
         totalPendientes={totalPendientes}
       />
 

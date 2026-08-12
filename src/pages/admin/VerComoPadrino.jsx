@@ -23,10 +23,15 @@ export default function VerComoPadrino() {
   const [padrinoElegido, setPadrinoElegido] = useState(null);
 
   useEffect(() => {
+    // Solo rol 'padrino': los demás roles de la tabla padrinos (admin,
+    // coordinadores, aliado) tienen su propia navegación real fuera de
+    // "Mis Grupos" (Panel, Estadísticas, etc.), que no se puede simular
+    // dentro de esta vista sin sacar al admin de aquí.
     supabase
       .from('padrinos')
       .select('*')
       .eq('activo', true)
+      .eq('rol', 'padrino')
       .order('nombre_completo')
       .then(({ data }) => {
         setPadrinos(data || []);
