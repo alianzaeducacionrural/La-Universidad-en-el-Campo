@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
+import { puedeGestionar } from '../../utils/helpers';
 import ModalImportar from '../estudiantes/ModalImportar';
 import ModalGestionarPadrinos from './ModalGestionarPadrinos';
 import ModalAsignarInstituciones from './ModalAsignarInstituciones';
@@ -235,8 +236,8 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   async function handleCambiarEstadoGrupo() {
     const nuevoEstado = !grupo.activo;
     const mensaje = nuevoEstado
-      ? '¿Estás seguro de REACTIVAR este grupo?'
-      : '¿Estás seguro de FINALIZAR este grupo? Los padrinos ya no podrán verlo.';
+      ? '¿Estás seguro de REACTIVAR el periodo académico de este grupo?'
+      : '¿Estás seguro de marcar este grupo como PERIODO ACADÉMICO TERMINADO? Dejará de aparecer para la universidad/docente y en los reportes de asistencia pendientes, pero se mantiene visible en el resto del sistema (histórico, estadísticas, desertores, multas, etc.). Los padrinos tampoco podrán verlo.';
 
     if (!confirm(mensaje)) return;
 
@@ -247,7 +248,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
     if (error) {
       notificacion.error(error.message, 'Error al cambiar estado');
     } else {
-      notificacion.success(nuevoEstado ? 'Grupo reactivado correctamente' : 'Grupo finalizado correctamente');
+      notificacion.success(nuevoEstado ? 'Periodo académico reactivado correctamente' : 'Grupo marcado como periodo académico terminado');
       onRecargar();
     }
   }
@@ -310,7 +311,9 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
               <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
               <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
               <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
-              <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🔄 Finalizar Grupo' : '✅ Reactivar Grupo'}</button>
+              {puedeGestionar(usuario?.rol) && (
+                <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🎓 Finalizar Periodo Académico' : '↩️ Reactivar Periodo Académico'}</button>
+              )}
               {usuario?.rol === 'admin' && (
                 <button onClick={(e) => { e.stopPropagation(); setModalEliminarGrupo(true); }} className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition">
                   🗑️ Eliminar Grupo

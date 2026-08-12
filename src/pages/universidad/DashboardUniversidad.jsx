@@ -122,7 +122,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   }, [grupoSeleccionado]);
 
   async function cargarGrupos() {
-    const { data } = await supabase.from('grupos').select('*').eq('universidad', usuario.universidad).order('nombre');
+    const { data } = await supabase.from('grupos').select('*').eq('universidad', usuario.universidad).eq('activo', true).order('nombre');
     if (data) {
       setGrupos(data);
       if (data.length > 0) {
