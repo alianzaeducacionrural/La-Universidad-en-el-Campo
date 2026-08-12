@@ -141,11 +141,16 @@ export default function ModalIngresarNotas({ isOpen, onClose, onGuardar, grupoId
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-800">
-            {notaEditando ? '✏️ Editar Notas de Módulo' : '📊 Ingresar Notas Finales'}
-          </h3>
-          <p className="text-sm text-gray-500 mt-1">Escala colombiana 0.0 – 5.0 · Aprobado ≥ 3.0</p>
+        <div className="p-6 border-b border-gray-200 bg-white sticky top-0 z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">
+                {notaEditando ? '✏️ Editar Notas de Módulo' : '📊 Ingresar Notas Finales'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">Escala colombiana 0.0 – 5.0 · Aprobado ≥ 3.0</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>

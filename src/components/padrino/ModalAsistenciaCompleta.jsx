@@ -50,10 +50,15 @@ export default function ModalAsistenciaCompleta({ isOpen, onClose, registro, gru
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-md w-full shadow-xl">
-        <div className="p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50">
-          <h3 className="text-lg font-bold text-gray-800">✅ Registrar Asistencia Completa</h3>
-          <p className="text-sm text-gray-600 mt-1">Grupo: {grupo.nombre}</p>
+      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
+        <div className="p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 sticky top-0 z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">✅ Registrar Asistencia Completa</h3>
+              <p className="text-sm text-gray-600 mt-1">Grupo: {grupo.nombre}</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-white/60 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>

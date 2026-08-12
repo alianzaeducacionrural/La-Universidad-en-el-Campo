@@ -61,9 +61,14 @@ export default function ModalEnlacesInstituciones({ isOpen, onClose, grupo, muni
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-xl">
-        <div className="p-6 border-b">
-          <h3 className="text-lg font-bold text-gray-800">🔗 Enlaces de Instituciones</h3>
-          <p className="text-sm text-gray-600 mt-1">Grupo: {grupo.nombre}</p>
+        <div className="p-6 border-b bg-white sticky top-0 z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">🔗 Enlaces de Instituciones</h3>
+              <p className="text-sm text-gray-600 mt-1">Grupo: {grupo.nombre}</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
+          </div>
         </div>
 
         <div className="p-6">

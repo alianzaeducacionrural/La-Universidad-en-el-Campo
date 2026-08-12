@@ -362,10 +362,13 @@ export default function GestionMultas({ onVerPerfil }) {
       {/* Modal Generar Carta */}
       {modalCarta && multaSeleccionada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full shadow-xl">
-            <div className="p-6 border-b">
-              <h3 className="text-lg font-bold">📄 Generar Carta de Cobro</h3>
-              <p className="text-sm text-gray-600">{multaSeleccionada.estudiante?.nombre_completo}</p>
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="p-6 border-b bg-white sticky top-0 z-10 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold">📄 Generar Carta de Cobro</h3>
+                <p className="text-sm text-gray-600">{multaSeleccionada.estudiante?.nombre_completo}</p>
+              </div>
+              <button onClick={() => setModalCarta(false)} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
             </div>
             <form onSubmit={handleGenerarCarta}>
               <div className="p-6 space-y-4">
@@ -394,12 +397,15 @@ export default function GestionMultas({ onVerPerfil }) {
       {/* Modal Registrar Pago */}
       {modalPago && multaSeleccionada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full shadow-xl">
-            <div className="p-6 border-b">
-              <h3 className="text-lg font-bold">💰 Registrar Pago</h3>
-              <p className="text-sm text-gray-600">
-                {multaSeleccionada.estudiante?.nombre_completo} | Saldo: ${multaSeleccionada.saldo?.toLocaleString()}
-              </p>
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="p-6 border-b bg-white sticky top-0 z-10 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold">💰 Registrar Pago</h3>
+                <p className="text-sm text-gray-600">
+                  {multaSeleccionada.estudiante?.nombre_completo} | Saldo: ${multaSeleccionada.saldo?.toLocaleString()}
+                </p>
+              </div>
+              <button onClick={() => { setModalPago(false); setComprobantePago(null); }} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
             </div>
             <form onSubmit={handleRegistrarPago}>
               <div className="p-6 space-y-4">
@@ -432,11 +438,14 @@ export default function GestionMultas({ onVerPerfil }) {
       {modalHistorialPagos && multaSeleccionada && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl">
-            <div className="p-6 border-b">
-              <h3 className="text-lg font-bold">📋 Historial de Pagos</h3>
-              <p className="text-sm text-gray-600">
-                {multaSeleccionada.estudiante?.nombre_completo} | Multa total: ${multaSeleccionada.valor_total?.toLocaleString()}
-              </p>
+            <div className="p-6 border-b bg-white sticky top-0 z-10 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold">📋 Historial de Pagos</h3>
+                <p className="text-sm text-gray-600">
+                  {multaSeleccionada.estudiante?.nombre_completo} | Multa total: ${multaSeleccionada.valor_total?.toLocaleString()}
+                </p>
+              </div>
+              <button onClick={() => setModalHistorialPagos(false)} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
             </div>
             <div className="p-6">
               {(multaSeleccionada.pagos || []).length === 0 ? (
@@ -488,12 +497,15 @@ export default function GestionMultas({ onVerPerfil }) {
       {/* Modal Detalle de Carta */}
         {modalDetalleCarta && cartaSeleccionada && multaSeleccionada && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl max-w-lg w-full shadow-xl">
-              <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-blue-100">
-                <h3 className="text-lg font-bold text-gray-800">📄 Carta de Cobro #{cartaSeleccionada.numero_carta}</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {multaSeleccionada.estudiante?.nombre_completo}
-                </p>
+            <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+              <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-blue-100 sticky top-0 z-10 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">📄 Carta de Cobro #{cartaSeleccionada.numero_carta}</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {multaSeleccionada.estudiante?.nombre_completo}
+                  </p>
+                </div>
+                <button onClick={() => setModalDetalleCarta(false)} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-white/60 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
               </div>
               
               <div className="p-6 space-y-4">

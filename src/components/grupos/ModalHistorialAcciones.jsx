@@ -48,7 +48,7 @@ export default function ModalHistorialAcciones({ isOpen, onClose, grupo }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-3xl w-full max-h-[85vh] overflow-y-auto shadow-xl">
         {/* Encabezado */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 sticky top-0 z-10">
+        <div className="p-6 border-b border-gray-200 bg-warm-light sticky top-0 z-10">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-xl font-bold text-gray-800 flex items-center">

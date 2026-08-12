@@ -107,7 +107,10 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
-        <div className="p-6 border-b bg-gradient-to-r from-green-50 to-blue-50"><h3 className="text-lg font-bold">➕ Agregar Nuevo Estudiante</h3><p className="text-sm text-gray-600">Grupo: <span className="font-medium">{grupoSeleccionado.nombre}</span></p></div>
+        <div className="p-6 border-b bg-gradient-to-r from-green-50 to-blue-50 sticky top-0 z-10 flex items-start justify-between gap-3">
+          <div><h3 className="text-lg font-bold">➕ Agregar Nuevo Estudiante</h3><p className="text-sm text-gray-600">Grupo: <span className="font-medium">{grupoSeleccionado.nombre}</span></p></div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl hover:bg-white/60 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
             <div className="border-b pb-4"><h4 className="font-medium mb-3">📋 Datos Personales</h4>

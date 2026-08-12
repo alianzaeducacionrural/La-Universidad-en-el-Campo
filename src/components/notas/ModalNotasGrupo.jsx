@@ -11,7 +11,7 @@ export default function ModalNotasGrupo({ isOpen, onClose, grupo }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl w-full max-w-3xl shadow-xl my-6">
         {/* Cabecera */}
-        <div className="p-5 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-5 border-b border-gray-200 flex items-center justify-between bg-white sticky top-0 z-10 rounded-t-xl">
           <div>
             <h3 className="text-lg font-bold text-gray-800">📊 Notas del Grupo</h3>
             <p className="text-sm text-gray-500 mt-0.5">{grupo.nombre}</p>

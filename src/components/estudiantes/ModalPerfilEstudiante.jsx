@@ -178,7 +178,7 @@ export default function ModalPerfilEstudiante({
         <div className="bg-white rounded-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl">
           
           {/* ENCABEZADO CON GRADIENTE CORPORATIVO */}
-          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 rounded-t-xl">
+          <div className="p-4 sm:p-6 border-b border-gray-200 bg-warm-light sticky top-0 z-10 rounded-t-xl">
             <div className="flex justify-between items-start gap-3">
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 leading-tight">

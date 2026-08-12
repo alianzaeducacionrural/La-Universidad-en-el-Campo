@@ -1164,7 +1164,7 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl">
 
-        <div className={`p-4 sm:p-6 border-b border-gray-200 rounded-t-xl ${tema ? `bg-gradient-to-r ${tema.gradiente}` : 'bg-gradient-to-r from-primary/10 to-primary/5'}`}>
+        <div className={`p-4 sm:p-6 border-b border-gray-200 rounded-t-xl sticky top-0 z-10 ${tema ? `bg-gradient-to-r ${tema.gradiente}` : 'bg-warm-light'}`}>
           <div className="flex justify-between items-start gap-3">
             <div className="min-w-0">
               <h2 className={`text-xl sm:text-2xl font-bold leading-tight ${tema ? tema.text : 'text-gray-800'}`}>
