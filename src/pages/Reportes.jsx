@@ -214,6 +214,7 @@ export default function Reportes({ onVerPerfil }) {
         .from('registros_desercion')
         .select(`*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`)
         .order('fecha_reporte', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(from, from + limit - 1);
 
       if (error) {

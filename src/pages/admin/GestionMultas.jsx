@@ -41,7 +41,7 @@ export default function GestionMultas({ onVerPerfil }) {
       .from('multas_desercion')
       .select(`
         *,
-        estudiante:estudiante_id (*, registros_desercion (id, tipo_desercion, fecha_reporte)),
+        estudiante:estudiante_id (*, registros_desercion (id, tipo_desercion, fecha_reporte, created_at)),
         cartas:cartas_cobro(*),
         pagos:pagos_multa(*)
       `)
@@ -56,7 +56,11 @@ export default function GestionMultas({ onVerPerfil }) {
         .filter(m => {
           if (m.estudiante?.estado !== 'Desertor') return false;
           const registros = m.estudiante?.registros_desercion || [];
-          const registroActual = [...registros].sort((a, b) => (b.fecha_reporte || '').localeCompare(a.fecha_reporte || ''))[0];
+          const registroActual = [...registros].sort((a, b) => {
+            const porFecha = (b.fecha_reporte || '').localeCompare(a.fecha_reporte || '');
+            if (porFecha !== 0) return porFecha;
+            return (b.created_at || '').localeCompare(a.created_at || '');
+          })[0];
           return registroActual?.id === m.registro_desercion_id && registroActual?.tipo_desercion === 'Sin Justificar';
         })
         .map(m => ({

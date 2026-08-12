@@ -36,7 +36,7 @@ export default function GestionDesertores({ onVerPerfil }) {
       .select(`
         *,
         grupos:grupo_id ( nombre ),
-        registros_desercion ( id, fecha_reporte, tipo_desercion, motivo_principal, motivo_otro, observaciones, paso_manual_completado, documentos:documentos_desercion ( tipo_documento ), usuario:usuario_id ( nombre_completo ) )
+        registros_desercion ( id, fecha_reporte, created_at, tipo_desercion, motivo_principal, motivo_otro, observaciones, paso_manual_completado, documentos:documentos_desercion ( tipo_documento ), usuario:usuario_id ( nombre_completo ) )
       `)
       .eq('estado', 'Desertor')
       .order('nombre_completo');
@@ -55,9 +55,14 @@ export default function GestionDesertores({ onVerPerfil }) {
     }
 
     const conRegistro = data.map(e => {
-      const registros = [...(e.registros_desercion || [])].sort((a, b) =>
-        (b.fecha_reporte || '').localeCompare(a.fecha_reporte || '')
-      );
+      // Si dos registros comparten la misma fecha_reporte (p. ej. una
+      // reclasificación el mismo día creando una fila nueva en vez de editar
+      // la anterior), created_at desempata: gana el que se guardó al final.
+      const registros = [...(e.registros_desercion || [])].sort((a, b) => {
+        const porFecha = (b.fecha_reporte || '').localeCompare(a.fecha_reporte || '');
+        if (porFecha !== 0) return porFecha;
+        return (b.created_at || '').localeCompare(a.created_at || '');
+      });
       return {
         ...e,
         grupo_nombre: e.grupos?.nombre || 'Sin grupo',
@@ -120,10 +125,9 @@ export default function GestionDesertores({ onVerPerfil }) {
     const total = desertoresFiltrados.length;
     const justificadas = desertoresFiltrados.filter(d => d.registro?.tipo_desercion === 'Justificada').length;
     const sinJustificar = desertoresFiltrados.filter(d => d.registro?.tipo_desercion === 'Sin Justificar').length;
-    const sinRegistro = desertoresFiltrados.filter(d => !d.registro).length;
     const pendienteInfo = desertoresFiltrados.filter(d => d.registro && !d.registro.tipo_desercion).length;
     const conMulta = desertoresFiltrados.filter(d => d.tieneMultaPendiente).length;
-    return { total, justificadas, sinJustificar, sinRegistro, pendienteInfo, conMulta };
+    return { total, justificadas, sinJustificar, pendienteInfo, conMulta };
   }, [desertoresFiltrados]);
 
   function descargarExcel() {
@@ -174,7 +178,7 @@ export default function GestionDesertores({ onVerPerfil }) {
           </div>
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
             <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
               <p className="text-2xl font-bold text-gray-800">{kpis.total}</p>
               <p className="text-xs text-gray-500">Total</p>
@@ -186,10 +190,6 @@ export default function GestionDesertores({ onVerPerfil }) {
             <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-200">
               <p className="text-2xl font-bold text-blue-700">{kpis.justificadas}</p>
               <p className="text-xs text-blue-600">Justificadas</p>
-            </div>
-            <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-200">
-              <p className="text-2xl font-bold text-amber-700">{kpis.sinRegistro}</p>
-              <p className="text-xs text-amber-600">Sin Registro Formal</p>
             </div>
             <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-200">
               <p className="text-2xl font-bold text-amber-700">{kpis.pendienteInfo}</p>

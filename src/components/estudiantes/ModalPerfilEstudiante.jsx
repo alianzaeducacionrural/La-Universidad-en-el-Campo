@@ -113,6 +113,7 @@ export default function ModalPerfilEstudiante({
       .select(`*, usuario:usuario_id (nombre_completo, rol), documentos:documentos_desercion(*)`)
       .eq('estudiante_id', estudianteId)
       .order('fecha_reporte', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (registro) setDatosDesercion(registro);
