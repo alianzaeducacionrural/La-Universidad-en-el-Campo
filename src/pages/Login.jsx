@@ -5,10 +5,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { puedeGestionar } from '../utils/helpers';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn, user, tipoUsuario, loading } = useAuth();
+  const { signIn, user, perfil, tipoUsuario, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,13 +17,19 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (tipoUsuario === 'padrino') {
+      // Los roles administrativos y aliado no tienen grupos propios — no
+      // tiene sentido aterrizarlos en "Mis Grupos" (Dashboard de padrino).
+      if (perfil?.rol === 'aliado') {
+        navigate('/estadisticas', { replace: true });
+      } else if (tipoUsuario === 'padrino' && puedeGestionar(perfil?.rol)) {
+        navigate('/panel', { replace: true });
+      } else if (tipoUsuario === 'padrino') {
         navigate('/dashboard', { replace: true });
       } else if (tipoUsuario === 'universidad') {
         navigate('/universidad/dashboard', { replace: true });
       }
     }
-  }, [user, tipoUsuario, loading, navigate]);
+  }, [user, perfil, tipoUsuario, loading, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();

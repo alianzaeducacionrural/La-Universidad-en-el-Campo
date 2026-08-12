@@ -7,6 +7,7 @@ import { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
 import { supabase } from './lib/supabaseClient';
+import { puedeGestionar } from './utils/helpers';
 import Login from './pages/Login';
 import SplashScreen from './components/common/SplashScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -78,6 +79,9 @@ function HomeRedirect() {
   );
   if (!user) return <Navigate to="/login" replace />;
   if (perfil?.rol === 'aliado') return <Navigate to="/estadisticas" replace />;
+  // Los roles administrativos (admin, coordinadores, asistente_admin) no
+  // tienen grupos propios — su página principal es el Panel de Control.
+  if (tipoUsuario === 'padrino' && puedeGestionar(perfil?.rol)) return <Navigate to="/panel" replace />;
   if (tipoUsuario === 'padrino') return <Navigate to="/dashboard" replace />;
   if (tipoUsuario === 'universidad') return <Navigate to="/universidad/dashboard" replace />;
   return <Navigate to="/login" replace />;
