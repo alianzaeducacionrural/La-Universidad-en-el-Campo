@@ -493,21 +493,22 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-72 overflow-y-auto">
             {gruposDeCohorte.map(g => {
               const activo = grupoSeleccionado?.id === g.id;
               return (
                 <button
                   key={g.id}
                   onClick={() => setGrupoSeleccionado(g)}
-                  className={`text-left px-3 py-2.5 rounded-lg border transition ${
-                    activo
-                      ? 'bg-primary/10 border-primary text-primary-dark shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-700 hover:border-primary/40 hover:bg-gray-50'
+                  className={`w-full text-left px-3.5 py-2.5 transition flex items-center justify-between gap-3 ${
+                    activo ? 'bg-primary/10 text-primary-dark' : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <p className="text-sm font-medium truncate">{g.nombre}</p>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">📚 {g.programa}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{g.nombre}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">📚 {g.programa}</p>
+                  </div>
+                  {activo && <span className="text-primary flex-shrink-0">✓</span>}
                 </button>
               );
             })}
