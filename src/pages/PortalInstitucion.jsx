@@ -46,6 +46,29 @@ const TEMAS_GRUPO = [
   { nombre: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-400', dot: 'bg-cyan-400', activo: 'bg-cyan-400 text-white border-cyan-400 shadow-md shadow-cyan-200', gradiente: 'from-cyan-200 to-cyan-300', anillo: 'focus-visible:ring-cyan-400' },
 ];
 
+function TarjetaGrupo({ g, tema, stats, onIrAGrupo }) {
+  const pctActivos = stats.total > 0 ? Math.round(((stats.activos + stats.enRiesgo) / stats.total) * 100) : 0;
+  return (
+    <button
+      onClick={() => onIrAGrupo(g.id)}
+      className={`text-left rounded-xl border ${tema.border} ${tema.bg} p-4 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className={`w-2.5 h-2.5 rounded-full ${tema.dot} flex-shrink-0`}></span>
+        <span className="text-xs font-medium text-gray-500 ml-auto">{stats.total} estudiante{stats.total !== 1 ? 's' : ''}</span>
+      </div>
+      <p className={`font-bold ${tema.text} leading-snug mb-3`}>{etiquetaGrupo(g)}</p>
+      <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1.5">
+        <div className={`h-full ${tema.solido}`} style={{ width: `${pctActivos}%` }}></div>
+      </div>
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <span>{pctActivos}% activos</span>
+        {stats.desertores > 0 && <span className="text-red-500">{stats.desertores} desertor{stats.desertores !== 1 ? 'es' : ''}</span>}
+      </div>
+    </button>
+  );
+}
+
 function iniciales(nombre) {
   const partes = (nombre || '').trim().split(/\s+/);
   return ((partes[0]?.[0] || '') + (partes[1]?.[0] || '')).toUpperCase();
@@ -114,6 +137,19 @@ export default function PortalInstitucion() {
     gruposOrdenados.forEach((g, idx) => { mapa[g.id] = TEMAS_GRUPO[idx % TEMAS_GRUPO.length]; });
     return mapa;
   }, [gruposOrdenados]);
+
+  // Solo para el orden visual de las pestañas: agrupa por universidad sin
+  // tocar `gruposOrdenados` (que sigue rigiendo colores y el resto de vistas).
+  const pestanasPorUniversidad = useMemo(() => {
+    const mapa = new Map();
+    gruposOrdenados.forEach(g => {
+      const clave = g.universidad || '';
+      if (!mapa.has(clave)) mapa.set(clave, []);
+      mapa.get(clave).push(g);
+    });
+    return Array.from(mapa.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [gruposOrdenados]);
+  const variasUniversidadesEnPestanas = pestanasPorUniversidad.length > 1;
 
   const kpis = useMemo(() => {
     const estudiantes = datos?.estudiantes || [];
@@ -267,24 +303,35 @@ export default function PortalInstitucion() {
             >
               📊 Resumen
             </button>
-            {gruposOrdenados.map(g => {
-              const tema = temaPorGrupo[g.id];
-              const activa = tabActiva === g.id;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => setTabActiva(g.id)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 ${tema.anillo} ${
-                    activa ? tema.activo : `${tema.bg} ${tema.border} ${tema.text} hover:brightness-95`
-                  }`}
-                  title={`${g.universidad} · ${g.programa} · Cohorte ${g.cohorte}`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${activa ? 'bg-white' : tema.dot}`}></span>
-                  {etiquetaGrupo(g)}
-                  <span className={activa ? 'text-white/80' : 'text-gray-400'}>· {g.total_estudiantes_institucion}</span>
-                </button>
-              );
-            })}
+            {pestanasPorUniversidad.map(([universidad, gruposUni], idxUni) => (
+              <div key={universidad} className="flex items-center gap-1.5 flex-shrink-0">
+                {variasUniversidadesEnPestanas && (
+                  <span className={`flex items-center gap-1.5 flex-shrink-0 ${idxUni > 0 ? 'pl-1.5 ml-0.5 border-l border-gray-200' : ''}`}>
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">
+                      {ABREVIATURAS_UNIVERSIDAD[universidad] || universidad || 'Sin universidad'}
+                    </span>
+                  </span>
+                )}
+                {gruposUni.map(g => {
+                  const tema = temaPorGrupo[g.id];
+                  const activa = tabActiva === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => setTabActiva(g.id)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 ${tema.anillo} ${
+                        activa ? tema.activo : `${tema.bg} ${tema.border} ${tema.text} hover:brightness-95`
+                      }`}
+                      title={`${g.universidad} · ${g.programa} · Cohorte ${g.cohorte}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${activa ? 'bg-white' : tema.dot}`}></span>
+                      {etiquetaGrupo(g)}
+                      <span className={activa ? 'text-white/80' : 'text-gray-400'}>· {g.total_estudiantes_institucion}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -330,6 +377,19 @@ export default function PortalInstitucion() {
 // PESTAÑA: RESUMEN GENERAL
 // =============================================
 function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadisticasPorGrupo, onIrAGrupo, onDescargarTodo }) {
+  // Una institución puede tener estudiantes en varias universidades a la vez;
+  // cuando es así, agrupar por universidad orienta mucho más que una grilla plana.
+  const gruposPorUniversidad = useMemo(() => {
+    const mapa = new Map();
+    gruposOrdenados.forEach(g => {
+      const clave = g.universidad || 'Sin universidad';
+      if (!mapa.has(clave)) mapa.set(clave, []);
+      mapa.get(clave).push(g);
+    });
+    return Array.from(mapa.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [gruposOrdenados]);
+  const variasUniversidades = gruposPorUniversidad.length > 1;
+
   const segmentos = [
     { valor: kpis.activos, color: 'bg-green-500', label: 'Activos' },
     { valor: kpis.enRiesgo, color: 'bg-amber-400', label: 'En Riesgo' },
@@ -394,33 +454,41 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
               📥 Descargar todo (Excel)
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {gruposOrdenados.map(g => {
-              const tema = temaPorGrupo[g.id];
-              const stats = estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 };
-              const pctActivos = stats.total > 0 ? Math.round(((stats.activos + stats.enRiesgo) / stats.total) * 100) : 0;
-              return (
-                <button
+          {variasUniversidades ? (
+            <div className="space-y-5">
+              {gruposPorUniversidad.map(([universidad, gruposUni]) => (
+                <div key={universidad}>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    🎓 {ABREVIATURAS_UNIVERSIDAD[universidad] || universidad}
+                    <span className="text-gray-400 font-normal normal-case">· {gruposUni.length} grupo{gruposUni.length !== 1 ? 's' : ''}</span>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {gruposUni.map(g => (
+                      <TarjetaGrupo
+                        key={g.id}
+                        g={g}
+                        tema={temaPorGrupo[g.id]}
+                        stats={estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 }}
+                        onIrAGrupo={onIrAGrupo}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {gruposOrdenados.map(g => (
+                <TarjetaGrupo
                   key={g.id}
-                  onClick={() => onIrAGrupo(g.id)}
-                  className={`text-left rounded-xl border ${tema.border} ${tema.bg} p-4 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${tema.dot} flex-shrink-0`}></span>
-                    <span className="text-xs font-medium text-gray-500 ml-auto">{stats.total} estudiante{stats.total !== 1 ? 's' : ''}</span>
-                  </div>
-                  <p className={`font-bold ${tema.text} leading-snug mb-3`}>{etiquetaGrupo(g)}</p>
-                  <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1.5">
-                    <div className={`h-full ${tema.solido}`} style={{ width: `${pctActivos}%` }}></div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{pctActivos}% activos</span>
-                    {stats.desertores > 0 && <span className="text-red-500">{stats.desertores} desertor{stats.desertores !== 1 ? 'es' : ''}</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  g={g}
+                  tema={temaPorGrupo[g.id]}
+                  stats={estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 }}
+                  onIrAGrupo={onIrAGrupo}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

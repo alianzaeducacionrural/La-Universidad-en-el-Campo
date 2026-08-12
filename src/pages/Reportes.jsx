@@ -600,7 +600,14 @@ export default function Reportes({ onVerPerfil }) {
           <h1 className="text-2xl font-bold text-gray-800 mb-2">📑 Reportes Descargables</h1>
           <p className="text-gray-600 mb-6">Descarga reportes en Excel con la información del sistema</p>
 
-          <FiltrosReportes filtros={filtros} onCambio={setFiltros} opciones={opcionesFiltro} />
+          <FiltrosReportes
+            filtros={filtros}
+            onCambio={setFiltros}
+            opciones={opcionesFiltro}
+            filas={rawEstudiantes}
+            getters={gettersComunes}
+            municipiosPermitidos={municipiosPermitidos}
+          />
 
           {cargandoDatos ? (
             <div className="text-center py-16">

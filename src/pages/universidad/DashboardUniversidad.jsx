@@ -31,6 +31,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   
   const [grupos, setGrupos] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  const [cohorteFiltro, setCohorteFiltro] = useState(null);
   const [estudiantes, setEstudiantes] = useState([]);
   const [modulo, setModulo] = useState('');
   const [docenteNombre, setDocenteNombre] = useState('');
@@ -122,7 +123,13 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
   async function cargarGrupos() {
     const { data } = await supabase.from('grupos').select('*').eq('universidad', usuario.universidad).order('nombre');
-    if (data) { setGrupos(data); if (data.length > 0) setGrupoSeleccionado(data[0]); }
+    if (data) {
+      setGrupos(data);
+      if (data.length > 0) {
+        setGrupoSeleccionado(data[0]);
+        setCohorteFiltro(data[0].cohorte);
+      }
+    }
   }
 
   async function cargarEstudiantes(grupoId) {
@@ -424,6 +431,16 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     e.nombre_completo.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  const cohortesDisponibles = useMemo(() => {
+    const set = new Set(grupos.map(g => g.cohorte).filter(Boolean));
+    return Array.from(set).sort();
+  }, [grupos]);
+
+  const gruposDeCohorte = useMemo(() => {
+    if (!cohorteFiltro) return grupos;
+    return grupos.filter(g => g.cohorte === cohorteFiltro);
+  }, [grupos, cohorteFiltro]);
+
   if (!usuario) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
@@ -439,22 +456,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
         {/* SELECTOR DE GRUPO */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 mb-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 flex-shrink-0">Grupo:</label>
-              <select
-                value={grupoSeleccionado?.id || ''}
-                onChange={e => setGrupoSeleccionado(grupos.find(g => g.id === e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white shadow-sm w-full sm:w-80 md:w-96"
-              >
-                {grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
-              </select>
-              {grupoSeleccionado && (
-                <span className="text-xs bg-gray-100 px-3 py-1.5 rounded-full self-start sm:self-auto">
-                  📅 {grupoSeleccionado.cohorte} | 📚 {grupoSeleccionado.programa}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <p className="text-sm font-medium text-gray-700">Selecciona un grupo</p>
             <div className="flex items-center gap-2 flex-wrap">
               {enlacesGrupo.estudiantes && (
                 <a href={enlacesGrupo.estudiantes} target="_blank" rel="noopener noreferrer"
@@ -469,6 +472,45 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                 </a>
               )}
             </div>
+          </div>
+
+          {cohortesDisponibles.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap mb-3">
+              <span className="text-xs font-medium text-gray-500 mr-1">📅 Cohorte:</span>
+              {cohortesDisponibles.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCohorteFiltro(c)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                    cohorteFiltro === c
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {gruposDeCohorte.map(g => {
+              const activo = grupoSeleccionado?.id === g.id;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => setGrupoSeleccionado(g)}
+                  className={`text-left px-3 py-2.5 rounded-lg border transition ${
+                    activo
+                      ? 'bg-primary/10 border-primary text-primary-dark shadow-sm'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-primary/40 hover:bg-gray-50'
+                  }`}
+                >
+                  <p className="text-sm font-medium truncate">{g.nombre}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">📚 {g.programa}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
 

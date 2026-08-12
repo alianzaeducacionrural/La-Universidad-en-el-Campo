@@ -201,7 +201,15 @@ export default function GestionDesertores({ onVerPerfil }) {
             </div>
           </div>
 
-          <FiltrosReportes filtros={filtros} onCambio={setFiltros} opciones={opcionesFiltro} mostrarEstado={false} />
+          <FiltrosReportes
+            filtros={filtros}
+            onCambio={setFiltros}
+            opciones={opcionesFiltro}
+            filas={desertores}
+            getters={getters}
+            municipiosPermitidos={municipiosPermitidos}
+            mostrarEstado={false}
+          />
 
           <div className="mb-4">
             <input
