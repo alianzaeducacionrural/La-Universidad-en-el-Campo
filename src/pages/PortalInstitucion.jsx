@@ -27,11 +27,13 @@ import {
 import BotonWhatsApp from '../components/common/BotonWhatsApp';
 import VisorImagen from '../components/common/VisorImagen';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
+import ReportesPanel from '../components/reportes/ReportesPanel';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const FUNCIONES_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-institucion`;
 const TAB_RESUMEN = '__resumen__';
+const TAB_REPORTES = '__reportes__';
 
 // Paleta rotativa para diferenciar cada grupo a simple vista — el mismo
 // grupo conserva siempre el mismo color mientras no cambie su posición en
@@ -212,6 +214,59 @@ export default function PortalInstitucion() {
     return mapa;
   }, [estudiantesFiltradosResumen, gruposOrdenados]);
 
+  // Grupos "etiquetados" para la pestaña de Reportes: reutiliza la misma
+  // terna universidad/programa/cohorte que ya se usa en pestañas y tarjetas
+  // — la institución nunca ve el nombre interno del grupo (g.nombre).
+  const gruposEtiquetados = useMemo(
+    () => gruposOrdenados.map(g => ({ id: g.id, nombre: etiquetaGrupo(g) })),
+    [gruposOrdenados]
+  );
+
+  // Deserciones/inasistencias/seguimientos para la pestaña de Reportes:
+  // se aplanan desde los arreglos anidados que ya trae cada estudiante
+  // (misma información que ya ve la institución en el perfil individual),
+  // sin ninguna consulta adicional — el portal nunca llama a Supabase directo.
+  const rawDesercionesInstitucion = useMemo(() => {
+    return (datos?.estudiantes || [])
+      .filter(e => e.desercion)
+      .map(e => ({ ...e.desercion, ...e, reportado_por: e.desercion.usuario?.nombre_completo || '' }));
+  }, [datos]);
+
+  const rawInasistenciasInstitucion = useMemo(() => {
+    const filas = [];
+    (datos?.estudiantes || []).forEach(e => {
+      (e.inasistencias || []).forEach(i => {
+        filas.push({
+          ...i,
+          ...e,
+          fecha: i.registros_asistencia?.fecha || '',
+          modulo: i.registros_asistencia?.modulo || '',
+          docente_nombre: i.registros_asistencia?.docente_nombre || '',
+          estado_seguimiento:
+            i.estado_seguimiento === 'realizado' ? 'Realizado' :
+            i.estado_seguimiento === 'justificado' ? 'Justificado' : 'Pendiente'
+        });
+      });
+    });
+    return filas;
+  }, [datos]);
+
+  const rawSeguimientosInstitucion = useMemo(() => {
+    const filas = [];
+    (datos?.estudiantes || []).forEach(e => {
+      (e.seguimientos || []).forEach(seg => {
+        filas.push({
+          ...seg,
+          ...e,
+          tipo_gestion: limpiarEmojis(seg.tipo_gestion),
+          causa_ausencia: limpiarEmojis(seg.causa_ausencia) || '',
+          padrino_nombre: seg.padrino?.nombre_completo || 'N/A'
+        });
+      });
+    });
+    return filas;
+  }, [datos]);
+
   const resultadosBusqueda = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return [];
@@ -338,6 +393,16 @@ export default function PortalInstitucion() {
             >
               📊 Resumen
             </button>
+            <button
+              onClick={() => setTabActiva(TAB_REPORTES)}
+              className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                tabActiva === TAB_REPORTES
+                  ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              📑 Reportes
+            </button>
             {pestanasPorUniversidad.map(([universidad, gruposUni], idxUni) => (
               <div key={universidad} className="flex items-center gap-1.5 flex-shrink-0">
                 {variasUniversidadesEnPestanas && (
@@ -393,6 +458,19 @@ export default function PortalInstitucion() {
               onDescargarTodo={() => descargarExcel(estudiantesFiltradosResumen, datos.institucion.nombre)}
             />
           </>
+        ) : tabActiva === TAB_REPORTES ? (
+          <div>
+            <h2 className="text-lg font-bold text-gray-800 mb-1">📑 Reportes Descargables</h2>
+            <p className="text-gray-600 mb-6 text-sm">Descarga en Excel la información de {datos.institucion.nombre}</p>
+            <ReportesPanel
+              rawEstudiantes={datos.estudiantes}
+              rawDeserciones={rawDesercionesInstitucion}
+              rawInasistencias={rawInasistenciasInstitucion}
+              rawSeguimientos={rawSeguimientosInstitucion}
+              grupos={gruposEtiquetados}
+              prefijoArchivo={datos.institucion.nombre}
+            />
+          </div>
         ) : (
           <VistaGrupo
             grupo={grupoActivoInfo}

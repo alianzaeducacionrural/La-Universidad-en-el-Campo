@@ -10,8 +10,9 @@ import Header from '../../components/common/Header';
 import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
 import SelectConOtro from '../../components/common/SelectConOtro';
-import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia } from '../../utils/helpers';
+import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis } from '../../utils/helpers';
 import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/exportUtils';
+import ReportesPanel from '../../components/reportes/ReportesPanel';
 import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
 import GraficoGeneroDoughnut from '../../components/estadisticas/GraficoGeneroDoughnut';
@@ -87,7 +88,98 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     [filtrosEstadisticas, usuario?.universidad]
   );
 
+  // ESTADOS PARA LA PESTAÑA DE REPORTES (SOLO COORDINADOR_UNIVERSIDAD)
+  const [cargandoReportes, setCargandoReportes] = useState(true);
+  const [reportesUniversidadCargados, setReportesUniversidadCargados] = useState(false);
+  const [gruposReportes, setGruposReportes] = useState([]);
+  const [rawEstudiantesReportes, setRawEstudiantesReportes] = useState([]);
+  const [rawDesercionesReportes, setRawDesercionesReportes] = useState([]);
+  const [rawInasistenciasReportes, setRawInasistenciasReportes] = useState([]);
+  const [rawSeguimientosReportes, setRawSeguimientosReportes] = useState([]);
+
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
+
+  useEffect(() => {
+    if (usuario && esCoordinadorUniversidad && vistaActiva === 'reportes' && !reportesUniversidadCargados) {
+      cargarReportesUniversidad();
+    }
+  }, [usuario, esCoordinadorUniversidad, vistaActiva, reportesUniversidadCargados]);
+
+  // Trae, paginado, todos los estudiantes/deserciones/inasistencias/seguimientos
+  // de la universidad (sin los filtros de Estadísticas) para alimentar la
+  // pestaña de Reportes Descargables — igual patrón que Reportes.jsx (admin).
+  async function cargarReportesUniversidad() {
+    setCargandoReportes(true);
+
+    async function paginar(tabla, select, aplicarFiltro) {
+      let todos = [];
+      let from = 0;
+      const limit = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        let query = supabase.from(tabla).select(select).range(from, from + limit - 1);
+        if (aplicarFiltro) query = aplicarFiltro(query);
+        const { data, error } = await query;
+        if (error) { console.error('Error:', error); break; }
+        if (data && data.length > 0) { todos = [...todos, ...data]; from += limit; }
+        if (!data || data.length < limit) hasMore = false;
+      }
+      return todos;
+    }
+
+    const [estudiantesUni, gruposUni] = await Promise.all([
+      paginar('estudiantes', '*', q => q.eq('universidad', usuario.universidad).order('nombre_completo')),
+      supabase.from('grupos').select('id, nombre').eq('universidad', usuario.universidad).then(r => r.data || [])
+    ]);
+    setGruposReportes(gruposUni);
+
+    const idsEstudiantes = estudiantesUni.map(e => e.id);
+    let deserciones = [];
+    let inasistencias = [];
+    let seguimientos = [];
+
+    if (idsEstudiantes.length > 0) {
+      const [desData, inaData, segData] = await Promise.all([
+        paginar('registros_desercion', `*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`, q => q.in('estudiante_id', idsEstudiantes).order('fecha_reporte', { ascending: false })),
+        paginar('inasistencias', `*, estudiante:estudiante_id (*), registros_asistencia (fecha, modulo, docente_nombre)`, q => q.in('estudiante_id', idsEstudiantes)),
+        paginar('seguimientos', `*, estudiante:estudiante_id (*), padrino:padrino_id (nombre_completo)`, q => q.in('estudiante_id', idsEstudiantes))
+      ]);
+
+      const vistos = new Set();
+      deserciones = desData.reduce((acc, d) => {
+        if (vistos.has(d.estudiante_id)) return acc;
+        vistos.add(d.estudiante_id);
+        acc.push({ ...d, ...d.estudiante, reportado_por: d.usuario?.nombre_completo || '' });
+        return acc;
+      }, []);
+
+      inasistencias = inaData.map(i => ({
+        ...i,
+        ...i.estudiante,
+        fecha: i.registros_asistencia?.fecha || '',
+        modulo: i.registros_asistencia?.modulo || '',
+        docente_nombre: i.registros_asistencia?.docente_nombre || '',
+        estado_seguimiento:
+          i.estado_seguimiento === 'realizado' ? 'Realizado' :
+          i.estado_seguimiento === 'justificado' ? 'Justificado' : 'Pendiente'
+      }));
+
+      seguimientos = segData.map(s => ({
+        ...s,
+        ...s.estudiante,
+        tipo_gestion: limpiarEmojis(s.tipo_gestion),
+        causa_ausencia: limpiarEmojis(s.causa_ausencia) || '',
+        padrino_nombre: s.padrino?.nombre_completo || 'N/A'
+      }));
+    }
+
+    setRawEstudiantesReportes(estudiantesUni);
+    setRawDesercionesReportes(deserciones);
+    setRawInasistenciasReportes(inasistencias);
+    setRawSeguimientosReportes(seguimientos);
+    setCargandoReportes(false);
+    setReportesUniversidadCargados(true);
+  }
 
   useEffect(() => {
     if (usuario && esCoordinadorUniversidad) cargarEstudiantesUniversidad();
@@ -590,6 +682,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             {esCoordinadorUniversidad && (
               <button onClick={() => setVistaActiva('estadisticas')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estadisticas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
                 📈 Estadísticas
+              </button>
+            )}
+            {esCoordinadorUniversidad && (
+              <button onClick={() => setVistaActiva('reportes')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'reportes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
+                📑 Reportes
               </button>
             )}
           </nav>
@@ -1223,6 +1320,23 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               </div>
             </div>
           )}
+          </div>
+        )}
+
+        {/* VISTA: REPORTES DESCARGABLES (SOLO COORDINADOR_UNIVERSIDAD) */}
+        {vistaActiva === 'reportes' && esCoordinadorUniversidad && (
+          <div>
+            <h2 className="text-lg font-bold text-gray-800 mb-1">📑 Reportes Descargables</h2>
+            <p className="text-gray-600 mb-6 text-sm">Descarga en Excel la información de {usuario.universidad}</p>
+            <ReportesPanel
+              rawEstudiantes={rawEstudiantesReportes}
+              rawDeserciones={rawDesercionesReportes}
+              rawInasistencias={rawInasistenciasReportes}
+              rawSeguimientos={rawSeguimientosReportes}
+              grupos={gruposReportes}
+              cargando={cargandoReportes}
+              prefijoArchivo={usuario.universidad}
+            />
           </div>
         )}
 
