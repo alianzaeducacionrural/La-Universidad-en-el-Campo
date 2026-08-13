@@ -68,6 +68,7 @@ export const TIPOS_GESTION = [
 // ruta (tipo_desercion) específica; null significa que aplica a ambas.
 export const TIPOS_DOCUMENTO_DESERCION = [
   { value: 'carta_retiro_ie', label: 'Carta de Retiro (Institución Educativa)', icon: '📄', aplicaA: null },
+  { value: 'soporte', label: 'Soporte de Causa Justificada', icon: '📎', aplicaA: 'Justificada' },
   { value: 'certificado_vecindad', label: 'Certificado de Vecindad', icon: '📎', aplicaA: null },
   { value: 'certificado_medico', label: 'Certificado Médico', icon: '📎', aplicaA: null },
   { value: 'soporte_economico', label: 'Soporte Económico', icon: '📎', aplicaA: null },

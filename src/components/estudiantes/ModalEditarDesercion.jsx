@@ -34,9 +34,20 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
   // 🔥 Estados para documentos
   const [documentos, setDocumentos] = useState([]);
   const [documentosEliminados, setDocumentosEliminados] = useState([]);
+  const [archivoCartaRetiro, setArchivoCartaRetiro] = useState(null);
+  const [subiendoCartaRetiro, setSubiendoCartaRetiro] = useState(false);
+  const [archivoSoporte, setArchivoSoporte] = useState(null);
+  const [subiendoSoporte, setSubiendoSoporte] = useState(false);
   const [nuevoArchivo, setNuevoArchivo] = useState(null);
-  const [tipoNuevoDocumento, setTipoNuevoDocumento] = useState('carta_retiro_ie');
+  const [tipoNuevoDocumento, setTipoNuevoDocumento] = useState('certificado_vecindad');
   const [subiendo, setSubiendo] = useState(false);
+
+  // El selector de "otro documento" excluye los dos tipos que ya tienen su propia
+  // casilla dedicada (carta de retiro y soporte), y se limita a los tipos que
+  // aplican a la ruta (Justificada/Sin Justificar) actualmente seleccionada.
+  const tiposOtroDocumento = TIPOS_DOCUMENTO_DESERCION.filter(
+    t => (!t.aplicaA || t.aplicaA === tipoDesercion) && t.value !== 'carta_retiro_ie' && t.value !== 'soporte'
+  );
 
   // Se inicializa solo al ABRIR el modal para un registro dado (isOpen o el id
   // cambian) — nunca cuando datosDesercion se refresca en segundo plano con el
@@ -52,11 +63,23 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
       setObservaciones(datosDesercion.observaciones || '');
       setDocumentos(datosDesercion.documentos || []);
       setDocumentosEliminados([]);
+      setArchivoCartaRetiro(null);
+      setArchivoSoporte(null);
       setNuevoArchivo(null);
       cargarMulta();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, datosDesercion?.id]);
+
+  // Si cambia la ruta (Justificada <-> Sin Justificar), el tipo seleccionado en "otro
+  // documento" puede dejar de aplicar (p. ej. una carta de cobro ya no tiene sentido
+  // en Justificada) — se ajusta al primer tipo válido para la ruta actual.
+  useEffect(() => {
+    if (tiposOtroDocumento.length && !tiposOtroDocumento.some(t => t.value === tipoNuevoDocumento)) {
+      setTipoNuevoDocumento(tiposOtroDocumento[0].value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoDesercion]);
 
   async function cargarMulta() {
     if (!datosDesercion) return;
@@ -90,53 +113,92 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
     }
   }
 
-  // 🔥 Subir nuevo documento
+  // 🔥 Sube un archivo al storage y lo registra en documentos_desercion. Compartida por
+  // las tres casillas de subida (carta de retiro, soporte y "otro documento").
+  async function subirDocumentoTipo(archivo, tipo) {
+    const nombreSeguro = archivo.name
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const nombreArchivo = `${Date.now()}_${nombreSeguro}`;
+    const ruta = `desercion/${datosDesercion.id}/${tipo}/${nombreArchivo}`;
+
+    const { error: errorUpload } = await supabase.storage
+      .from('evidencias')
+      .upload(ruta, archivo);
+
+    if (errorUpload) throw errorUpload;
+
+    const { data: urlData } = supabase.storage
+      .from('evidencias')
+      .getPublicUrl(ruta);
+
+    const { data: nuevoDoc, error: errorInsert } = await supabase
+      .from('documentos_desercion')
+      .insert([{
+        registro_id: datosDesercion.id,
+        tipo_documento: tipo,
+        nombre_archivo: archivo.name,
+        url_archivo: urlData.publicUrl,
+        tamanio_bytes: archivo.size
+      }])
+      .select()
+      .single();
+
+    if (errorInsert) throw errorInsert;
+
+    setDocumentos(prev => [...prev, nuevoDoc]);
+    // El checklist de pasos depende de qué documentos existen: avisar al padre de
+    // inmediato, sin esperar a que se guarde el resto del formulario.
+    onDocumentoAgregado?.();
+    return nuevoDoc;
+  }
+
+  async function subirCartaRetiro() {
+    if (!archivoCartaRetiro) {
+      notificacion.warning('Selecciona un archivo', 'Campo requerido');
+      return;
+    }
+    setSubiendoCartaRetiro(true);
+    try {
+      await subirDocumentoTipo(archivoCartaRetiro, 'carta_retiro_ie');
+      setArchivoCartaRetiro(null);
+      notificacion.success('Documento agregado correctamente');
+    } catch (error) {
+      console.error('Error:', error);
+      notificacion.error(interpretarError(error), 'Error al subir documento');
+    } finally {
+      setSubiendoCartaRetiro(false);
+    }
+  }
+
+  async function subirSoporte() {
+    if (!archivoSoporte) {
+      notificacion.warning('Selecciona un archivo', 'Campo requerido');
+      return;
+    }
+    setSubiendoSoporte(true);
+    try {
+      await subirDocumentoTipo(archivoSoporte, 'soporte');
+      setArchivoSoporte(null);
+      notificacion.success('Documento agregado correctamente');
+    } catch (error) {
+      console.error('Error:', error);
+      notificacion.error(interpretarError(error), 'Error al subir documento');
+    } finally {
+      setSubiendoSoporte(false);
+    }
+  }
+
   async function subirDocumento() {
     if (!nuevoArchivo) {
       notificacion.warning('Selecciona un archivo', 'Campo requerido');
       return;
     }
-
     setSubiendo(true);
     try {
-      const nombreSeguro = nuevoArchivo.name
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-zA-Z0-9._-]/g, '_');
-      const nombreArchivo = `${Date.now()}_${nombreSeguro}`;
-      const ruta = `desercion/${datosDesercion.id}/${tipoNuevoDocumento}/${nombreArchivo}`;
-
-      const { error: errorUpload } = await supabase.storage
-        .from('evidencias')
-        .upload(ruta, nuevoArchivo);
-
-      if (errorUpload) throw errorUpload;
-
-      const { data: urlData } = supabase.storage
-        .from('evidencias')
-        .getPublicUrl(ruta);
-
-      // Insertar en la tabla documentos_desercion
-      const { data: nuevoDoc, error: errorInsert } = await supabase
-        .from('documentos_desercion')
-        .insert([{
-          registro_id: datosDesercion.id,
-          tipo_documento: tipoNuevoDocumento,
-          nombre_archivo: nuevoArchivo.name,
-          url_archivo: urlData.publicUrl,
-          tamanio_bytes: nuevoArchivo.size
-        }])
-        .select()
-        .single();
-
-      if (errorInsert) throw errorInsert;
-
-      // Agregar a la lista local
-      setDocumentos(prev => [...prev, nuevoDoc]);
+      await subirDocumentoTipo(nuevoArchivo, tipoNuevoDocumento);
       setNuevoArchivo(null);
       notificacion.success('Documento agregado correctamente');
-      // El checklist de pasos depende de qué documentos existen: avisar al padre de
-      // inmediato, sin esperar a que se guarde el resto del formulario.
-      onDocumentoAgregado?.();
     } catch (error) {
       console.error('Error:', error);
       notificacion.error(interpretarError(error), 'Error al subir documento');
@@ -367,13 +429,37 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
                 </div>
               )}
 
-              {/* Agregar nuevo documento (solo aplica al justificante de una deserción Justificada) */}
+              {/* Carta de Retiro (siempre disponible, igual que al reportar la deserción) */}
+              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-gray-700 mb-2">📄 Carta de Retiro (Institución Educativa)</p>
+                <div className="flex items-center space-x-2">
+                  <input type="file" accept=".pdf,image/*" onChange={(e) => setArchivoCartaRetiro(e.target.files[0])} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                  <button type="button" onClick={subirCartaRetiro} disabled={subiendoCartaRetiro || !archivoCartaRetiro} className="bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 whitespace-nowrap">
+                    {subiendoCartaRetiro ? '⏳' : '📤 Subir'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Soporte de Causa Justificada (solo Justificada, igual que al reportar la deserción) */}
               {tipoDesercion === 'Justificada' && (
+                <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700 mb-2">📎 Soporte de Causa Justificada</p>
+                  <div className="flex items-center space-x-2">
+                    <input type="file" accept=".pdf,image/*" onChange={(e) => setArchivoSoporte(e.target.files[0])} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                    <button type="button" onClick={subirSoporte} disabled={subiendoSoporte || !archivoSoporte} className="bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 whitespace-nowrap">
+                      {subiendoSoporte ? '⏳' : '📤 Subir'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Otro documento (cartas de cobro, cierre de caso, certificados...) */}
+              {tiposOtroDocumento.length > 0 && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <p className="text-sm font-medium text-gray-700 mb-2">➕ Agregar nuevo documento</p>
+                  <p className="text-sm font-medium text-gray-700 mb-2">➕ Agregar otro documento</p>
                   <div className="space-y-2">
                     <select value={tipoNuevoDocumento} onChange={(e) => setTipoNuevoDocumento(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                      {TIPOS_DOCUMENTO_DESERCION.filter(t => !t.aplicaA || t.aplicaA === tipoDesercion).map(t => (
+                      {tiposOtroDocumento.map(t => (
                         <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
                       ))}
                     </select>
