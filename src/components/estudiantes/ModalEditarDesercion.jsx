@@ -246,15 +246,29 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
             {/* Tipo de Deserción */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Deserción *</label>
-              <div className="flex space-x-4">
-                <label className="flex items-center">
-                  <input type="radio" value="Justificada" checked={tipoDesercion === 'Justificada'} onChange={(e) => setTipoDesercion(e.target.value)} className="mr-2" />
-                  <span className="text-sm">Justificada</span>
-                </label>
-                <label className="flex items-center">
-                  <input type="radio" value="Sin Justificar" checked={tipoDesercion === 'Sin Justificar'} onChange={(e) => setTipoDesercion(e.target.value)} className="mr-2" />
-                  <span className="text-sm">Sin Justificar</span>
-                </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTipoDesercion('Justificada')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                    tipoDesercion === 'Justificada'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary/40 hover:bg-primary/5'
+                  }`}
+                >
+                  ✅ Justificada
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoDesercion('Sin Justificar')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                    tipoDesercion === 'Sin Justificar'
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-rose-300 hover:bg-rose-50'
+                  }`}
+                >
+                  ⚠️ Sin Justificar
+                </button>
               </div>
             </div>
 
@@ -353,23 +367,25 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
                 </div>
               )}
 
-              {/* Agregar nuevo documento */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">➕ Agregar nuevo documento</p>
-                <div className="space-y-2">
-                  <select value={tipoNuevoDocumento} onChange={(e) => setTipoNuevoDocumento(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                    {TIPOS_DOCUMENTO_DESERCION.filter(t => !t.aplicaA || t.aplicaA === tipoDesercion).map(t => (
-                      <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
-                    ))}
-                  </select>
-                  <div className="flex items-center space-x-2">
-                    <input type="file" accept=".pdf,image/*" onChange={(e) => setNuevoArchivo(e.target.files[0])} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-                    <button type="button" onClick={subirDocumento} disabled={subiendo || !nuevoArchivo} className="bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 whitespace-nowrap">
-                      {subiendo ? '⏳' : '📤 Subir'}
-                    </button>
+              {/* Agregar nuevo documento (solo aplica al justificante de una deserción Justificada) */}
+              {tipoDesercion === 'Justificada' && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">➕ Agregar nuevo documento</p>
+                  <div className="space-y-2">
+                    <select value={tipoNuevoDocumento} onChange={(e) => setTipoNuevoDocumento(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                      {TIPOS_DOCUMENTO_DESERCION.filter(t => !t.aplicaA || t.aplicaA === tipoDesercion).map(t => (
+                        <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center space-x-2">
+                      <input type="file" accept=".pdf,image/*" onChange={(e) => setNuevoArchivo(e.target.files[0])} className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                      <button type="button" onClick={subirDocumento} disabled={subiendo || !nuevoArchivo} className="bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 whitespace-nowrap">
+                        {subiendo ? '⏳' : '📤 Subir'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
