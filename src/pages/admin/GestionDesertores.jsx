@@ -45,13 +45,16 @@ export default function GestionDesertores({ onVerPerfil }) {
 
     const ids = data.map(e => e.id);
     let idsConMultaPendiente = new Set();
+    let idsConMultaPagada = new Set();
     if (ids.length > 0) {
       const { data: multas } = await supabase
         .from('multas_desercion')
         .select('estudiante_id, estado')
-        .in('estudiante_id', ids)
-        .in('estado', ['pendiente', 'abonando']);
-      idsConMultaPendiente = new Set((multas || []).map(m => m.estudiante_id));
+        .in('estudiante_id', ids);
+      (multas || []).forEach(m => {
+        if (m.estado === 'pendiente' || m.estado === 'abonando') idsConMultaPendiente.add(m.estudiante_id);
+        if (m.estado === 'pagado') idsConMultaPagada.add(m.estudiante_id);
+      });
     }
 
     const conRegistro = data.map(e => {
@@ -63,11 +66,14 @@ export default function GestionDesertores({ onVerPerfil }) {
         if (porFecha !== 0) return porFecha;
         return (b.created_at || '').localeCompare(a.created_at || '');
       });
+      const registroActual = registros[0] || null;
       return {
         ...e,
         grupo_nombre: e.grupos?.nombre || 'Sin grupo',
-        registro: registros[0] || null,
-        tieneMultaPendiente: idsConMultaPendiente.has(e.id)
+        registro: registroActual,
+        tieneMultaPendiente: idsConMultaPendiente.has(e.id),
+        tieneMultaPagada: idsConMultaPagada.has(e.id),
+        casoCerrado: !!registroActual?.documentos?.some(doc => doc.tipo_documento === 'cierre_caso')
       };
     });
 
@@ -244,8 +250,6 @@ export default function GestionDesertores({ onVerPerfil }) {
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Tipo</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Progreso</th>
                       <th className="px-4 py-2.5 text-left font-medium text-gray-600">Motivo</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-gray-600">Fecha</th>
-                      <th className="px-4 py-2.5 text-center font-medium text-gray-600">Multa</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -273,13 +277,17 @@ export default function GestionDesertores({ onVerPerfil }) {
                             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
                               ⏳ Pendiente de información
                             </span>
+                          ) : d.registro.tipo_desercion === 'Justificada' ? (
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                              d.casoCerrado ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {d.casoCerrado ? 'Justificada · Caso cerrado' : 'Justificada'}
+                            </span>
                           ) : (
                             <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                              d.registro.tipo_desercion === 'Justificada'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-red-100 text-red-700'
+                              d.tieneMultaPagada ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                             }`}>
-                              {d.registro.tipo_desercion}
+                              {d.tieneMultaPagada ? 'Sin Justificar · Multa pagada' : d.registro.tipo_desercion}
                             </span>
                           )}
                         </td>
@@ -287,12 +295,6 @@ export default function GestionDesertores({ onVerPerfil }) {
                           <PasosDesercion pasos={calcularPasosDesercion(d.registro)} compacto />
                         </td>
                         <td className="px-4 py-2.5 text-gray-600">{d.registro?.motivo_principal || '—'}</td>
-                        <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
-                          {d.registro ? formatearFecha(d.registro.fecha_reporte) : '—'}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          {d.tieneMultaPendiente && <span title="Multa pendiente">💰</span>}
-                        </td>
                       </tr>
                     ))}
                   </tbody>

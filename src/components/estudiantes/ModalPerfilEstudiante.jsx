@@ -16,6 +16,20 @@ import ModalCambiarGrupo from './ModalCambiarGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 import PasosDesercion from './PasosDesercion';
 
+const ESTADO_MULTA_COLOR = {
+  pendiente: 'bg-red-100 text-red-700',
+  abonando: 'bg-amber-100 text-amber-700',
+  pagado: 'bg-green-100 text-green-700',
+  condonado: 'bg-blue-100 text-blue-700'
+};
+
+const ESTADO_MULTA_LABEL = {
+  pendiente: 'Pendiente',
+  abonando: 'Abonando',
+  pagado: 'Pagado',
+  condonado: 'Condonado'
+};
+
 export default function ModalPerfilEstudiante({
   isOpen,
   onClose,
@@ -40,6 +54,8 @@ export default function ModalPerfilEstudiante({
   const [modalEliminarEstudiante, setModalEliminarEstudiante] = useState(false);
   const [datosDesercion, setDatosDesercion] = useState(null);
   const [cargandoDesercion, setCargandoDesercion] = useState(false);
+  const [datosMulta, setDatosMulta] = useState(null);
+  const [cargandoMulta, setCargandoMulta] = useState(false);
   const [guardandoPasoManual, setGuardandoPasoManual] = useState(false);
   const [modalEditarDesercion, setModalEditarDesercion] = useState(false);
   const [modalCambiarGrupo, setModalCambiarGrupo] = useState(false);
@@ -116,8 +132,28 @@ export default function ModalPerfilEstudiante({
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (registro) setDatosDesercion(registro);
+    if (registro) {
+      setDatosDesercion(registro);
+      if (registro.tipo_desercion === 'Sin Justificar') {
+        cargarMulta(registro.id);
+      } else {
+        setDatosMulta(null);
+      }
+    } else {
+      setDatosMulta(null);
+    }
     setCargandoDesercion(false);
+  }
+
+  async function cargarMulta(registroId) {
+    setCargandoMulta(true);
+    const { data } = await supabase
+      .from('multas_desercion')
+      .select('*, pagos:pagos_multa(*)')
+      .eq('registro_desercion_id', registroId)
+      .maybeSingle();
+    setDatosMulta(data || null);
+    setCargandoMulta(false);
   }
 
   async function handleTogglePasoManual() {
@@ -445,6 +481,66 @@ export default function ModalPerfilEstudiante({
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* MULTA Y PAGOS (solo Sin Justificar) */}
+                    {datosDesercion.tipo_desercion === 'Sin Justificar' && (
+                      <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                        <p className="font-medium text-sm text-gray-700 mb-2 flex items-center justify-between">
+                          <span>💰 Multa y Pagos</span>
+                          {datosMulta && (
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${ESTADO_MULTA_COLOR[datosMulta.estado] || 'bg-gray-100 text-gray-700'}`}>
+                              {ESTADO_MULTA_LABEL[datosMulta.estado] || datosMulta.estado}
+                            </span>
+                          )}
+                        </p>
+                        {cargandoMulta ? (
+                          <p className="text-sm text-gray-400">Cargando...</p>
+                        ) : !datosMulta ? (
+                          <p className="text-sm text-gray-500">No hay una multa registrada para esta deserción.</p>
+                        ) : (
+                          (() => {
+                            const totalPagado = (datosMulta.pagos || []).reduce((sum, p) => sum + (p.valor || 0), 0);
+                            const saldo = datosMulta.valor_total - totalPagado;
+                            return (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                  <div>
+                                    <p className="text-xs text-gray-500">Valor multa</p>
+                                    <p className="font-medium">${datosMulta.valor_total?.toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Pagado</p>
+                                    <p className="font-medium text-green-600">${totalPagado.toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Saldo</p>
+                                    <p className="font-medium text-red-600">${saldo.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                                {(datosMulta.pagos || []).length > 0 ? (
+                                  <div className="space-y-1.5">
+                                    <p className="text-xs font-medium text-gray-500">Historial de pagos:</p>
+                                    {datosMulta.pagos.map(pago => (
+                                      <div key={pago.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                                        <span className="text-gray-700">{formatearFecha(pago.fecha_pago)}</span>
+                                        <span className="font-medium text-green-600">${pago.valor?.toLocaleString()}</span>
+                                        {pago.comprobante_url ? (
+                                          <a href={pago.comprobante_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary-dark text-xs font-medium whitespace-nowrap">Ver comprobante →</a>
+                                        ) : (
+                                          <span className="text-xs text-gray-400 whitespace-nowrap">Sin comprobante</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-500">Aún no se han registrado pagos.</p>
+                                )}
+                              </div>
+                            );
+                          })()
+                        )}
                       </div>
                     )}
                   </div>
