@@ -202,27 +202,29 @@ export default function ModalReportarDesercion({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Deserción *
               </label>
-              <div className="flex space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="Justificada"
-                    checked={tipoDesercion === 'Justificada'}
-                    onChange={(e) => setTipoDesercion(e.target.value)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">Justificada</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="Sin Justificar"
-                    checked={tipoDesercion === 'Sin Justificar'}
-                    onChange={(e) => setTipoDesercion(e.target.value)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">Sin Justificar</span>
-                </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTipoDesercion('Justificada')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                    tipoDesercion === 'Justificada'
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary/40 hover:bg-primary/5'
+                  }`}
+                >
+                  ✅ Justificada
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTipoDesercion('Sin Justificar'); setSoporteAdicional(null); }}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                    tipoDesercion === 'Sin Justificar'
+                      ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-rose-300 hover:bg-rose-50'
+                  }`}
+                >
+                  ⚠️ Sin Justificar
+                </button>
               </div>
             </div>
             
@@ -304,22 +306,24 @@ export default function ModalReportarDesercion({
                 )}
               </div>
               
-              {/* Soporte adicional */}
-              <div className={`p-4 rounded-lg ${tipoDesercion === 'Justificada' ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  📎 Soporte de Causa Justificada {tipoDesercion === 'Justificada' && '*'}
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf,image/*"
-                  onChange={(e) => setSoporteAdicional(e.target.files[0])}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
-                  required={tipoDesercion === 'Justificada'}
-                />
-                {soporteAdicional && (
-                  <p className="text-xs text-green-600 mt-1">✅ {soporteAdicional.name}</p>
-                )}
-              </div>
+              {/* Soporte adicional (solo aplica al justificante de una deserción Justificada) */}
+              {tipoDesercion === 'Justificada' && (
+                <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📎 Soporte de Causa Justificada *
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => setSoporteAdicional(e.target.files[0])}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
+                    required
+                  />
+                  {soporteAdicional && (
+                    <p className="text-xs text-green-600 mt-1">✅ {soporteAdicional.name}</p>
+                  )}
+                </div>
+              )}
             </div>
             </>
             )}
