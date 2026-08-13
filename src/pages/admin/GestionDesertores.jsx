@@ -13,6 +13,24 @@ import { formatearFecha, getMunicipiosPermitidos, calcularPasosDesercion } from 
 import PasosDesercion from '../../components/estudiantes/PasosDesercion';
 import * as XLSX from 'xlsx';
 
+// Estado visual del proceso de deserción — fuente única para el chip de la tabla,
+// las opciones del filtro y el getter que el filtro usa para comparar.
+const ESTADOS_VISUALES_DESERCION = [
+  { valor: 'pendiente_info', label: '⏳ Pendiente de información', color: 'bg-amber-100 text-amber-700' },
+  { valor: 'justificada', label: 'Justificada', color: 'bg-blue-100 text-blue-700' },
+  { valor: 'justificada_cerrado', label: 'Justificada · Caso cerrado', color: 'bg-emerald-100 text-emerald-700' },
+  { valor: 'sin_justificar', label: 'Sin Justificar', color: 'bg-red-100 text-red-700' },
+  { valor: 'sin_justificar_pagada', label: 'Sin Justificar · Multa pagada', color: 'bg-emerald-100 text-emerald-700' },
+  { valor: 'sin_registro', label: 'Sin registro', color: 'bg-gray-100 text-gray-700' }
+];
+
+function calcularEstadoVisual({ registro, casoCerrado, tieneMultaPagada }) {
+  if (!registro) return 'sin_registro';
+  if (!registro.tipo_desercion) return 'pendiente_info';
+  if (registro.tipo_desercion === 'Justificada') return casoCerrado ? 'justificada_cerrado' : 'justificada';
+  return tieneMultaPagada ? 'sin_justificar_pagada' : 'sin_justificar';
+}
+
 export default function GestionDesertores({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const [vistaActiva, setVistaActiva] = useState('desertores');
@@ -67,13 +85,17 @@ export default function GestionDesertores({ onVerPerfil }) {
         return (b.created_at || '').localeCompare(a.created_at || '');
       });
       const registroActual = registros[0] || null;
+      const tieneMultaPendiente = idsConMultaPendiente.has(e.id);
+      const tieneMultaPagada = idsConMultaPagada.has(e.id);
+      const casoCerrado = !!registroActual?.documentos?.some(doc => doc.tipo_documento === 'cierre_caso');
       return {
         ...e,
         grupo_nombre: e.grupos?.nombre || 'Sin grupo',
         registro: registroActual,
-        tieneMultaPendiente: idsConMultaPendiente.has(e.id),
-        tieneMultaPagada: idsConMultaPagada.has(e.id),
-        casoCerrado: !!registroActual?.documentos?.some(doc => doc.tipo_documento === 'cierre_caso')
+        tieneMultaPendiente,
+        tieneMultaPagada,
+        casoCerrado,
+        estadoVisual: calcularEstadoVisual({ registro: registroActual, casoCerrado, tieneMultaPagada })
       };
     });
 
@@ -88,7 +110,8 @@ export default function GestionDesertores({ onVerPerfil }) {
     programa: d => d.programa,
     cohorte: d => d.cohorte,
     grupoId: d => d.grupo_id,
-    fecha: d => d.registro?.fecha_reporte
+    fecha: d => d.registro?.fecha_reporte,
+    estado: d => d.estadoVisual
   };
 
   const desertoresFiltrados = useMemo(() => {
@@ -122,7 +145,9 @@ export default function GestionDesertores({ onVerPerfil }) {
       programas: opcionesUnicas('programa'),
       cohortes: opcionesUnicas('cohorte'),
       grupos: Array.from(gruposUnicos.entries()).map(([id, label]) => ({ valor: id, label })),
-      estados: []
+      estados: ESTADOS_VISUALES_DESERCION
+        .filter(s => desertores.some(d => d.estadoVisual === s.valor))
+        .map(s => ({ valor: s.valor, label: s.label }))
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desertores, municipiosPermitidos]);
@@ -214,7 +239,7 @@ export default function GestionDesertores({ onVerPerfil }) {
             filas={desertores}
             getters={getters}
             municipiosPermitidos={municipiosPermitidos}
-            mostrarEstado={false}
+            mostrarEstado
           />
 
           <div className="mb-4">
@@ -269,27 +294,14 @@ export default function GestionDesertores({ onVerPerfil }) {
                           <p className="text-xs text-gray-400">{d.grupo_nombre}</p>
                         </td>
                         <td className="px-4 py-2.5">
-                          {!d.registro ? (
-                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
-                              Sin registro
-                            </span>
-                          ) : !d.registro.tipo_desercion ? (
-                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-700">
-                              ⏳ Pendiente de información
-                            </span>
-                          ) : d.registro.tipo_desercion === 'Justificada' ? (
-                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                              d.casoCerrado ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {d.casoCerrado ? 'Justificada · Caso cerrado' : 'Justificada'}
-                            </span>
-                          ) : (
-                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                              d.tieneMultaPagada ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {d.tieneMultaPagada ? 'Sin Justificar · Multa pagada' : d.registro.tipo_desercion}
-                            </span>
-                          )}
+                          {(() => {
+                            const info = ESTADOS_VISUALES_DESERCION.find(s => s.valor === d.estadoVisual);
+                            return (
+                              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${info?.color || 'bg-gray-100 text-gray-700'}`}>
+                                {info?.label || d.estadoVisual}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-2.5">
                           <PasosDesercion pasos={calcularPasosDesercion(d.registro)} compacto />

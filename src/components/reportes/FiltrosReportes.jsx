@@ -36,6 +36,16 @@ const LABELS_CATEGORIA = {
   estados: 'Estado'
 };
 
+const ICONOS_CATEGORIA = {
+  municipios: '📍',
+  universidades: '🎓',
+  programas: '📘',
+  cohortes: '📅',
+  grupoIds: '👥',
+  instituciones: '🏫',
+  estados: '📊'
+};
+
 /**
  * Aplica el estado de FiltrosReportes a un arreglo de filas.
  * `getters` mapea cada categoría a una función que extrae ese valor de una fila;
@@ -110,33 +120,36 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
   }
 
   const alcanzables = disponibles ? opciones.filter(o => disponibles.has(o.valor)) : opciones;
+  const hayActivos = seleccionados.length > 0;
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setAbierto(a => !a)}
-        className={`w-full px-3 py-2 rounded-lg text-sm border transition flex items-center gap-1.5 whitespace-nowrap ${
-          seleccionados.length > 0
-            ? 'bg-primary/10 border-primary/30 text-primary-dark'
-            : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+        className={`w-full h-10 px-3 rounded-lg text-sm border transition-colors flex items-center gap-2 whitespace-nowrap ${
+          hayActivos
+            ? 'bg-primary border-primary text-white shadow-sm'
+            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
         }`}
       >
-        <span>{icon}</span>
-        <span className="truncate flex-1 text-left">{label}</span>
-        {seleccionados.length > 0 && (
-          <span className="bg-primary text-white text-xs rounded-full px-1.5 leading-4 flex-shrink-0">{seleccionados.length}</span>
+        <span className="text-base leading-none">{icon}</span>
+        <span className="truncate flex-1 text-left font-medium">{label}</span>
+        {hayActivos && (
+          <span className="bg-white/25 text-white text-[11px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 flex-shrink-0">
+            {seleccionados.length}
+          </span>
         )}
-        <span className="text-gray-400 text-xs flex-shrink-0">▾</span>
+        <span className={`text-[10px] flex-shrink-0 transition-transform duration-150 ${abierto ? '-rotate-180' : ''} ${hayActivos ? 'text-white/70' : 'text-gray-400'}`}>▾</span>
       </button>
 
       {abierto && (
-        <div className="absolute z-20 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+        <div className="absolute z-20 mt-1.5 w-64 bg-white border border-gray-200 rounded-xl shadow-lg shadow-gray-900/10 max-h-72 overflow-y-auto py-1">
           {opciones.length > 0 && (
             <button
               type="button"
               onClick={toggleTodos}
-              className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-gray-50 border-b border-gray-100 sticky top-0 bg-white"
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/5 border-b border-gray-100 sticky top-0 bg-white"
             >
               {seleccionados.length === alcanzables.length && alcanzables.length > 0 ? '☐ Deseleccionar todos' : '☑ Seleccionar los disponibles'}
             </button>
@@ -150,7 +163,7 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
               return (
                 <label
                   key={o.valor}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm ${alcanzable ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-sm ${alcanzable ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
                   title={alcanzable ? undefined : 'Sin resultados con los demás filtros activos'}
                 >
                   <input
@@ -158,7 +171,7 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
                     checked={marcado}
                     disabled={!alcanzable}
                     onChange={() => toggle(o.valor)}
-                    className="rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0 disabled:cursor-not-allowed"
                   />
                   <span className="truncate">{o.label ?? o.valor}</span>
                 </label>
@@ -215,49 +228,53 @@ export default function FiltrosReportes({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-          🔍 Filtros
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm flex-shrink-0">🔍</span>
+          <span className="text-sm font-semibold text-gray-700">Filtros</span>
           {totalActivos > 0 && (
-            <span className="bg-primary text-white text-xs rounded-full px-2 py-0.5 leading-4">{totalActivos}</span>
+            <span className="bg-primary text-white text-xs font-semibold rounded-full px-2 py-0.5 leading-4">{totalActivos}</span>
           )}
-        </span>
+        </div>
         {hayFiltros && (
           <button
             type="button"
             onClick={() => onCambio(FILTROS_VACIOS)}
-            className="text-sm text-gray-500 hover:text-red-600 transition"
+            className="text-xs font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
           >
             ✕ Limpiar filtros
           </button>
         )}
       </div>
 
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${mostrarEstado && mostrarInstitucion ? 'lg:grid-cols-7' : mostrarEstado || mostrarInstitucion ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-2`}>
-        <MultiSelect label="Municipio" icon="📍" opciones={opciones.municipios} seleccionados={filtros.municipios} onChange={v => set('municipios', v)} disponibles={disponiblesPara('municipios')} />
-        <MultiSelect label="Universidad" icon="🎓" opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />
-        <MultiSelect label="Programa" icon="📘" opciones={opciones.programas} seleccionados={filtros.programas} onChange={v => set('programas', v)} disponibles={disponiblesPara('programas')} />
-        <MultiSelect label="Cohorte" icon="📅" opciones={opciones.cohortes} seleccionados={filtros.cohortes} onChange={v => set('cohortes', v)} disponibles={disponiblesPara('cohortes')} />
-        <MultiSelect label="Grupo" icon="👥" opciones={opciones.grupos} seleccionados={filtros.grupoIds} onChange={v => set('grupoIds', v)} disponibles={disponiblesPara('grupoIds')} />
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${mostrarEstado && mostrarInstitucion ? 'lg:grid-cols-7' : mostrarEstado || mostrarInstitucion ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-2.5`}>
+        <MultiSelect label="Municipio" icon={ICONOS_CATEGORIA.municipios} opciones={opciones.municipios} seleccionados={filtros.municipios} onChange={v => set('municipios', v)} disponibles={disponiblesPara('municipios')} />
+        <MultiSelect label="Universidad" icon={ICONOS_CATEGORIA.universidades} opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />
+        <MultiSelect label="Programa" icon={ICONOS_CATEGORIA.programas} opciones={opciones.programas} seleccionados={filtros.programas} onChange={v => set('programas', v)} disponibles={disponiblesPara('programas')} />
+        <MultiSelect label="Cohorte" icon={ICONOS_CATEGORIA.cohortes} opciones={opciones.cohortes} seleccionados={filtros.cohortes} onChange={v => set('cohortes', v)} disponibles={disponiblesPara('cohortes')} />
+        <MultiSelect label="Grupo" icon={ICONOS_CATEGORIA.grupoIds} opciones={opciones.grupos} seleccionados={filtros.grupoIds} onChange={v => set('grupoIds', v)} disponibles={disponiblesPara('grupoIds')} />
         {mostrarInstitucion && (
-          <MultiSelect label="Institución" icon="🏫" opciones={opciones.instituciones} seleccionados={filtros.instituciones} onChange={v => set('instituciones', v)} disponibles={disponiblesPara('instituciones')} />
+          <MultiSelect label="Institución" icon={ICONOS_CATEGORIA.instituciones} opciones={opciones.instituciones} seleccionados={filtros.instituciones} onChange={v => set('instituciones', v)} disponibles={disponiblesPara('instituciones')} />
         )}
         {mostrarEstado && (
-          <MultiSelect label="Estado" icon="📊" opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} />
+          <MultiSelect label="Estado" icon={ICONOS_CATEGORIA.estados} opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} />
         )}
       </div>
 
       {mostrarFecha && (
-        <div className="flex flex-wrap items-center gap-3 mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          <span className="text-xs font-medium text-gray-500">📆 Rango de fechas:</span>
+        <div className="flex flex-wrap items-center gap-3 mt-3 bg-gray-50/70 border border-gray-200 rounded-xl px-3.5 py-2.5">
+          <span className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+            <span className="w-5 h-5 rounded-md bg-white border border-gray-200 flex items-center justify-center text-[10px] flex-shrink-0">📆</span>
+            Rango de fechas:
+          </span>
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
             <span>Desde</span>
             <input
               type="date"
               value={filtros.fechaInicio}
               onChange={e => set('fechaInicio', e.target.value)}
-              className="border border-gray-300 rounded-md text-sm px-1.5 py-1 bg-white"
+              className="border border-gray-300 rounded-lg text-sm px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
@@ -266,7 +283,7 @@ export default function FiltrosReportes({
               type="date"
               value={filtros.fechaFin}
               onChange={e => set('fechaFin', e.target.value)}
-              className="border border-gray-300 rounded-md text-sm px-1.5 py-1 bg-white"
+              className="border border-gray-300 rounded-lg text-sm px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
             />
           </div>
           {(filtros.fechaInicio || filtros.fechaFin) && (
@@ -283,25 +300,27 @@ export default function FiltrosReportes({
 
       {/* Chips de filtros activos — visibilidad inmediata sin abrir cada dropdown */}
       {hayFiltros && (
-        <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
+        <div className="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-gray-100">
           {categorias.concat('estados').flatMap(campo =>
             filtros[campo].map(valor => (
-              <span key={`${campo}-${valor}`} className="inline-flex items-center gap-1 bg-primary/10 text-primary-dark text-xs px-2 py-1 rounded-full">
-                <span className="font-medium">{LABELS_CATEGORIA[campo]}:</span> {labelValor(campo, valor)}
-                <button type="button" onClick={() => quitarValor(campo, valor)} className="hover:text-red-600">✕</button>
+              <span key={`${campo}-${valor}`} className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">
+                <span>{ICONOS_CATEGORIA[campo]}</span>
+                <span className="font-semibold">{LABELS_CATEGORIA[campo]}:</span>
+                <span>{labelValor(campo, valor)}</span>
+                <button type="button" onClick={() => quitarValor(campo, valor)} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
               </span>
             ))
           )}
           {filtros.fechaInicio && (
-            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary-dark text-xs px-2 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">
               Desde: {filtros.fechaInicio}
-              <button type="button" onClick={() => set('fechaInicio', '')} className="hover:text-red-600">✕</button>
+              <button type="button" onClick={() => set('fechaInicio', '')} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
             </span>
           )}
           {filtros.fechaFin && (
-            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary-dark text-xs px-2 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">
               Hasta: {filtros.fechaFin}
-              <button type="button" onClick={() => set('fechaFin', '')} className="hover:text-red-600">✕</button>
+              <button type="button" onClick={() => set('fechaFin', '')} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
             </span>
           )}
         </div>
