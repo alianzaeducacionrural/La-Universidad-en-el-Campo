@@ -2,10 +2,11 @@
 // MODAL: REPORTAR DESERCIÓN (CON VALOR DE MULTA)
 // =============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
 import { interpretarError } from '../../utils/helpers';
+import { TIPOS_DOCUMENTO_DESERCION } from '../../utils/constants';
 
 const MOTIVOS_DESERCION = [
   { value: 'Cambio de domicilio', label: 'Cambio de domicilio' },
@@ -37,6 +38,22 @@ export default function ModalReportarDesercion({
   const [valorMulta, setValorMulta] = useState('');
   const [cartaRetiro, setCartaRetiro] = useState(null);
   const [soporteAdicional, setSoporteAdicional] = useState(null);
+  const [otroArchivo, setOtroArchivo] = useState(null);
+  const [tipoOtroDocumento, setTipoOtroDocumento] = useState('certificado_vecindad');
+
+  // Documentos adicionales del checklist (cartas de cobro para Sin Justificar, cierre
+  // de caso para Justificada, certificados...), excluyendo la carta de retiro que ya
+  // tiene su propia casilla dedicada arriba.
+  const tiposOtroDocumento = TIPOS_DOCUMENTO_DESERCION.filter(
+    t => (!t.aplicaA || t.aplicaA === tipoDesercion) && t.value !== 'carta_retiro_ie'
+  );
+
+  useEffect(() => {
+    if (tiposOtroDocumento.length && !tiposOtroDocumento.some(t => t.value === tipoOtroDocumento)) {
+      setTipoOtroDocumento(tiposOtroDocumento[0].value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoDesercion]);
 
   const subirArchivo = async (archivo, tipo, registroId) => {
     if (!archivo) return null;
@@ -124,11 +141,12 @@ export default function ModalReportarDesercion({
       // y terminar duplicando (esto era justo lo que generaba multas duplicadas).
       const carpetaSubida = crypto.randomUUID();
       const cartaData = await subirArchivo(cartaRetiro, 'carta_retiro_ie', carpetaSubida);
-      const soporteData = soporteAdicional ? await subirArchivo(soporteAdicional, 'soporte', carpetaSubida) : null;
+      const soporteData = soporteAdicional ? await subirArchivo(soporteAdicional, 'otro', carpetaSubida) : null;
 
       // El resto (registro, multa, documentos, historial y cambio de estado) se hace en una
       // sola transacción en la base de datos: o se guarda todo, o no se guarda nada.
-      const { error } = await supabase.rpc('reportar_desercion', {
+      // El RPC devuelve el id del registro recién creado.
+      const { data: registroId, error } = await supabase.rpc('reportar_desercion', {
         p_estudiante_id: estudiante.id,
         p_usuario_id: usuario.id,
         p_tipo_desercion: tipoDesercion,
@@ -145,6 +163,25 @@ export default function ModalReportarDesercion({
       });
 
       if (error) throw error;
+
+      // Documento adicional del checklist (carta de cobro, cierre de caso, certificado...):
+      // se sube aparte porque necesita el id real del registro, recién generado arriba.
+      // Si falla, no se revierte el reporte de deserción ya guardado — solo se avisa.
+      if (otroArchivo && registroId) {
+        try {
+          const otroData = await subirArchivo(otroArchivo, tipoOtroDocumento, registroId);
+          await supabase.from('documentos_desercion').insert([{
+            registro_id: registroId,
+            tipo_documento: tipoOtroDocumento,
+            nombre_archivo: otroData.nombre,
+            url_archivo: otroData.url,
+            tamanio_bytes: otroData.tamanio
+          }]);
+        } catch (errorOtro) {
+          console.error('Error subiendo documento adicional:', errorOtro);
+          notificacion.warning('La deserción se reportó, pero el documento adicional no se pudo subir. Puedes agregarlo luego con "Editar".', 'Documento adicional');
+        }
+      }
 
       notificacion.success(`${estudiante.nombre_completo} ha sido reportado como Desertor`);
       onConfirmar();
@@ -322,6 +359,33 @@ export default function ModalReportarDesercion({
                   {soporteAdicional && (
                     <p className="text-xs text-green-600 mt-1">✅ {soporteAdicional.name}</p>
                   )}
+                </div>
+              )}
+
+              {/* Otro documento (cartas de cobro, cierre de caso, certificados...) */}
+              {tiposOtroDocumento.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700 mb-2">➕ Agregar otro documento</p>
+                  <div className="space-y-2">
+                    <select
+                      value={tipoOtroDocumento}
+                      onChange={(e) => setTipoOtroDocumento(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    >
+                      {tiposOtroDocumento.map(t => (
+                        <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={(e) => setOtroArchivo(e.target.files[0])}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
+                    />
+                    {otroArchivo && (
+                      <p className="text-xs text-green-600">✅ {otroArchivo.name}</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

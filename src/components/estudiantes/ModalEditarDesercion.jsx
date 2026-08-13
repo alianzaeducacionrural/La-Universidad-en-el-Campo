@@ -42,11 +42,11 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
   const [tipoNuevoDocumento, setTipoNuevoDocumento] = useState('certificado_vecindad');
   const [subiendo, setSubiendo] = useState(false);
 
-  // El selector de "otro documento" excluye los dos tipos que ya tienen su propia
-  // casilla dedicada (carta de retiro y soporte), y se limita a los tipos que
-  // aplican a la ruta (Justificada/Sin Justificar) actualmente seleccionada.
+  // El selector de "otro documento" excluye la carta de retiro (tiene su propia
+  // casilla dedicada) y se limita a los tipos que aplican a la ruta
+  // (Justificada/Sin Justificar) actualmente seleccionada.
   const tiposOtroDocumento = TIPOS_DOCUMENTO_DESERCION.filter(
-    t => (!t.aplicaA || t.aplicaA === tipoDesercion) && t.value !== 'carta_retiro_ie' && t.value !== 'soporte'
+    t => (!t.aplicaA || t.aplicaA === tipoDesercion) && t.value !== 'carta_retiro_ie'
   );
 
   // Se inicializa solo al ABRIR el modal para un registro dado (isOpen o el id
@@ -178,7 +178,9 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
     }
     setSubiendoSoporte(true);
     try {
-      await subirDocumentoTipo(archivoSoporte, 'soporte');
+      // Se guarda como 'otro' para coincidir con lo que ya inserta el RPC
+      // reportar_desercion al crear el registro con el soporte adjunto.
+      await subirDocumentoTipo(archivoSoporte, 'otro');
       setArchivoSoporte(null);
       notificacion.success('Documento agregado correctamente');
     } catch (error) {
