@@ -38,6 +38,12 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
   const [tipoNuevoDocumento, setTipoNuevoDocumento] = useState('carta_retiro_ie');
   const [subiendo, setSubiendo] = useState(false);
 
+  // Se inicializa solo al ABRIR el modal para un registro dado (isOpen o el id
+  // cambian) — nunca cuando datosDesercion se refresca en segundo plano con el
+  // modal ya abierto (p. ej. al subir un documento, ver subirDocumento más abajo,
+  // que dispara onDocumentoAgregado en el padre). De lo contrario, ese refresco
+  // pisaba silenciosamente lo que la auxiliar ya había escrito en el formulario
+  // (tipo, motivo, observaciones) con los valores viejos todavía en la BD.
   useEffect(() => {
     if (isOpen && datosDesercion) {
       setTipoDesercion(datosDesercion.tipo_desercion || 'Sin Justificar');
@@ -49,7 +55,8 @@ export default function ModalEditarDesercion({ isOpen, onClose, datosDesercion, 
       setNuevoArchivo(null);
       cargarMulta();
     }
-  }, [isOpen, datosDesercion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, datosDesercion?.id]);
 
   async function cargarMulta() {
     if (!datosDesercion) return;
