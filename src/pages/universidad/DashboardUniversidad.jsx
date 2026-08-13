@@ -13,6 +13,8 @@ import SelectConOtro from '../../components/common/SelectConOtro';
 import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis } from '../../utils/helpers';
 import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/exportUtils';
 import ReportesPanel from '../../components/reportes/ReportesPanel';
+import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
+import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
 import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
 import GraficoGeneroDoughnut from '../../components/estadisticas/GraficoGeneroDoughnut';
@@ -50,6 +52,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [seccionActiva, setSeccionActiva] = useState('grupos');
   const [busqueda, setBusqueda] = useState('');
   const [busquedaEstudiantesUniversidad, setBusquedaEstudiantesUniversidad] = useState('');
+  const [filtrosEstudiantesUniversidad, setFiltrosEstudiantesUniversidad] = useState(FILTROS_VACIOS);
 
   const grupoIdCargadoRef = useRef(null);
 
@@ -131,51 +134,46 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       return todos;
     }
 
-    const [estudiantesUni, gruposUni] = await Promise.all([
+    // Nota: filtrar por .in('estudiante_id', idsEstudiantes) con universidades
+    // grandes (700+ estudiantes) genera una URL demasiado larga y la consulta
+    // falla silenciosamente (0 resultados). En su lugar se filtra con un join
+    // interno directo sobre estudiante.universidad — sin importar cuántos
+    // estudiantes tenga la universidad.
+    const [estudiantesUni, gruposUni, desData, inaData, segData] = await Promise.all([
       paginar('estudiantes', '*', q => q.eq('universidad', usuario.universidad).order('nombre_completo')),
-      supabase.from('grupos').select('id, nombre').eq('universidad', usuario.universidad).then(r => r.data || [])
+      supabase.from('grupos').select('id, nombre').eq('universidad', usuario.universidad).then(r => r.data || []),
+      paginar('registros_desercion', `*, estudiante:estudiante_id!inner (*), usuario:usuario_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad).order('fecha_reporte', { ascending: false })),
+      paginar('inasistencias', `*, estudiante:estudiante_id!inner (*), registros_asistencia (fecha, modulo, docente_nombre)`, q => q.eq('estudiante.universidad', usuario.universidad)),
+      paginar('seguimientos', `*, estudiante:estudiante_id!inner (*), padrino:padrino_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad))
     ]);
     setGruposReportes(gruposUni);
 
-    const idsEstudiantes = estudiantesUni.map(e => e.id);
-    let deserciones = [];
-    let inasistencias = [];
-    let seguimientos = [];
+    const vistos = new Set();
+    const deserciones = desData.reduce((acc, d) => {
+      if (vistos.has(d.estudiante_id)) return acc;
+      vistos.add(d.estudiante_id);
+      acc.push({ ...d, ...d.estudiante, reportado_por: d.usuario?.nombre_completo || '' });
+      return acc;
+    }, []);
 
-    if (idsEstudiantes.length > 0) {
-      const [desData, inaData, segData] = await Promise.all([
-        paginar('registros_desercion', `*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`, q => q.in('estudiante_id', idsEstudiantes).order('fecha_reporte', { ascending: false })),
-        paginar('inasistencias', `*, estudiante:estudiante_id (*), registros_asistencia (fecha, modulo, docente_nombre)`, q => q.in('estudiante_id', idsEstudiantes)),
-        paginar('seguimientos', `*, estudiante:estudiante_id (*), padrino:padrino_id (nombre_completo)`, q => q.in('estudiante_id', idsEstudiantes))
-      ]);
+    const inasistencias = inaData.map(i => ({
+      ...i,
+      ...i.estudiante,
+      fecha: i.registros_asistencia?.fecha || '',
+      modulo: i.registros_asistencia?.modulo || '',
+      docente_nombre: i.registros_asistencia?.docente_nombre || '',
+      estado_seguimiento:
+        i.estado_seguimiento === 'realizado' ? 'Realizado' :
+        i.estado_seguimiento === 'justificado' ? 'Justificado' : 'Pendiente'
+    }));
 
-      const vistos = new Set();
-      deserciones = desData.reduce((acc, d) => {
-        if (vistos.has(d.estudiante_id)) return acc;
-        vistos.add(d.estudiante_id);
-        acc.push({ ...d, ...d.estudiante, reportado_por: d.usuario?.nombre_completo || '' });
-        return acc;
-      }, []);
-
-      inasistencias = inaData.map(i => ({
-        ...i,
-        ...i.estudiante,
-        fecha: i.registros_asistencia?.fecha || '',
-        modulo: i.registros_asistencia?.modulo || '',
-        docente_nombre: i.registros_asistencia?.docente_nombre || '',
-        estado_seguimiento:
-          i.estado_seguimiento === 'realizado' ? 'Realizado' :
-          i.estado_seguimiento === 'justificado' ? 'Justificado' : 'Pendiente'
-      }));
-
-      seguimientos = segData.map(s => ({
-        ...s,
-        ...s.estudiante,
-        tipo_gestion: limpiarEmojis(s.tipo_gestion),
-        causa_ausencia: limpiarEmojis(s.causa_ausencia) || '',
-        padrino_nombre: s.padrino?.nombre_completo || 'N/A'
-      }));
-    }
+    const seguimientos = segData.map(s => ({
+      ...s,
+      ...s.estudiante,
+      tipo_gestion: limpiarEmojis(s.tipo_gestion),
+      causa_ausencia: limpiarEmojis(s.causa_ausencia) || '',
+      padrino_nombre: s.padrino?.nombre_completo || 'N/A'
+    }));
 
     setRawEstudiantesReportes(estudiantesUni);
     setRawDesercionesReportes(deserciones);
@@ -575,16 +573,41 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
   // LISTADO DE ESTUDIANTES DE TODA LA UNIVERSIDAD (no solo del grupo seleccionado)
   const gruposReportesMap = useMemo(() => new Map(gruposReportes.map(g => [g.id, g.nombre])), [gruposReportes]);
+
+  const gettersEstudiantesUniversidad = {
+    municipio: r => r.municipio,
+    universidad: r => r.universidad,
+    programa: r => r.programa,
+    cohorte: r => r.cohorte,
+    grupoId: r => r.grupo_id,
+    estado: r => r.estado
+  };
+
+  const opcionesEstudiantesUniversidad = useMemo(() => {
+    const conjunto = campo => {
+      const set = new Set(rawEstudiantesReportes.map(e => e[campo]).filter(Boolean));
+      return Array.from(set).sort().map(v => ({ valor: v, label: v }));
+    };
+    return {
+      municipios: conjunto('municipio'),
+      universidades: conjunto('universidad'),
+      programas: conjunto('programa'),
+      cohortes: conjunto('cohorte'),
+      grupos: gruposReportes.map(g => ({ valor: g.id, label: g.nombre })),
+      estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
+    };
+  }, [rawEstudiantesReportes, gruposReportes]);
+
   const estudiantesUniversidadFiltrados = useMemo(() => {
+    let lista = aplicarFiltrosGenerico(rawEstudiantesReportes, gettersEstudiantesUniversidad, filtrosEstudiantesUniversidad, null);
     const q = busquedaEstudiantesUniversidad.trim().toLowerCase();
-    if (!q) return rawEstudiantesReportes;
-    return rawEstudiantesReportes.filter(e =>
-      e.nombre_completo?.toLowerCase().includes(q) || e.documento?.includes(q)
-    );
-  }, [rawEstudiantesReportes, busquedaEstudiantesUniversidad]);
+    if (q) lista = lista.filter(e => e.nombre_completo?.toLowerCase().includes(q) || e.documento?.includes(q));
+    return lista;
+  }, [rawEstudiantesReportes, filtrosEstudiantesUniversidad, busquedaEstudiantesUniversidad]);
+
   const kpisEstudiantesUniversidad = useMemo(() => {
-    const total = rawEstudiantesReportes.length;
-    const contar = estado => rawEstudiantesReportes.filter(e => e.estado === estado).length;
+    const total = estudiantesUniversidadFiltrados.length;
+    const contar = estado => estudiantesUniversidadFiltrados.filter(e => e.estado === estado).length;
     return {
       total,
       activos: contar('Activo'),
@@ -592,7 +615,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       desertores: contar('Desertor'),
       graduados: contar('Graduado')
     };
-  }, [rawEstudiantesReportes]);
+  }, [estudiantesUniversidadFiltrados]);
 
   if (!usuario) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -1383,6 +1406,16 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full sm:w-72"
               />
             </div>
+
+            <FiltrosReportes
+              filtros={filtrosEstudiantesUniversidad}
+              onCambio={setFiltrosEstudiantesUniversidad}
+              opciones={opcionesEstudiantesUniversidad}
+              filas={rawEstudiantesReportes}
+              getters={gettersEstudiantesUniversidad}
+              mostrarFecha={false}
+              mostrarEstado
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <TarjetaKPI titulo="Activos" valor={kpisEstudiantesUniversidad.activos} color="from-emerald-400 to-emerald-500" />
