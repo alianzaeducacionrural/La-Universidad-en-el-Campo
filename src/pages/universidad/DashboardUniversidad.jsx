@@ -52,6 +52,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
   const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
   const [modalCronograma, setModalCronograma] = useState(false);
+  const [fechaCronogramaEnfocada, setFechaCronogramaEnfocada] = useState(null);
   const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
     () => derivarModulosYDocentes(cronogramaGrupo),
     [cronogramaGrupo]
@@ -1096,7 +1097,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                   </>
                 )}
                 <button
-                  onClick={() => setModalCronograma(true)}
+                  onClick={() => { setFechaCronogramaEnfocada(null); setModalCronograma(true); }}
                   disabled={!grupoSeleccionado}
                   className="bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow-sm disabled:opacity-50 whitespace-nowrap"
                 >
@@ -1120,11 +1121,17 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Docente</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Clase Vista</th>
+                      <th className="w-8"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {fechasCronogramaConEstado.map(f => (
-                      <tr key={f.id} className="hover:bg-gray-50 transition">
+                      <tr
+                        key={f.id}
+                        onClick={() => { setFechaCronogramaEnfocada(f.id); setModalCronograma(true); }}
+                        title="Clic para editar esta fecha del cronograma"
+                        className="hover:bg-gray-50 transition cursor-pointer group"
+                      >
                         <td className="py-3 px-4 text-gray-700 whitespace-nowrap">{formatearFecha(f.fecha)}</td>
                         <td className="py-3 px-4">
                           <p className="text-gray-800">{f.moduloEfectivo || '—'}</p>
@@ -1148,6 +1155,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                             {f.estado === 'confirmada' ? '✅ Vista' : f.estado === 'pendiente' ? '⏳ Pendiente' : '📅 Próxima'}
                           </span>
                         </td>
+                        <td className="py-3 px-2 text-gray-300 group-hover:text-primary transition">✏️</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1230,10 +1238,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
       <ModalCronogramaGrupo
         isOpen={modalCronograma}
-        onClose={() => setModalCronograma(false)}
+        onClose={() => { setModalCronograma(false); setFechaCronogramaEnfocada(null); }}
         grupo={grupoSeleccionado}
         onActualizado={() => cargarCronogramaGrupo(grupoSeleccionado.id)}
         puedeGestionar
+        idFechaEnfocada={fechaCronogramaEnfocada}
       />
 
       {/* MODAL RESUMEN DE SESIÓN */}
