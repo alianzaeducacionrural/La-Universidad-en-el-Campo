@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros, municipiosPermitidos = null }) {
+export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros, municipiosPermitidos = null, universidadFija = null }) {
   const [filtrosActivos, setFiltrosActivos] = useState([]);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState('municipios');
@@ -22,6 +22,11 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
     { id: 'universidades', label: 'Universidad', icon: '🎓', color: 'purple' },
     { id: 'estados', label: 'Estado', icon: '📊', color: 'amber' }
   ];
+  // Cuando el panel ya pertenece a una sola universidad (p. ej. el dashboard de
+  // un coordinador de universidad), ese filtro no tiene sentido como opción —
+  // se fija de una vez y se oculta, en vez de dejar que se pueda "salir" de su
+  // propio alcance.
+  const tiposFiltroVisibles = universidadFija ? tiposFiltro.filter(t => t.id !== 'universidades') : tiposFiltro;
 
   useEffect(() => {
     if (modalAbierto) {
@@ -79,7 +84,11 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
       if (otrosFiltros.cohortes && otrosFiltros.cohortes.length > 0) {
         query = query.in('cohorte', otrosFiltros.cohortes);
       }
-      if (otrosFiltros.universidades && otrosFiltros.universidades.length > 0) {
+      // universidadFija tiene prioridad: un coordinador de universidad nunca
+      // debe poder ver opciones fuera de su propia universidad.
+      if (universidadFija) {
+        query = query.eq('universidad', universidadFija);
+      } else if (otrosFiltros.universidades && otrosFiltros.universidades.length > 0) {
         query = query.in('universidad', otrosFiltros.universidades);
       }
       if (otrosFiltros.estados && otrosFiltros.estados.length > 0) {
@@ -319,7 +328,7 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
     return {
       municipios: filtros.filter(f => f.tipo === 'municipios').map(f => f.valor),
       cohortes: filtros.filter(f => f.tipo === 'cohortes').map(f => f.valor),
-      universidades: filtros.filter(f => f.tipo === 'universidades').map(f => f.valor),
+      universidades: universidadFija ? [universidadFija] : filtros.filter(f => f.tipo === 'universidades').map(f => f.valor),
       estados: filtros.filter(f => f.tipo === 'estados').map(f => f.valor)
     };
   }
@@ -395,7 +404,7 @@ export default function FiltrosEstadisticas({ onAplicarFiltros, onLimpiarFiltros
             <div className="p-4 border-b border-gray-200">
               <h4 className="font-medium text-gray-800 mb-3">Seleccionar tipo de filtro:</h4>
               <div className="flex flex-wrap gap-2">
-                {tiposFiltro.map(tipo => (
+                {tiposFiltroVisibles.map(tipo => (
                   <button
                     key={tipo.id}
                     onClick={() => {

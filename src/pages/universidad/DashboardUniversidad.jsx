@@ -10,8 +10,8 @@ import Header from '../../components/common/Header';
 import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
 import SelectConOtro from '../../components/common/SelectConOtro';
-import { formatearFecha, interpretarError, derivarModulosYDocentes } from '../../utils/helpers';
-import { exportarNotasGrupoExcel } from '../../utils/exportUtils';
+import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia } from '../../utils/helpers';
+import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/exportUtils';
 import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
 import GraficoGeneroDoughnut from '../../components/estadisticas/GraficoGeneroDoughnut';
@@ -20,6 +20,8 @@ import ComparativoCohortes from '../../components/estadisticas/ComparativoCohort
 import RankingDeserciones from '../../components/estadisticas/RankingDeserciones';
 import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCausasInasistencia';
 import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
+import FiltrosEstadisticas from '../../components/estadisticas/FiltrosEstadisticas';
+import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 
 export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
   const notificacion = useNotificacion();
@@ -49,6 +51,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [enlacesGrupo, setEnlacesGrupo] = useState({ estudiantes: null, acudientes: null });
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
   const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
+  const [modalCronograma, setModalCronograma] = useState(false);
   const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
     () => derivarModulosYDocentes(cronogramaGrupo),
     [cronogramaGrupo]
@@ -74,42 +77,63 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [resumenSesion, setResumenSesion] = useState(null);
 
   // ESTADOS PARA LA PESTAÑA DE ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD)
-  const [kpisUniversidad, setKpisUniversidad] = useState(null);
-  const [gruposTotalesUniversidad, setGruposTotalesUniversidad] = useState(0);
+  const [estudiantesUniversidad, setEstudiantesUniversidad] = useState([]);
   const [cargandoKpis, setCargandoKpis] = useState(true);
+  const [filtrosEstadisticas, setFiltrosEstadisticas] = useState({ municipios: [], cohortes: [], universidades: [], estados: [] });
   const filtrosUniversidad = useMemo(
-    () => ({ universidades: usuario ? [usuario.universidad] : [] }),
-    [usuario?.universidad]
+    () => ({ ...filtrosEstadisticas, universidades: usuario ? [usuario.universidad] : [] }),
+    [filtrosEstadisticas, usuario?.universidad]
   );
 
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
 
   useEffect(() => {
-    if (usuario && esCoordinadorUniversidad) cargarKpisUniversidad();
-  }, [usuario, esCoordinadorUniversidad]);
+    if (usuario && esCoordinadorUniversidad) cargarEstudiantesUniversidad();
+  }, [usuario, esCoordinadorUniversidad, filtrosUniversidad]);
 
-  async function cargarKpisUniversidad() {
+  // Trae, paginado, TODOS los estudiantes de la universidad que cumplen los
+  // filtros activos — alimenta tanto los KPI/gráficos como la descarga de
+  // Excel, igual que Estadisticas.jsx para un aliado.
+  async function cargarEstudiantesUniversidad() {
     setCargandoKpis(true);
-    const [{ data: estudiantesData }, { count: totalGrupos }] = await Promise.all([
-      supabase.from('estudiantes').select('estado').eq('universidad', usuario.universidad),
-      supabase.from('grupos').select('*', { count: 'exact', head: true }).eq('universidad', usuario.universidad)
-    ]);
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
 
-    if (estudiantesData) {
-      const total = estudiantesData.length;
-      const contar = (estado) => estudiantesData.filter(e => e.estado === estado).length;
-      setKpisUniversidad({
-        total,
-        activos: contar('Activo'),
-        enRiesgo: contar('En Riesgo'),
-        desertores: contar('Desertor'),
-        graduados: contar('Graduado')
-      });
+    while (hasMore) {
+      let query = supabase.from('estudiantes').select('*').eq('universidad', usuario.universidad);
+      if (filtrosUniversidad.municipios?.length > 0) query = query.in('municipio', filtrosUniversidad.municipios);
+      if (filtrosUniversidad.cohortes?.length > 0) query = query.in('cohorte', filtrosUniversidad.cohortes);
+      if (filtrosUniversidad.estados?.length > 0) query = query.in('estado', filtrosUniversidad.estados);
+
+      const { data, error } = await query.range(from, from + limit - 1);
+      if (error) { console.error('Error:', error); break; }
+      if (data && data.length > 0) { todosLosDatos = [...todosLosDatos, ...data]; from += limit; }
+      if (!data || data.length < limit) hasMore = false;
     }
-    setGruposTotalesUniversidad(totalGrupos || 0);
+
+    setEstudiantesUniversidad(todosLosDatos);
     setCargandoKpis(false);
   }
-  
+
+  const kpisUniversidad = useMemo(() => {
+    const total = estudiantesUniversidad.length;
+    const contar = (estado) => estudiantesUniversidad.filter(e => e.estado === estado).length;
+    return {
+      total,
+      activos: contar('Activo'),
+      enRiesgo: contar('En Riesgo'),
+      desertores: contar('Desertor'),
+      graduados: contar('Graduado')
+    };
+  }, [estudiantesUniversidad]);
+
+  const gruposTotalesUniversidad = useMemo(
+    () => new Set(estudiantesUniversidad.map(e => e.grupo_id).filter(Boolean)).size,
+    [estudiantesUniversidad]
+  );
+
   useEffect(() => {
     if (grupoSeleccionado) {
       cargarEstudiantes(grupoSeleccionado.id);
@@ -168,9 +192,9 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   async function cargarCronogramaGrupo(grupoId) {
     const { data } = await supabase
       .from('cronograma_clases')
-      .select('modulo, docente_universitario')
+      .select('id, fecha, modulo, docente_universitario, telefono_contacto, modulo_original, docente_original, telefono_original')
       .eq('grupo_id', grupoId)
-      .order('fecha', { ascending: false });
+      .order('fecha', { ascending: true });
     setCronogramaGrupo(data || []);
   }
 
@@ -441,6 +465,16 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     return grupos.filter(g => g.cohorte === cohorteFiltro);
   }, [grupos, cohorteFiltro]);
 
+  const fechasCronogramaConEstado = useMemo(
+    () => cruzarCronogramaConAsistencia(cronogramaGrupo, historial),
+    [cronogramaGrupo, historial]
+  );
+  const resumenCronograma = useMemo(() => ({
+    confirmadas: fechasCronogramaConEstado.filter(f => f.estado === 'confirmada').length,
+    pendientes: fechasCronogramaConEstado.filter(f => f.estado === 'pendiente').length,
+    programadas: fechasCronogramaConEstado.filter(f => f.estado === 'programada').length
+  }), [fechasCronogramaConEstado]);
+
   if (!usuario) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
@@ -547,6 +581,9 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             </button>
             <button onClick={() => setVistaActiva('estudiantes')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estudiantes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
               👥 Estudiantes
+            </button>
+            <button onClick={() => setVistaActiva('cronograma')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'cronograma' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
+              🗓️ Cronograma
             </button>
             {esCoordinadorUniversidad && (
               <button onClick={() => setVistaActiva('estadisticas')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estadisticas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
@@ -1032,9 +1069,114 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
           );
         })()}
 
+        {/* VISTA: CRONOGRAMA */}
+        {vistaActiva === 'cronograma' && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-4 md:p-5 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-gray-800">🗓️ Cronograma de Clases</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{grupoSeleccionado?.nombre}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {fechasCronogramaConEstado.length > 0 && (
+                  <>
+                    <span className="text-xs font-medium bg-primary/10 text-primary-dark px-2.5 py-1 rounded-full whitespace-nowrap">
+                      {resumenCronograma.confirmadas} confirmada{resumenCronograma.confirmadas !== 1 ? 's' : ''}
+                    </span>
+                    {resumenCronograma.pendientes > 0 && (
+                      <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full whitespace-nowrap">
+                        {resumenCronograma.pendientes} pendiente{resumenCronograma.pendientes !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {resumenCronograma.programadas > 0 && (
+                      <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full whitespace-nowrap">
+                        {resumenCronograma.programadas} próxima{resumenCronograma.programadas !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={() => setModalCronograma(true)}
+                  disabled={!grupoSeleccionado}
+                  className="bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow-sm disabled:opacity-50 whitespace-nowrap"
+                >
+                  ✏️ Editar / Agregar fechas
+                </button>
+              </div>
+            </div>
+
+            {fechasCronogramaConEstado.length === 0 ? (
+              <div className="p-10 text-center">
+                <p className="text-gray-400 text-sm mb-2">Este grupo aún no tiene fechas programadas</p>
+                <p className="text-gray-400 text-xs">Usa "Editar / Agregar fechas" para subir el cronograma</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Módulo</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Docente</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Clase Vista</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {fechasCronogramaConEstado.map(f => (
+                      <tr key={f.id} className="hover:bg-gray-50 transition">
+                        <td className="py-3 px-4 text-gray-700 whitespace-nowrap">{formatearFecha(f.fecha)}</td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-800">{f.moduloEfectivo || '—'}</p>
+                          {f.huboAjuste && f.moduloOriginal && (
+                            <p className="text-xs text-blue-500 mt-0.5">Programado: {f.moduloOriginal}</p>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-700">{f.docenteEfectivo || '—'}</p>
+                          {f.huboAjuste && f.docenteOriginal && (
+                            <p className="text-xs text-blue-500 mt-0.5">Programado: {f.docenteOriginal}</p>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">{f.telefonoEfectivo || '—'}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                            f.estado === 'confirmada' ? 'bg-primary/10 text-primary-dark'
+                              : f.estado === 'pendiente' ? 'bg-amber-100 text-amber-700'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {f.estado === 'confirmada' ? '✅ Vista' : f.estado === 'pendiente' ? '⏳ Pendiente' : '📅 Próxima'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* VISTA: ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD) */}
         {vistaActiva === 'estadisticas' && esCoordinadorUniversidad && (
-          cargandoKpis || !kpisUniversidad ? (
+          <div className="space-y-6">
+            <FiltrosEstadisticas
+              onAplicarFiltros={setFiltrosEstadisticas}
+              onLimpiarFiltros={() => setFiltrosEstadisticas({ municipios: [], cohortes: [], universidades: [], estados: [] })}
+              universidadFija={usuario.universidad}
+            />
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => exportarEstudiantesExcel(estudiantesUniversidad, usuario.universidad)}
+                disabled={estudiantesUniversidad.length === 0}
+                className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
+              >
+                📥 Descargar Excel
+              </button>
+            </div>
+
+            {cargandoKpis ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="text-gray-500 mt-2">Cargando estadísticas...</p>
@@ -1071,7 +1213,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                 <GraficoInasistenciasMensual filtros={filtrosUniversidad} />
               </div>
             </div>
-          )
+          )}
+          </div>
         )}
 
       </div>
@@ -1083,6 +1226,14 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         grupoId={grupoSeleccionado?.id}
         estudiantes={estudiantes}
         notaEditando={notaEditando}
+      />
+
+      <ModalCronogramaGrupo
+        isOpen={modalCronograma}
+        onClose={() => setModalCronograma(false)}
+        grupo={grupoSeleccionado}
+        onActualizado={() => cargarCronogramaGrupo(grupoSeleccionado.id)}
+        puedeGestionar
       />
 
       {/* MODAL RESUMEN DE SESIÓN */}

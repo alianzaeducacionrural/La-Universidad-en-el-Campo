@@ -26,6 +26,7 @@ import {
 } from '../utils/exportUtils';
 import BotonWhatsApp from '../components/common/BotonWhatsApp';
 import VisorImagen from '../components/common/VisorImagen';
+import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -102,6 +103,7 @@ export default function PortalInstitucion() {
   const [busquedaGrupo, setBusquedaGrupo] = useState('');
   const [tabActiva, setTabActiva] = useState(TAB_RESUMEN);
   const [estudianteSeleccionado, setEstudianteSeleccionado] = useState(null);
+  const [filtrosResumen, setFiltrosResumen] = useState(FILTROS_VACIOS);
   const buscadorRef = useRef(null);
 
   useEffect(() => {
@@ -151,8 +153,41 @@ export default function PortalInstitucion() {
   }, [gruposOrdenados]);
   const variasUniversidadesEnPestanas = pestanasPorUniversidad.length > 1;
 
-  const kpis = useMemo(() => {
+  // Filtros del resumen: municipio/universidad/programa/cohorte/grupo/estado
+  // operando en memoria sobre lo que ya trajo la Edge Function — el portal
+  // nunca consulta Supabase directo, así que no hay nada que pedirle al server.
+  const gettersInstitucion = {
+    municipio: e => e.municipio,
+    universidad: e => e.universidad,
+    programa: e => e.programa,
+    cohorte: e => e.cohorte,
+    grupoId: e => e.grupo_id,
+    estado: e => e.estado
+  };
+
+  const opcionesResumen = useMemo(() => {
     const estudiantes = datos?.estudiantes || [];
+    function opcionesUnicas(campo) {
+      const set = new Set(estudiantes.map(e => e[campo]).filter(Boolean));
+      return Array.from(set).sort().map(v => ({ valor: v, label: v }));
+    }
+    return {
+      municipios: opcionesUnicas('municipio'),
+      universidades: opcionesUnicas('universidad'),
+      programas: opcionesUnicas('programa'),
+      cohortes: opcionesUnicas('cohorte'),
+      grupos: gruposOrdenados.map(g => ({ valor: g.id, label: etiquetaGrupo(g) })),
+      estados: opcionesUnicas('estado')
+    };
+  }, [datos, gruposOrdenados]);
+
+  const estudiantesFiltradosResumen = useMemo(
+    () => aplicarFiltrosGenerico(datos?.estudiantes || [], gettersInstitucion, filtrosResumen, null),
+    [datos, filtrosResumen]
+  );
+
+  const kpis = useMemo(() => {
+    const estudiantes = estudiantesFiltradosResumen;
     return {
       total: estudiantes.length,
       activos: estudiantes.filter(e => e.estado === 'Activo' || !e.estado).length,
@@ -160,10 +195,10 @@ export default function PortalInstitucion() {
       desertores: estudiantes.filter(e => e.estado === 'Desertor').length,
       graduados: estudiantes.filter(e => e.estado === 'Graduado').length
     };
-  }, [datos]);
+  }, [estudiantesFiltradosResumen]);
 
   const estadisticasPorGrupo = useMemo(() => {
-    const estudiantes = datos?.estudiantes || [];
+    const estudiantes = estudiantesFiltradosResumen;
     const mapa = {};
     gruposOrdenados.forEach(g => {
       const deGrupo = estudiantes.filter(e => e.grupo_id === g.id);
@@ -175,7 +210,7 @@ export default function PortalInstitucion() {
       };
     });
     return mapa;
-  }, [datos, gruposOrdenados]);
+  }, [estudiantesFiltradosResumen, gruposOrdenados]);
 
   const resultadosBusqueda = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -338,15 +373,26 @@ export default function PortalInstitucion() {
 
       <div key={tabActiva} className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-fade-in">
         {tabActiva === TAB_RESUMEN ? (
-          <VistaResumen
-            kpis={kpis}
-            estudiantes={datos.estudiantes}
-            gruposOrdenados={gruposOrdenados}
-            temaPorGrupo={temaPorGrupo}
-            estadisticasPorGrupo={estadisticasPorGrupo}
-            onIrAGrupo={setTabActiva}
-            onDescargarTodo={() => descargarExcel(datos.estudiantes, datos.institucion.nombre)}
-          />
+          <>
+            <FiltrosReportes
+              filtros={filtrosResumen}
+              onCambio={setFiltrosResumen}
+              opciones={opcionesResumen}
+              filas={datos.estudiantes}
+              getters={gettersInstitucion}
+              mostrarFecha={false}
+              mostrarEstado
+            />
+            <VistaResumen
+              kpis={kpis}
+              estudiantes={estudiantesFiltradosResumen}
+              gruposOrdenados={gruposOrdenados}
+              temaPorGrupo={temaPorGrupo}
+              estadisticasPorGrupo={estadisticasPorGrupo}
+              onIrAGrupo={setTabActiva}
+              onDescargarTodo={() => descargarExcel(estudiantesFiltradosResumen, datos.institucion.nombre)}
+            />
+          </>
         ) : (
           <VistaGrupo
             grupo={grupoActivoInfo}

@@ -25,7 +25,7 @@ export function exportarEstudiantesExcel(estudiantes, grupoNombre) {
     'Municipio': e.municipio,
     'Institución Educativa': e.institucion_educativa,
     'Estado': e.estado || 'Activo',
-    'Faltas': e.total_faltas || 0,
+    'Faltas': e.total_faltas ?? e.total_inasistencias ?? 0,
     'Acudiente': e.acudiente_nombre || 'N/A',
     'Tel. Acudiente': e.acudiente_telefono || 'N/A'
   }));
@@ -132,7 +132,7 @@ export function exportarEstudiantesPDF(estudiantes, grupoNombre) {
     e.municipio,
     e.institucion_educativa,
     e.estado || 'Activo',
-    e.total_faltas || 0
+    e.total_faltas ?? e.total_inasistencias ?? 0
   ]);
 
   // 🔥 USAR autoTable DIRECTAMENTE

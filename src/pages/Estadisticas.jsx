@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { getMunicipiosPermitidos } from '../utils/helpers';
+import { exportarEstudiantesExcel } from '../utils/exportUtils';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -26,6 +27,7 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
   const usuario = usuarioForzado || usuarioAuth;
   const [kpis, setKpis] = useState(null);
   const [gruposTotales, setGruposTotales] = useState(0);
+  const [estudiantesFiltrados, setEstudiantesFiltrados] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaActiva, setVistaActiva] = useState('estadisticas');
   const [filtros, setFiltros] = useState({});
@@ -113,6 +115,7 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
     }
     
     setGruposTotales(totalGrupos);
+    setEstudiantesFiltrados(todosLosDatos);
 
     if (todosLosDatos.length > 0) {
       const total = todosLosDatos.length;
@@ -162,13 +165,22 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
         <Header onVerPerfil={onVerPerfil} />
 
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              📈 Panel de Estadísticas
-            </h1>
-            <p className="text-gray-600">
-              Visión general del programa Universidad en el Campo
-            </p>
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                📈 Panel de Estadísticas
+              </h1>
+              <p className="text-gray-600">
+                Visión general del programa Universidad en el Campo
+              </p>
+            </div>
+            <button
+              onClick={() => exportarEstudiantesExcel(estudiantesFiltrados, 'Estadisticas')}
+              disabled={estudiantesFiltrados.length === 0}
+              className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
+            >
+              📥 Descargar Excel
+            </button>
           </div>
 
           {/* FILTROS */}
