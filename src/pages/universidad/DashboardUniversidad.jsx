@@ -24,6 +24,7 @@ import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoIn
 import FiltrosEstadisticas from '../../components/estadisticas/FiltrosEstadisticas';
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
+import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
 
 export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
   const notificacion = useNotificacion();
@@ -46,7 +47,9 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [observaciones, setObservaciones] = useState('');
   const [cargando, setCargando] = useState(false);
   const [vistaActiva, setVistaActiva] = useState('asistencia');
+  const [seccionActiva, setSeccionActiva] = useState('grupos');
   const [busqueda, setBusqueda] = useState('');
+  const [busquedaEstudiantesUniversidad, setBusquedaEstudiantesUniversidad] = useState('');
 
   const grupoIdCargadoRef = useRef(null);
 
@@ -100,10 +103,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
 
   useEffect(() => {
-    if (usuario && esCoordinadorUniversidad && vistaActiva === 'reportes' && !reportesUniversidadCargados) {
+    const necesitaDatos = seccionActiva === 'reportes' || seccionActiva === 'estudiantesUniversidad';
+    if (usuario && esCoordinadorUniversidad && necesitaDatos && !reportesUniversidadCargados) {
       cargarReportesUniversidad();
     }
-  }, [usuario, esCoordinadorUniversidad, vistaActiva, reportesUniversidadCargados]);
+  }, [usuario, esCoordinadorUniversidad, seccionActiva, reportesUniversidadCargados]);
 
   // Trae, paginado, todos los estudiantes/deserciones/inasistencias/seguimientos
   // de la universidad (sin los filtros de Estadísticas) para alimentar la
@@ -569,6 +573,27 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     programadas: fechasCronogramaConEstado.filter(f => f.estado === 'programada').length
   }), [fechasCronogramaConEstado]);
 
+  // LISTADO DE ESTUDIANTES DE TODA LA UNIVERSIDAD (no solo del grupo seleccionado)
+  const gruposReportesMap = useMemo(() => new Map(gruposReportes.map(g => [g.id, g.nombre])), [gruposReportes]);
+  const estudiantesUniversidadFiltrados = useMemo(() => {
+    const q = busquedaEstudiantesUniversidad.trim().toLowerCase();
+    if (!q) return rawEstudiantesReportes;
+    return rawEstudiantesReportes.filter(e =>
+      e.nombre_completo?.toLowerCase().includes(q) || e.documento?.includes(q)
+    );
+  }, [rawEstudiantesReportes, busquedaEstudiantesUniversidad]);
+  const kpisEstudiantesUniversidad = useMemo(() => {
+    const total = rawEstudiantesReportes.length;
+    const contar = estado => rawEstudiantesReportes.filter(e => e.estado === estado).length;
+    return {
+      total,
+      activos: contar('Activo'),
+      enRiesgo: contar('En Riesgo'),
+      desertores: contar('Desertor'),
+      graduados: contar('Graduado')
+    };
+  }, [rawEstudiantesReportes]);
+
   if (!usuario) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
@@ -576,9 +601,15 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 lg:flex">
+      {esCoordinadorUniversidad && (
+        <SidebarUniversidad seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} universidad={usuario.universidad} />
+      )}
+      <div className="flex-1 min-w-0">
       <Header />
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        {seccionActiva === 'grupos' && (
+        <>
         <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">📋 Registro de Asistencia</h1>
         <p className="text-gray-600 mb-5 text-sm">{usuario.universidad}</p>
 
@@ -679,16 +710,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             <button onClick={() => setVistaActiva('cronograma')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'cronograma' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
               🗓️ Cronograma
             </button>
-            {esCoordinadorUniversidad && (
-              <button onClick={() => setVistaActiva('estadisticas')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'estadisticas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
-                📈 Estadísticas
-              </button>
-            )}
-            {esCoordinadorUniversidad && (
-              <button onClick={() => setVistaActiva('reportes')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'reportes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
-                📑 Reportes
-              </button>
-            )}
           </nav>
         </div>
 
@@ -1262,10 +1283,16 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             )}
           </div>
         )}
+        </>
+        )}
 
-        {/* VISTA: ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD) */}
-        {vistaActiva === 'estadisticas' && esCoordinadorUniversidad && (
+        {/* SECCIÓN: ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD, GENERAL DE LA UNIVERSIDAD) */}
+        {seccionActiva === 'estadisticas' && esCoordinadorUniversidad && (
           <div className="space-y-6">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">📈 Estadísticas</h1>
+              <p className="text-gray-600 text-sm">{usuario.universidad}</p>
+            </div>
             <FiltrosEstadisticas
               onAplicarFiltros={setFiltrosEstadisticas}
               onLimpiarFiltros={() => setFiltrosEstadisticas({ municipios: [], cohortes: [], universidades: [], estados: [] })}
@@ -1323,10 +1350,10 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
           </div>
         )}
 
-        {/* VISTA: REPORTES DESCARGABLES (SOLO COORDINADOR_UNIVERSIDAD) */}
-        {vistaActiva === 'reportes' && esCoordinadorUniversidad && (
+        {/* SECCIÓN: REPORTES DESCARGABLES (SOLO COORDINADOR_UNIVERSIDAD, GENERAL DE LA UNIVERSIDAD) */}
+        {seccionActiva === 'reportes' && esCoordinadorUniversidad && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-1">📑 Reportes Descargables</h2>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">📑 Reportes Descargables</h1>
             <p className="text-gray-600 mb-6 text-sm">Descarga en Excel la información de {usuario.universidad}</p>
             <ReportesPanel
               rawEstudiantes={rawEstudiantesReportes}
@@ -1340,6 +1367,137 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
           </div>
         )}
 
+        {/* SECCIÓN: ESTUDIANTES (SOLO COORDINADOR_UNIVERSIDAD, LISTADO COMPLETO DE LA UNIVERSIDAD) */}
+        {seccionActiva === 'estudiantesUniversidad' && esCoordinadorUniversidad && (
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">👥 Estudiantes</h1>
+                <p className="text-gray-600 text-sm">{usuario.universidad} · {kpisEstudiantesUniversidad.total} estudiante{kpisEstudiantesUniversidad.total !== 1 ? 's' : ''}</p>
+              </div>
+              <input
+                type="text"
+                placeholder="🔍 Buscar por nombre o documento..."
+                value={busquedaEstudiantesUniversidad}
+                onChange={e => setBusquedaEstudiantesUniversidad(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full sm:w-72"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <TarjetaKPI titulo="Activos" valor={kpisEstudiantesUniversidad.activos} color="from-emerald-400 to-emerald-500" />
+              <TarjetaKPI titulo="En Riesgo" valor={kpisEstudiantesUniversidad.enRiesgo} color="from-amber-300 to-amber-400" />
+              <TarjetaKPI titulo="Desertores" valor={kpisEstudiantesUniversidad.desertores} color="from-rose-400 to-rose-500" />
+              <TarjetaKPI titulo="Graduados" valor={kpisEstudiantesUniversidad.graduados} color="from-sky-400 to-sky-500" />
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              {cargandoReportes ? (
+                <div className="p-10 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-gray-500 mt-2">Cargando estudiantes...</p>
+                </div>
+              ) : estudiantesUniversidadFiltrados.length === 0 ? (
+                <div className="p-10 text-center">
+                  <p className="text-gray-500">No se encontraron estudiantes</p>
+                </div>
+              ) : (
+                <>
+                  {/* Desktop */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estudiante</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Municipio / IE</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Grupo</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                          {onVerPerfil && <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {estudiantesUniversidadFiltrados.map(est => (
+                          <tr key={est.id} className={`hover:bg-gray-50 transition ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                            <td className="py-3 px-4">
+                              <p className="font-medium text-gray-800 text-sm">{est.nombre_completo}</p>
+                              <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <p className="text-sm text-gray-700">{est.municipio || '—'}</p>
+                              <p className="text-xs text-gray-400 truncate max-w-[200px]">{est.institucion_educativa || '—'}</p>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{gruposReportesMap.get(est.grupo_id) || 'Sin grupo'}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{est.telefono || '—'}</td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
+                                est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
+                                est.estado === 'Desertor' ? 'bg-red-100 text-red-600' :
+                                est.estado === 'Graduado' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {est.estado || 'Activo'}
+                              </span>
+                            </td>
+                            {onVerPerfil && (
+                              <td className="py-3 px-4 text-center">
+                                <button
+                                  onClick={() => onVerPerfil(est)}
+                                  className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                >
+                                  👁️ Ver Perfil
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Móvil */}
+                  <div className="lg:hidden divide-y divide-gray-100">
+                    {estudiantesUniversidadFiltrados.map(est => (
+                      <div key={est.id} className={`p-4 ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                        <div className="flex items-start justify-between gap-3 mb-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-sm truncate">{est.nombre_completo}</p>
+                            <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                            est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
+                            est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
+                            est.estado === 'Desertor' ? 'bg-red-100 text-red-600' :
+                            est.estado === 'Graduado' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {est.estado || 'Activo'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-500">
+                          <span>📍 {est.municipio || '—'}</span>
+                          <span>📞 {est.telefono || '—'}</span>
+                          <span className="col-span-2 truncate">📚 {gruposReportesMap.get(est.grupo_id) || 'Sin grupo'}</span>
+                        </div>
+                        {onVerPerfil && (
+                          <button
+                            onClick={() => onVerPerfil(est)}
+                            className="mt-3 w-full bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-xs font-medium transition"
+                          >
+                            👁️ Ver Perfil
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+      </div>
       </div>
 
       <ModalIngresarNotas
