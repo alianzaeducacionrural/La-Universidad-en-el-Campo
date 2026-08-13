@@ -7,10 +7,11 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { getMunicipiosPermitidos } from '../utils/helpers';
 import { exportarEstudiantesExcel } from '../utils/exportUtils';
+import { ESTADOS_ESTUDIANTE } from '../utils/constants';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import FiltrosEstadisticas from '../components/estadisticas/FiltrosEstadisticas';
+import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
 import TarjetaKPI from '../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../components/estadisticas/GraficoEstadosDoughnut';
 import GraficoGeneroDoughnut from '../components/estadisticas/GraficoGeneroDoughnut';
@@ -25,17 +26,127 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
   // usuarioForzado permite que el admin "vea como" un aliado específico
   // desde VerComo.jsx, sin necesidad de iniciar sesión con esa cuenta.
   const usuario = usuarioForzado || usuarioAuth;
-  const [kpis, setKpis] = useState(null);
-  const [gruposTotales, setGruposTotales] = useState(0);
-  const [estudiantesFiltrados, setEstudiantesFiltrados] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaActiva, setVistaActiva] = useState('estadisticas');
-  const [filtros, setFiltros] = useState({});
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
+
+  const [rawEstudiantes, setRawEstudiantes] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [municipiosDb, setMunicipiosDb] = useState([]);
+  const [universidadesDb, setUniversidadesDb] = useState([]);
+  const [programasDb, setProgramasDb] = useState([]);
 
   // Municipios permitidos para el usuario (null = todos). Los aliados solo ven los suyos.
   const municipiosPermitidos = useMemo(() => getMunicipiosPermitidos(usuario), [usuario]);
 
-  // Filtros efectivos: se fuerza el alcance por municipio del aliado
+  useEffect(() => {
+    if (usuario) cargarTodo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario]);
+
+  async function obtenerEstudiantesCrudo() {
+    let todosLosDatos = [];
+    let from = 0;
+    const limit = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase.from('estudiantes').select('*').order('nombre_completo').range(from, from + limit - 1);
+      if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
+
+      const { data, error } = await query;
+      if (error) { console.error('Error:', error); break; }
+      if (data && data.length > 0) { todosLosDatos = [...todosLosDatos, ...data]; from += limit; }
+      if (!data || data.length < limit) hasMore = false;
+    }
+
+    return todosLosDatos;
+  }
+
+  async function cargarTodo() {
+    setCargando(true);
+    const [est, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
+      obtenerEstudiantesCrudo(),
+      supabase.from('grupos').select('id, nombre, universidad, programa, cohorte').eq('activo', true).order('nombre'),
+      supabase.from('municipios').select('nombre').order('nombre'),
+      supabase.from('universidades').select('nombre').order('nombre'),
+      supabase.from('programas').select('nombre').order('nombre')
+    ]);
+    setRawEstudiantes(est);
+    setGrupos(gruposRes.data || []);
+    setMunicipiosDb(municipiosRes.data || []);
+    setUniversidadesDb(universidadesRes.data || []);
+    setProgramasDb(programasRes.data || []);
+    setCargando(false);
+  }
+
+  const getters = {
+    municipio: e => e.municipio,
+    universidad: e => e.universidad,
+    programa: e => e.programa,
+    cohorte: e => e.cohorte,
+    grupoId: e => e.grupo_id,
+    institucion: e => e.institucion_educativa,
+    estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO
+  };
+
+  const estudiantesFiltrados = useMemo(
+    () => aplicarFiltrosGenerico(rawEstudiantes, getters, filtros, municipiosPermitidos),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rawEstudiantes, filtros, municipiosPermitidos]
+  );
+
+  const cohortesDisponibles = useMemo(() => {
+    const set = new Set(rawEstudiantes.map(e => e.cohorte).filter(Boolean));
+    return Array.from(set).sort();
+  }, [rawEstudiantes]);
+
+  const institucionesDisponibles = useMemo(() => {
+    const set = new Set(rawEstudiantes.map(e => e.institucion_educativa).filter(Boolean));
+    return Array.from(set).sort();
+  }, [rawEstudiantes]);
+
+  const opcionesFiltro = useMemo(() => ({
+    municipios: municipiosDb
+      .filter(m => !municipiosPermitidos || municipiosPermitidos.includes(m.nombre))
+      .map(m => ({ valor: m.nombre, label: m.nombre })),
+    universidades: universidadesDb.map(u => ({ valor: u.nombre, label: u.nombre })),
+    programas: programasDb.map(p => ({ valor: p.nombre, label: p.nombre })),
+    cohortes: cohortesDisponibles.map(c => ({ valor: c, label: c })),
+    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}` })),
+    instituciones: institucionesDisponibles.map(i => ({ valor: i, label: i })),
+    estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
+  }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, institucionesDisponibles, municipiosPermitidos]);
+
+  // KPIs y grupos totales derivados localmente del conjunto ya filtrado, en
+  // vez de volver a consultar Supabase en vivo por cada cambio de filtro.
+  const kpis = useMemo(() => {
+    const total = estudiantesFiltrados.length;
+    const activos = estudiantesFiltrados.filter(e => e.estado === 'Activo' || !e.estado).length;
+    const desertores = estudiantesFiltrados.filter(e => e.estado === 'Desertor').length;
+    const graduados = estudiantesFiltrados.filter(e => e.estado === 'Graduado').length;
+    const enRiesgo = estudiantesFiltrados.filter(e => e.estado === 'En Riesgo').length;
+    return {
+      total_estudiantes: total,
+      activos,
+      activos_pct: total > 0 ? Math.round((activos / total) * 100 * 10) / 10 : 0,
+      desertores,
+      desertores_pct: total > 0 ? Math.round((desertores / total) * 100 * 10) / 10 : 0,
+      graduados,
+      graduados_pct: total > 0 ? Math.round((graduados / total) * 100 * 10) / 10 : 0,
+      en_riesgo: enRiesgo,
+      en_riesgo_pct: total > 0 ? Math.round((enRiesgo / total) * 100 * 10) / 10 : 0
+    };
+  }, [estudiantesFiltrados]);
+
+  const gruposTotales = useMemo(
+    () => new Set(estudiantesFiltrados.map(e => e.grupo_id).filter(Boolean)).size,
+    [estudiantesFiltrados]
+  );
+
+  // Los gráficos (Grafico*) consultan Supabase directamente y solo entienden
+  // municipios/cohortes/universidades/estados — se les sigue forzando el
+  // alcance por municipio del aliado, igual que antes.
   const filtrosEfectivos = useMemo(() => {
     if (!municipiosPermitidos) return filtros;
     const seleccion = filtros.municipios?.length > 0
@@ -43,110 +154,6 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
       : municipiosPermitidos;
     return { ...filtros, municipios: seleccion };
   }, [filtros, municipiosPermitidos]);
-
-  useEffect(() => {
-    cargarKPIs();
-  }, [filtrosEfectivos]);
-
-  async function cargarKPIs() {
-    setCargando(true);
-
-    // Obtener TODOS los estudiantes con paginación
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      let query = supabase.from('estudiantes').select('*', { count: 'exact' });
-
-      if (filtrosEfectivos.municipios?.length > 0) query = query.in('municipio', filtrosEfectivos.municipios);
-      if (filtrosEfectivos.cohortes?.length > 0) query = query.in('cohorte', filtrosEfectivos.cohortes);
-      if (filtrosEfectivos.universidades?.length > 0) query = query.in('universidad', filtrosEfectivos.universidades);
-      if (filtrosEfectivos.estados?.length > 0) query = query.in('estado', filtrosEfectivos.estados);
-      
-      const { data, error } = await query.range(from, from + limit - 1);
-
-      if (error) {
-        console.error('Error:', error);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        todosLosDatos = [...todosLosDatos, ...data];
-        from += limit;
-      }
-
-      if (!data || data.length < limit) {
-        hasMore = false;
-      }
-    }
-
-    // ==========================================
-    // CORRECCIÓN: GRUPOS TOTALES CON FILTROS
-    // ==========================================
-    let totalGrupos = 0;
-    
-    if (todosLosDatos.length > 0) {
-      // Obtener IDs de grupos únicos de los estudiantes filtrados
-      const gruposIdsUnicos = [...new Set(
-        todosLosDatos
-          .map(e => e.grupo_id)
-          .filter(id => id !== null && id !== undefined)
-      )];
-      
-      if (gruposIdsUnicos.length > 0) {
-        // Contar cuántos de esos grupos existen en la tabla grupos
-        const { count, error: gruposError } = await supabase
-          .from('grupos')
-          .select('*', { count: 'exact', head: true })
-          .in('id', gruposIdsUnicos);
-        
-        if (!gruposError) {
-          totalGrupos = count || 0;
-        } else {
-          // Fallback: usar la cantidad de IDs únicos
-          totalGrupos = gruposIdsUnicos.length;
-        }
-      }
-    } else {
-      // Si no hay estudiantes con los filtros, grupos totales es 0
-      totalGrupos = 0;
-    }
-    
-    setGruposTotales(totalGrupos);
-    setEstudiantesFiltrados(todosLosDatos);
-
-    if (todosLosDatos.length > 0) {
-      const total = todosLosDatos.length;
-      const activos = todosLosDatos.filter(e => e.estado === 'Activo').length;
-      const desertores = todosLosDatos.filter(e => e.estado === 'Desertor').length;
-      const graduados = todosLosDatos.filter(e => e.estado === 'Graduado').length;
-      const enRiesgo = todosLosDatos.filter(e => e.estado === 'En Riesgo').length;
-
-      setKpis({
-        total_estudiantes: total,
-        activos,
-        activos_pct: total > 0 ? Math.round((activos / total) * 100 * 10) / 10 : 0,
-        desertores,
-        desertores_pct: total > 0 ? Math.round((desertores / total) * 100 * 10) / 10 : 0,
-        graduados,
-        graduados_pct: total > 0 ? Math.round((graduados / total) * 100 * 10) / 10 : 0,
-        en_riesgo: enRiesgo,
-        en_riesgo_pct: total > 0 ? Math.round((enRiesgo / total) * 100 * 10) / 10 : 0
-      });
-    }
-
-    setCargando(false);
-  }
-
-  const handleAplicarFiltros = (nuevosFiltros) => {
-    setFiltros(nuevosFiltros);
-  };
-
-  const handleLimpiarFiltros = () => {
-    setFiltros({});
-  };
 
   if (!usuario) {
     return <LoadingSpinner mensaje="Cargando..." />;
@@ -184,13 +191,19 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
           </div>
 
           {/* FILTROS */}
-          <FiltrosEstadisticas
-            onAplicarFiltros={handleAplicarFiltros}
-            onLimpiarFiltros={handleLimpiarFiltros}
+          <FiltrosReportes
+            filtros={filtros}
+            onCambio={setFiltros}
+            opciones={opcionesFiltro}
+            filas={rawEstudiantes}
+            getters={getters}
             municipiosPermitidos={municipiosPermitidos}
+            mostrarFecha={false}
+            mostrarEstado
+            mostrarInstitucion
           />
 
-          {cargando || !kpis ? (
+          {cargando ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12">
               <LoadingSpinner mensaje="Cargando estadísticas..." />
             </div>

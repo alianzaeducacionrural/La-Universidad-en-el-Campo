@@ -23,7 +23,6 @@ import ComparativoCohortes from '../../components/estadisticas/ComparativoCohort
 import RankingDeserciones from '../../components/estadisticas/RankingDeserciones';
 import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCausasInasistencia';
 import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
-import FiltrosEstadisticas from '../../components/estadisticas/FiltrosEstadisticas';
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
@@ -86,12 +85,13 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [resumenSesion, setResumenSesion] = useState(null);
 
   // ESTADOS PARA LA PESTAÑA DE ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD)
-  const [estudiantesUniversidad, setEstudiantesUniversidad] = useState([]);
-  const [cargandoKpis, setCargandoKpis] = useState(true);
-  const [filtrosEstadisticas, setFiltrosEstadisticas] = useState({ municipios: [], cohortes: [], universidades: [], estados: [] });
-  const filtrosUniversidad = useMemo(
-    () => ({ ...filtrosEstadisticas, universidades: usuario ? [usuario.universidad] : [] }),
-    [filtrosEstadisticas, usuario?.universidad]
+  const [filtrosEstadisticasUniversidad, setFiltrosEstadisticasUniversidad] = useState(FILTROS_VACIOS);
+  // Los gráficos (Grafico*) consultan Supabase directamente y solo entienden
+  // municipios/cohortes/universidades/estados — se les fuerza siempre a la
+  // universidad del coordinador, sin importar lo que elija en el filtro.
+  const filtrosGraficosUniversidad = useMemo(
+    () => ({ ...filtrosEstadisticasUniversidad, universidades: usuario ? [usuario.universidad] : [] }),
+    [filtrosEstadisticasUniversidad, usuario?.universidad]
   );
 
   // ESTADOS PARA LA PESTAÑA DE REPORTES (SOLO COORDINADOR_UNIVERSIDAD)
@@ -106,7 +106,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
 
   useEffect(() => {
-    const necesitaDatos = seccionActiva === 'reportes' || seccionActiva === 'estudiantesUniversidad';
+    const necesitaDatos = seccionActiva === 'reportes' || seccionActiva === 'estudiantesUniversidad' || seccionActiva === 'estadisticas';
     if (usuario && esCoordinadorUniversidad && necesitaDatos && !reportesUniversidadCargados) {
       cargarReportesUniversidad();
     }
@@ -183,39 +183,43 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     setReportesUniversidadCargados(true);
   }
 
-  useEffect(() => {
-    if (usuario && esCoordinadorUniversidad) cargarEstudiantesUniversidad();
-  }, [usuario, esCoordinadorUniversidad, filtrosUniversidad]);
+  // Getters/opciones compartidos por las pestañas generales de la
+  // universidad (Estadísticas y Estudiantes) — ambas operan sobre el mismo
+  // `rawEstudiantesReportes`, cada una con su propio estado de filtros.
+  const gettersEstudiantesUniversidad = {
+    municipio: r => r.municipio,
+    universidad: r => r.universidad,
+    programa: r => r.programa,
+    cohorte: r => r.cohorte,
+    grupoId: r => r.grupo_id,
+    institucion: r => r.institucion_educativa,
+    estado: r => r.estado
+  };
 
-  // Trae, paginado, TODOS los estudiantes de la universidad que cumplen los
-  // filtros activos — alimenta tanto los KPI/gráficos como la descarga de
-  // Excel, igual que Estadisticas.jsx para un aliado.
-  async function cargarEstudiantesUniversidad() {
-    setCargandoKpis(true);
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
+  const opcionesEstudiantesUniversidad = useMemo(() => {
+    const conjunto = campo => {
+      const set = new Set(rawEstudiantesReportes.map(e => e[campo]).filter(Boolean));
+      return Array.from(set).sort().map(v => ({ valor: v, label: v }));
+    };
+    return {
+      municipios: conjunto('municipio'),
+      universidades: conjunto('universidad'),
+      programas: conjunto('programa'),
+      cohortes: conjunto('cohorte'),
+      grupos: gruposReportes.map(g => ({ valor: g.id, label: g.nombre })),
+      instituciones: conjunto('institucion_educativa'),
+      estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
+    };
+  }, [rawEstudiantesReportes, gruposReportes]);
 
-    while (hasMore) {
-      let query = supabase.from('estudiantes').select('*').eq('universidad', usuario.universidad);
-      if (filtrosUniversidad.municipios?.length > 0) query = query.in('municipio', filtrosUniversidad.municipios);
-      if (filtrosUniversidad.cohortes?.length > 0) query = query.in('cohorte', filtrosUniversidad.cohortes);
-      if (filtrosUniversidad.estados?.length > 0) query = query.in('estado', filtrosUniversidad.estados);
-
-      const { data, error } = await query.range(from, from + limit - 1);
-      if (error) { console.error('Error:', error); break; }
-      if (data && data.length > 0) { todosLosDatos = [...todosLosDatos, ...data]; from += limit; }
-      if (!data || data.length < limit) hasMore = false;
-    }
-
-    setEstudiantesUniversidad(todosLosDatos);
-    setCargandoKpis(false);
-  }
+  const estudiantesEstadisticasFiltrados = useMemo(
+    () => aplicarFiltrosGenerico(rawEstudiantesReportes, gettersEstudiantesUniversidad, filtrosEstadisticasUniversidad, null),
+    [rawEstudiantesReportes, filtrosEstadisticasUniversidad]
+  );
 
   const kpisUniversidad = useMemo(() => {
-    const total = estudiantesUniversidad.length;
-    const contar = (estado) => estudiantesUniversidad.filter(e => e.estado === estado).length;
+    const total = estudiantesEstadisticasFiltrados.length;
+    const contar = (estado) => estudiantesEstadisticasFiltrados.filter(e => e.estado === estado).length;
     return {
       total,
       activos: contar('Activo'),
@@ -223,11 +227,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       desertores: contar('Desertor'),
       graduados: contar('Graduado')
     };
-  }, [estudiantesUniversidad]);
+  }, [estudiantesEstadisticasFiltrados]);
 
   const gruposTotalesUniversidad = useMemo(
-    () => new Set(estudiantesUniversidad.map(e => e.grupo_id).filter(Boolean)).size,
-    [estudiantesUniversidad]
+    () => new Set(estudiantesEstadisticasFiltrados.map(e => e.grupo_id).filter(Boolean)).size,
+    [estudiantesEstadisticasFiltrados]
   );
 
   useEffect(() => {
@@ -573,30 +577,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
   // LISTADO DE ESTUDIANTES DE TODA LA UNIVERSIDAD (no solo del grupo seleccionado)
   const gruposReportesMap = useMemo(() => new Map(gruposReportes.map(g => [g.id, g.nombre])), [gruposReportes]);
-
-  const gettersEstudiantesUniversidad = {
-    municipio: r => r.municipio,
-    universidad: r => r.universidad,
-    programa: r => r.programa,
-    cohorte: r => r.cohorte,
-    grupoId: r => r.grupo_id,
-    estado: r => r.estado
-  };
-
-  const opcionesEstudiantesUniversidad = useMemo(() => {
-    const conjunto = campo => {
-      const set = new Set(rawEstudiantesReportes.map(e => e[campo]).filter(Boolean));
-      return Array.from(set).sort().map(v => ({ valor: v, label: v }));
-    };
-    return {
-      municipios: conjunto('municipio'),
-      universidades: conjunto('universidad'),
-      programas: conjunto('programa'),
-      cohortes: conjunto('cohorte'),
-      grupos: gruposReportes.map(g => ({ valor: g.id, label: g.nombre })),
-      estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
-    };
-  }, [rawEstudiantesReportes, gruposReportes]);
 
   const estudiantesUniversidadFiltrados = useMemo(() => {
     let lista = aplicarFiltrosGenerico(rawEstudiantesReportes, gettersEstudiantesUniversidad, filtrosEstudiantesUniversidad, null);
@@ -1316,23 +1296,28 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">📈 Estadísticas</h1>
               <p className="text-gray-600 text-sm">{usuario.universidad}</p>
             </div>
-            <FiltrosEstadisticas
-              onAplicarFiltros={setFiltrosEstadisticas}
-              onLimpiarFiltros={() => setFiltrosEstadisticas({ municipios: [], cohortes: [], universidades: [], estados: [] })}
-              universidadFija={usuario.universidad}
+            <FiltrosReportes
+              filtros={filtrosEstadisticasUniversidad}
+              onCambio={setFiltrosEstadisticasUniversidad}
+              opciones={opcionesEstudiantesUniversidad}
+              filas={rawEstudiantesReportes}
+              getters={gettersEstudiantesUniversidad}
+              mostrarFecha={false}
+              mostrarEstado
+              mostrarInstitucion
             />
 
             <div className="flex justify-end">
               <button
-                onClick={() => exportarEstudiantesExcel(estudiantesUniversidad, usuario.universidad)}
-                disabled={estudiantesUniversidad.length === 0}
+                onClick={() => exportarEstudiantesExcel(estudiantesEstadisticasFiltrados, usuario.universidad)}
+                disabled={estudiantesEstadisticasFiltrados.length === 0}
                 className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
               >
                 📥 Descargar Excel
               </button>
             </div>
 
-            {cargandoKpis ? (
+            {cargandoReportes ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="text-gray-500 mt-2">Cargando estadísticas...</p>
@@ -1349,24 +1334,24 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GraficoEstadosDoughnut filtros={filtrosUniversidad} />
-                <GraficoGeneroDoughnut filtros={filtrosUniversidad} />
+                <GraficoEstadosDoughnut filtros={filtrosGraficosUniversidad} />
+                <GraficoGeneroDoughnut filtros={filtrosGraficosUniversidad} />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GraficoBarrasHorizontal titulo="Estudiantes por Municipio" campo="municipio" icono="📍" filtros={filtrosUniversidad} limite={10} />
-                <GraficoBarrasHorizontal titulo="Estudiantes por Institución" campo="institucion_educativa" icono="🏫" filtros={filtrosUniversidad} limite={10} />
+                <GraficoBarrasHorizontal titulo="Estudiantes por Municipio" campo="municipio" icono="📍" filtros={filtrosGraficosUniversidad} limite={10} />
+                <GraficoBarrasHorizontal titulo="Estudiantes por Institución" campo="institucion_educativa" icono="🏫" filtros={filtrosGraficosUniversidad} limite={10} />
               </div>
 
-              <GraficoBarrasHorizontal titulo="Estudiantes por Programa" campo="programa" icono="📚" filtros={filtrosUniversidad} limite={10} />
+              <GraficoBarrasHorizontal titulo="Estudiantes por Programa" campo="programa" icono="📚" filtros={filtrosGraficosUniversidad} limite={10} />
 
-              <ComparativoCohortes filtros={filtrosUniversidad} />
+              <ComparativoCohortes filtros={filtrosGraficosUniversidad} />
 
-              <RankingDeserciones filtros={filtrosUniversidad} />
+              <RankingDeserciones filtros={filtrosGraficosUniversidad} />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <GraficoCausasInasistencia filtros={filtrosUniversidad} />
-                <GraficoInasistenciasMensual filtros={filtrosUniversidad} />
+                <GraficoCausasInasistencia filtros={filtrosGraficosUniversidad} />
+                <GraficoInasistenciasMensual filtros={filtrosGraficosUniversidad} />
               </div>
             </div>
           )}
@@ -1415,6 +1400,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               getters={gettersEstudiantesUniversidad}
               mostrarFecha={false}
               mostrarEstado
+              mostrarInstitucion
             />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
