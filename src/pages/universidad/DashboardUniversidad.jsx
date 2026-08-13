@@ -22,6 +22,7 @@ import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCaus
 import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
 import FiltrosEstadisticas from '../../components/estadisticas/FiltrosEstadisticas';
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
+import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
 
 export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
   const notificacion = useNotificacion();
@@ -52,7 +53,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
   const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
   const [modalCronograma, setModalCronograma] = useState(false);
-  const [fechaCronogramaEnfocada, setFechaCronogramaEnfocada] = useState(null);
+  const [fechaCronogramaSeleccionadaId, setFechaCronogramaSeleccionadaId] = useState(null);
   const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
     () => derivarModulosYDocentes(cronogramaGrupo),
     [cronogramaGrupo]
@@ -1097,7 +1098,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                   </>
                 )}
                 <button
-                  onClick={() => { setFechaCronogramaEnfocada(null); setModalCronograma(true); }}
+                  onClick={() => setModalCronograma(true)}
                   disabled={!grupoSeleccionado}
                   className="bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow-sm disabled:opacity-50 whitespace-nowrap"
                 >
@@ -1128,7 +1129,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                     {fechasCronogramaConEstado.map(f => (
                       <tr
                         key={f.id}
-                        onClick={() => { setFechaCronogramaEnfocada(f.id); setModalCronograma(true); }}
+                        onClick={() => setFechaCronogramaSeleccionadaId(f.id)}
                         title="Clic para editar esta fecha del cronograma"
                         className="hover:bg-gray-50 transition cursor-pointer group"
                       >
@@ -1238,11 +1239,18 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
       <ModalCronogramaGrupo
         isOpen={modalCronograma}
-        onClose={() => { setModalCronograma(false); setFechaCronogramaEnfocada(null); }}
+        onClose={() => setModalCronograma(false)}
         grupo={grupoSeleccionado}
         onActualizado={() => cargarCronogramaGrupo(grupoSeleccionado.id)}
         puedeGestionar
-        idFechaEnfocada={fechaCronogramaEnfocada}
+      />
+
+      <ModalEditarFechaCronograma
+        isOpen={!!fechaCronogramaSeleccionadaId}
+        onClose={() => setFechaCronogramaSeleccionadaId(null)}
+        fechaId={fechaCronogramaSeleccionadaId}
+        grupoNombre={grupoSeleccionado?.nombre}
+        onActualizado={() => cargarCronogramaGrupo(grupoSeleccionado.id)}
       />
 
       {/* MODAL RESUMEN DE SESIÓN */}

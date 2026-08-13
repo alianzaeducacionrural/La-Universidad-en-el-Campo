@@ -12,6 +12,7 @@ import { formatearFecha, obtenerFechaColombiaHoy, normalizarTexto as normalizar 
 import * as XLSX from 'xlsx';
 import ModalCronogramaMasivo from './ModalCronogramaMasivo';
 import ModalCronogramaGrupo from './ModalCronogramaGrupo';
+import ModalEditarFechaCronograma from './ModalEditarFechaCronograma';
 
 export default function CumplimientoCronograma() {
   const [grupos, setGrupos] = useState([]);
@@ -25,7 +26,7 @@ export default function CumplimientoCronograma() {
   const [busqueda, setBusqueda] = useState('');
   const [modalMasivo, setModalMasivo] = useState(false);
   const [modalGrupo, setModalGrupo] = useState(null);
-  const [fechaEnfocadaId, setFechaEnfocadaId] = useState(null);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(null);
 
   useEffect(() => { cargarTodo(); }, []);
 
@@ -222,7 +223,7 @@ export default function CumplimientoCronograma() {
                         <div className="h-full bg-green-500 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setFechaEnfocadaId(null); setModalGrupo(r.grupo); }}
+                        onClick={(e) => { e.stopPropagation(); setModalGrupo(r.grupo); }}
                         className="text-xs bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
                       >
                         ✏️ Cronograma
@@ -249,7 +250,7 @@ export default function CumplimientoCronograma() {
                           return (
                             <button
                               key={f.id}
-                              onClick={() => { setFechaEnfocadaId(f.id); setModalGrupo(r.grupo); }}
+                              onClick={() => setFechaSeleccionada({ id: f.id, grupoNombre: r.grupo.nombre })}
                               title="Clic para editar esta fecha del cronograma"
                               className={`text-left rounded-lg border px-3 py-2 text-sm hover:shadow-sm transition group ${colorTarjeta}`}
                             >
@@ -278,7 +279,7 @@ export default function CumplimientoCronograma() {
                           {r.fueraDeCronograma.map((rep, i) => (
                             <button
                               key={i}
-                              onClick={() => { setFechaEnfocadaId(null); setModalGrupo(r.grupo); }}
+                              onClick={() => setModalGrupo(r.grupo)}
                               title="Clic para agregar esta fecha al cronograma"
                               className="text-left bg-blue-50 rounded-lg border border-blue-200 px-3 py-2 text-sm hover:border-blue-400 hover:shadow-sm transition"
                             >
@@ -305,11 +306,18 @@ export default function CumplimientoCronograma() {
 
       <ModalCronogramaGrupo
         isOpen={!!modalGrupo}
-        onClose={() => { setModalGrupo(null); setFechaEnfocadaId(null); }}
+        onClose={() => setModalGrupo(null)}
         grupo={modalGrupo}
         onActualizado={cargarTodo}
         puedeGestionar={true}
-        idFechaEnfocada={fechaEnfocadaId}
+      />
+
+      <ModalEditarFechaCronograma
+        isOpen={!!fechaSeleccionada}
+        onClose={() => setFechaSeleccionada(null)}
+        fechaId={fechaSeleccionada?.id}
+        grupoNombre={fechaSeleccionada?.grupoNombre}
+        onActualizado={cargarTodo}
       />
     </div>
   );
