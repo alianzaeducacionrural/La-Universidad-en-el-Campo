@@ -2,7 +2,7 @@
 // PÁGINA: GESTIÓN DE GRUPOS (CON BUSCADOR GLOBAL)
 // =============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../components/common/Header';
@@ -23,7 +23,9 @@ export default function GestionGrupos({ onVerPerfil }) {
   const [filtros, setFiltros] = useState({
     universidad: '',
     cohorte: '',
-    estado: 'activo'
+    estado: 'activo',
+    padrinoId: '',
+    soloSinAsignar: false
   });
   const [busqueda, setBusqueda] = useState('');
   const [modalCrearGrupo, setModalCrearGrupo] = useState(false);
@@ -82,7 +84,7 @@ export default function GestionGrupos({ onVerPerfil }) {
         total_estudiantes: g.estudiantes?.[0]?.count || 0,
         padrinos: g.grupo_padrino
           ?.filter(gp => gp.padrinos)
-          .map(gp => ({ ...gp.padrinos, institucion_educativa: gp.institucion_educativa })) || []
+          .map(gp => ({ id: gp.padrino_id, ...gp.padrinos, institucion_educativa: gp.institucion_educativa })) || []
       }));
       setGrupos(gruposFormateados);
     }
@@ -91,7 +93,7 @@ export default function GestionGrupos({ onVerPerfil }) {
   }
 
   // Buscador automático: filtra por nombre, universidad o programa a medida que se escribe
-  const gruposFiltrados = busqueda.trim()
+  const gruposConBusqueda = busqueda.trim()
     ? grupos.filter(g => {
         const t = busqueda.toLowerCase();
         return (
@@ -102,6 +104,25 @@ export default function GestionGrupos({ onVerPerfil }) {
         );
       })
     : grupos;
+
+  // Grupos sin ningún padrino asignado (p. ej. tras inhabilitar a su único
+  // padrino) — se calcula sobre lo ya cargado/buscado, independiente de los
+  // filtros de padrino/sin-asignación, para decidir si mostrar el aviso.
+  const gruposSinAsignarCount = gruposConBusqueda.filter(g => (g.padrinos?.length || 0) === 0).length;
+
+  const padrinosDisponibles = useMemo(() => {
+    const mapa = new Map();
+    grupos.forEach(g => (g.padrinos || []).forEach(p => { if (p.id) mapa.set(p.id, p.nombre_completo); }));
+    return Array.from(mapa.entries())
+      .map(([id, nombre_completo]) => ({ id, nombre_completo }))
+      .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+  }, [grupos]);
+
+  const gruposFiltrados = gruposConBusqueda.filter(g => {
+    if (filtros.padrinoId && !(g.padrinos || []).some(p => p.id === filtros.padrinoId)) return false;
+    if (filtros.soloSinAsignar && (g.padrinos?.length || 0) > 0) return false;
+    return true;
+  });
 
   async function handleCrearGrupo(datosGrupo, padrinosSeleccionados) {
     const { data: grupoData, error: grupoError } = await supabase
@@ -175,7 +196,12 @@ export default function GestionGrupos({ onVerPerfil }) {
             />
           </div>
 
-          <FiltrosGrupos filtros={filtros} setFiltros={setFiltros} />
+          <FiltrosGrupos
+            filtros={filtros}
+            setFiltros={setFiltros}
+            padrinosDisponibles={padrinosDisponibles}
+            gruposSinAsignarCount={gruposSinAsignarCount}
+          />
 
           {cargando ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12">

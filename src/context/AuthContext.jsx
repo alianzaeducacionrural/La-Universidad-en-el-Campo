@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
         .eq('auth_id', authUser.id)
         .maybeSingle();
 
-      if (padrino) {
+      if (padrino && padrino.activo !== false) {
         setPerfil(padrino);
         setTipoUsuario('padrino');
         setLoading(false);

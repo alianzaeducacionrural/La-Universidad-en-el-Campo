@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-export default function FiltrosGrupos({ filtros, setFiltros }) {
+export default function FiltrosGrupos({ filtros, setFiltros, padrinosDisponibles = [], gruposSinAsignarCount = 0 }) {
   const [universidades, setUniversidades] = useState([]);
   const [cohortes, setCohortes] = useState([]);
 
@@ -71,9 +71,38 @@ export default function FiltrosGrupos({ filtros, setFiltros }) {
           </select>
         </div>
 
+        {/* Padrino */}
+        <div className="flex items-center space-x-2">
+          <label className="text-sm text-gray-600">👤 Padrino:</label>
+          <select
+            value={filtros.padrinoId}
+            onChange={(e) => setFiltros({ ...filtros, padrinoId: e.target.value })}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+          >
+            <option value="">Todos</option>
+            {padrinosDisponibles.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre_completo}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Aviso de grupos sin padrino asignado — solo aparece cuando hay al menos uno */}
+        {gruposSinAsignarCount > 0 && (
+          <button
+            onClick={() => setFiltros({ ...filtros, soloSinAsignar: !filtros.soloSinAsignar })}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition whitespace-nowrap ${
+              filtros.soloSinAsignar
+                ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            ⚠️ {gruposSinAsignarCount} grupo{gruposSinAsignarCount !== 1 ? 's' : ''} sin padrino asignado
+          </button>
+        )}
+
         {/* Botón limpiar */}
         <button
-          onClick={() => setFiltros({ universidad: '', cohorte: '', estado: 'activo' })}
+          onClick={() => setFiltros({ universidad: '', cohorte: '', estado: 'activo', padrinoId: '', soloSinAsignar: false })}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
           🔄 Limpiar filtros

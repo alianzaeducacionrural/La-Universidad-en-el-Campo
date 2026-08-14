@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import ModalAsignarGrupo from './ModalAsignarGrupo';
 
-export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGrupoQuitado, onGrupoAsignado, onEliminar }) {
+export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGrupoQuitado, onGrupoAsignado, onToggleActivo }) {
+  const inactivo = padrino.activo === false;
   const [grupos, setGrupos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [datosCargados, setDatosCargados] = useState(false);
@@ -95,9 +96,9 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
   return (
     <div className="bg-white">
       {/* Cabecera del Padrino */}
-      <div 
+      <div
         onClick={onToggle}
-        className={`p-5 cursor-pointer hover:bg-gray-50 transition ${expandido ? 'border-l-4 border-purple-500 bg-purple-50/30' : ''}`}
+        className={`p-5 cursor-pointer hover:bg-gray-50 transition ${expandido ? 'border-l-4 border-purple-500 bg-purple-50/30' : ''} ${inactivo ? 'opacity-60' : ''}`}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -108,22 +109,30 @@ export default function PadrinoGestionCard({ padrino, expandido, onToggle, onGru
               <span className="text-purple-700 text-xl">👤</span>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-800 text-lg">{padrino.nombre_completo}</h4>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-semibold text-gray-800 text-lg">{padrino.nombre_completo}</h4>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${inactivo ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-700'}`}>
+                  {inactivo ? 'Inhabilitado' : 'Habilitado'}
+                </span>
+              </div>
               <p className="text-sm text-gray-500">{padrino.correo}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-3">
             <div className="bg-purple-50 rounded-xl px-4 py-2 text-center min-w-[100px]">
               <p className="text-2xl font-bold text-purple-700">{padrino.total_grupos}</p>
               <p className="text-xs text-purple-600">Grupos asignados</p>
             </div>
             <button
-              onClick={(e) => { e.stopPropagation(); onEliminar(padrino.padrino_id, padrino.nombre_completo); }}
-              className="text-red-500 hover:text-red-700 p-1"
-              title="Eliminar padrino"
+              onClick={(e) => { e.stopPropagation(); onToggleActivo(padrino); }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap ${
+                inactivo
+                  ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+              }`}
             >
-              🗑️
+              {inactivo ? '✅ Habilitar' : '🚫 Inhabilitar'}
             </button>
           </div>
         </div>
