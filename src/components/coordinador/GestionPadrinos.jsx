@@ -31,8 +31,11 @@ export default function GestionPadrinos() {
   async function cargarPadrinos() {
     setCargando(true);
 
+    // Sin filtro de rol: igual que la vista original, esta pantalla también
+    // debe mostrar a coordinadores/admin cuando tienen grupos asignados como
+    // padrino (grupo_padrino no está limitado al rol 'padrino').
     const [padrinosRes, asignacionesRes] = await Promise.all([
-      supabase.from('padrinos').select('*').eq('rol', 'padrino').order('nombre_completo'),
+      supabase.from('padrinos').select('*').order('nombre_completo'),
       supabase.from('grupo_padrino').select('padrino_id')
     ]);
 
