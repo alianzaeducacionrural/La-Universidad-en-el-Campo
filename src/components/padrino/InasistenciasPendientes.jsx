@@ -58,18 +58,18 @@ export default function InasistenciasPendientes({ padrino, gruposAsignados = [],
         .eq('tipo_accion', 'asistencia_completa')
     ]);
 
-    // Hidratar inasistencias con datos del estudiante
+    // Hidratar inasistencias con datos del estudiante — una sola consulta por
+    // lote (.in) en vez de una petición .single() por cada fila. Con muchas
+    // inasistencias pendientes, disparar decenas de peticiones en paralelo
+    // saturaba el rate limit de Supabase (errores 406/429 en cascada) y
+    // terminaba invalidando la sesión del padrino.
     if (inasistenciasData) {
-      const conEstudiante = await Promise.all(
-        inasistenciasData.map(async (item) => {
-          const { data: estudiante } = await supabase
-            .from('estudiantes')
-            .select('*')
-            .eq('id', item.estudiante_id)
-            .single();
-          return { ...item, estudiante };
-        })
-      );
+      const idsEstudiantes = [...new Set(inasistenciasData.map(item => item.estudiante_id).filter(Boolean))];
+      const { data: estudiantesData } = idsEstudiantes.length > 0
+        ? await supabase.from('estudiantes').select('*').in('id', idsEstudiantes)
+        : { data: [] };
+      const estudiantePorId = new Map((estudiantesData || []).map(e => [e.id, e]));
+      const conEstudiante = inasistenciasData.map(item => ({ ...item, estudiante: estudiantePorId.get(item.estudiante_id) || null }));
       const enAlcance = filtrarPorAlcancePadrino(
         conEstudiante.map(item => ({ ...item, grupo_id: item.estudiante?.grupo_id, institucion_educativa: item.estudiante?.institucion_educativa })),
         gruposAsignados
