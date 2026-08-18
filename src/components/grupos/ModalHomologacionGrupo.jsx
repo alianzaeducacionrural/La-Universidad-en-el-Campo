@@ -53,7 +53,7 @@ export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
 
     const { data: estudiantesData } = await supabase
       .from('estudiantes')
-      .select('id, nombre_completo, institucion_educativa')
+      .select('id, nombre_completo, institucion_educativa, municipio')
       .eq('grupo_id', grupo.id)
       .order('nombre_completo');
 
@@ -65,17 +65,27 @@ export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
     const notas = {};
     for (const n of notasData || []) notas[`${n.malla_item_id}::${n.estudiante_id}`] = n.nota;
 
+    // Hay nombres de institución repetidos en municipios distintos (ej. "Pío
+    // XII"), así que se desambigua por nombre + municipio — no solo por
+    // nombre — para no mezclar certificados de una institución con los de
+    // otra que comparta nombre en otro municipio.
+    const combosInstitucion = new Map();
+    for (const e of estudiantesData || []) {
+      if (!e.institucion_educativa || !e.municipio) continue;
+      combosInstitucion.set(`${e.institucion_educativa}|${e.municipio}`, true);
+    }
     const nombresInstituciones = [...new Set((estudiantesData || []).map(e => e.institucion_educativa).filter(Boolean))];
     const { data: institucionesData } = nombresInstituciones.length > 0
-      ? await supabase.from('instituciones').select('id, nombre').in('nombre', nombresInstituciones)
+      ? await supabase.from('instituciones').select('id, nombre, municipios:municipio_id (nombre)').in('nombre', nombresInstituciones)
       : { data: [] };
+    const institucionesFiltradas = (institucionesData || []).filter(i => combosInstitucion.has(`${i.nombre}|${i.municipios?.nombre}`));
 
-    const idsInstituciones = (institucionesData || []).map(i => i.id);
+    const idsInstituciones = institucionesFiltradas.map(i => i.id);
     const { data: certificadosData } = idsInstituciones.length > 0
       ? await supabase.from('certificados_homologacion').select('id, nombre_archivo, url_archivo, created_at, institucion_id').in('institucion_id', idsInstituciones).order('created_at', { ascending: false })
       : { data: [] };
 
-    const nombreInstitucionPorId = new Map((institucionesData || []).map(i => [i.id, i.nombre]));
+    const nombreInstitucionPorId = new Map(institucionesFiltradas.map(i => [i.id, i.nombre]));
 
     setMalla(mallaData || []);
     setEstudiantes(estudiantesData || []);

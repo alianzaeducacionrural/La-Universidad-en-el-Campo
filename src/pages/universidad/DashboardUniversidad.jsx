@@ -157,12 +157,22 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       : { data: [] };
     setNotasHomologacionUniversidad(notasData || []);
 
+    // Hay nombres de institución repetidos en municipios distintos (ej. "Pío
+    // XII"), así que se desambigua por nombre + municipio — no solo por
+    // nombre — para no mezclar certificados de una institución con los de
+    // otra que comparta nombre en otro municipio.
+    const combosInstitucion = new Map();
+    for (const e of rawEstudiantesReportes) {
+      if (!e.institucion_educativa || !e.municipio) continue;
+      combosInstitucion.set(`${e.institucion_educativa}|${e.municipio}`, true);
+    }
     const nombresInstituciones = [...new Set(rawEstudiantesReportes.map(e => e.institucion_educativa).filter(Boolean))];
     const { data: institucionesData } = nombresInstituciones.length > 0
-      ? await supabase.from('instituciones').select('id, nombre').in('nombre', nombresInstituciones)
+      ? await supabase.from('instituciones').select('id, nombre, municipios:municipio_id (nombre)').in('nombre', nombresInstituciones)
       : { data: [] };
-    const idsInstituciones = (institucionesData || []).map(i => i.id);
-    const nombrePorInstitucionId = new Map((institucionesData || []).map(i => [i.id, i.nombre]));
+    const institucionesFiltradas = (institucionesData || []).filter(i => combosInstitucion.has(`${i.nombre}|${i.municipios?.nombre}`));
+    const idsInstituciones = institucionesFiltradas.map(i => i.id);
+    const nombrePorInstitucionId = new Map(institucionesFiltradas.map(i => [i.id, i.nombre]));
     const { data: certificadosData } = idsInstituciones.length > 0
       ? await supabase.from('certificados_homologacion').select('id, nombre_archivo, url_archivo, created_at, institucion_id').in('institucion_id', idsInstituciones).order('created_at', { ascending: false })
       : { data: [] };
