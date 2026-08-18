@@ -78,6 +78,12 @@ export const TIPOS_DOCUMENTO_DESERCION = [
   { value: 'otro', label: 'Otro Documento', icon: '📎', aplicaA: null }
 ];
 
+// Tipo de seguimiento — a qué situación responde el contacto registrado
+export const TIPOS_SEGUIMIENTO = [
+  { value: 'inasistencia', label: '🚫 Inasistencia' },
+  { value: 'rendimiento_academico', label: '📚 Rendimiento Académico' }
+];
+
 // Causas de ausencia
 export const CAUSAS_AUSENCIA = [
   { value: '📡 Conectividad', label: '📡 Conectividad / Sin Señal' },

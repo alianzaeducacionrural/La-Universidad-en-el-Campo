@@ -779,7 +779,7 @@ function GraficoCausasInasistenciaPortal({ estudiantes }) {
   const conteo = {};
   estudiantes.forEach(est => {
     (est.seguimientos || []).forEach(s => {
-      if (!s.causa_ausencia) return;
+      if (!s.causa_ausencia || s.tipo_seguimiento === 'rendimiento_academico') return;
       const causa = limpiarEmojis(s.causa_ausencia) || 'Sin especificar';
       conteo[causa] = (conteo[causa] || 0) + 1;
     });
@@ -1598,6 +1598,7 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium text-gray-800">{seg.tipo_gestion}</span>
+                            {seg.tipo_seguimiento === 'rendimiento_academico' && <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">📚 Rendimiento Académico</span>}
                             {seg.causa_ausencia && <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full">{seg.causa_ausencia}</span>}
                           </div>
                           <span className="text-sm text-gray-500 bg-white px-2 py-1 rounded-full">{formatearFecha(seg.fecha_contacto)}</span>

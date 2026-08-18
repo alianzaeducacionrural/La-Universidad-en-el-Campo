@@ -73,6 +73,11 @@ export default function SeguimientosRecientes({
                 <span className="text-sm font-medium text-gray-700">
                   {seg.tipo_gestion}
                 </span>
+                {seg.tipo_seguimiento === 'rendimiento_academico' && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">
+                    📚 Rendimiento Académico
+                  </span>
+                )}
                 {seg.causa_ausencia && (
                   <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
                     {seg.causa_ausencia}

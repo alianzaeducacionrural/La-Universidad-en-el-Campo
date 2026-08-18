@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
-import { TIPOS_GESTION, CAUSAS_AUSENCIA } from '../../utils/constants';
+import { TIPOS_GESTION, CAUSAS_AUSENCIA, TIPOS_SEGUIMIENTO } from '../../utils/constants';
 import { formatearFechaInput, interpretarError } from '../../utils/helpers';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -15,8 +15,9 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
   const [evidenciasEliminadas, setEvidenciasEliminadas] = useState([]);
   const [nuevosArchivos, setNuevosArchivos] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
+  const [tipoSeguimiento, setTipoSeguimiento] = useState('inasistencia');
 
-  useEffect(() => { if (isOpen && seguimiento) { setEvidenciasExistentes(seguimiento.evidencias || []); setEvidenciasEliminadas([]); setNuevosArchivos([]); } }, [isOpen, seguimiento]);
+  useEffect(() => { if (isOpen && seguimiento) { setEvidenciasExistentes(seguimiento.evidencias || []); setEvidenciasEliminadas([]); setNuevosArchivos([]); setTipoSeguimiento(seguimiento.tipo_seguimiento || 'inasistencia'); } }, [isOpen, seguimiento]);
 
   const subirArchivos = async (seguimientoId) => {
     if (nuevosArchivos.length === 0) return [];
@@ -65,7 +66,13 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
     }
 
     setCargando(true);
-    const datos = { tipo_gestion: tipo, causa_ausencia: formData.get('causa') || null, resultado: resultado_texto, fecha_contacto: fecha };
+    const datos = {
+      tipo_gestion: tipo,
+      tipo_seguimiento: tipoSeguimiento,
+      causa_ausencia: tipoSeguimiento === 'rendimiento_academico' ? null : (formData.get('causa') || null),
+      resultado: resultado_texto,
+      fecha_contacto: fecha
+    };
     for (const url of evidenciasEliminadas) await eliminarArchivoStorage(url);
     const urlsNuevas = nuevosArchivos.length > 0 ? await subirArchivos(seguimiento.id) : [];
     datos.evidencias = [...evidenciasExistentes.filter(url => !evidenciasEliminadas.includes(url)), ...urlsNuevas];
@@ -94,7 +101,28 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
           <div className="p-6 space-y-4">
             <div><label className="block text-sm mb-2">📅 Fecha de Contacto *</label><input type="date" name="fecha_contacto" required defaultValue={formatearFechaInput(seguimiento.fecha_contacto)} className="w-full border rounded-lg px-3 py-2.5" /></div>
             <div><label className="block text-sm mb-2">📞 Tipo de Gestión *</label><select name="tipo" required defaultValue={seguimiento.tipo_gestion} className="w-full border rounded-lg px-3 py-2.5"><option value="">Seleccionar...</option>{TIPOS_GESTION.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-            <div><label className="block text-sm mb-2">🔍 Causa de Ausencia</label><select name="causa" defaultValue={seguimiento.causa_ausencia || ''} className="w-full border rounded-lg px-3 py-2.5"><option value="">Seleccionar (opcional)...</option>{CAUSAS_AUSENCIA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
+            <div>
+              <label className="block text-sm mb-2">Tipo de Seguimiento *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {TIPOS_SEGUIMIENTO.map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTipoSeguimiento(t.value)}
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition text-center ${
+                      tipoSeguimiento === t.value
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {tipoSeguimiento === 'inasistencia' && (
+              <div><label className="block text-sm mb-2">🔍 Causa de Ausencia</label><select name="causa" defaultValue={seguimiento.causa_ausencia || ''} className="w-full border rounded-lg px-3 py-2.5"><option value="">Seleccionar (opcional)...</option>{CAUSAS_AUSENCIA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></div>
+            )}
             <div><label className="block text-sm mb-2">📋 Resultado *</label><textarea name="resultado" required rows={4} defaultValue={seguimiento.resultado} className="w-full border rounded-lg px-3 py-2.5 resize-none"></textarea></div>
             <div className="border-t pt-4"><label className="block text-sm mb-3">📸 Gestión de Evidencias</label>
               {evidenciasExistentes.length > 0 && <div className="mb-4"><p className="text-xs text-gray-600 mb-2">📌 Evidencias actuales:</p><div className="flex flex-wrap gap-2">{evidenciasExistentes.map((url, idx) => <div key={idx} className="relative"><img src={url} alt={`Evidencia ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border" /><button type="button" onClick={() => marcarParaEliminar(url)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">✕</button></div>)}</div></div>}

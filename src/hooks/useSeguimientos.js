@@ -86,9 +86,10 @@ export function useSeguimientos(padrino, gruposAsignados) {
       .from('seguimientos')
       .update(datos)
       .eq('id', id);
-    
+
     if (error) return { success: false, error: error.message };
     await cargarSeguimientos();
+    setHistorialEstudiante(prev => prev.map(s => s.id === id ? { ...s, ...datos } : s));
     return { success: true };
   };
 

@@ -26,7 +26,8 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
       let query = supabase
         .from('seguimientos')
         .select('causa_ausencia, estudiantes!inner(municipio, cohorte, universidad)')
-        .not('causa_ausencia', 'is', null);
+        .not('causa_ausencia', 'is', null)
+        .eq('tipo_seguimiento', 'inasistencia');
 
       if (filtros.municipios && filtros.municipios.length > 0) {
         query = query.in('estudiantes.municipio', filtros.municipios);

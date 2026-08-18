@@ -345,6 +345,7 @@ function AppContent() {
   async function handleActualizarSeguimientoPanel(id, datos) {
     const { error } = await supabase.from('seguimientos').update(datos).eq('id', id);
     if (error) return { success: false, error: error.message };
+    setHistorialEstudiante(prev => prev.map(s => s.id === id ? { ...s, ...datos } : s));
     return { success: true };
   }
 

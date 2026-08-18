@@ -753,6 +753,9 @@ export default function ModalPerfilEstudiante({
                           <div className="flex justify-between items-start mb-2 pr-8">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-gray-800">{seg.tipo_gestion}</span>
+                              {seg.tipo_seguimiento === 'rendimiento_academico' && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">📚 Rendimiento Académico</span>
+                              )}
                               {seg.causa_ausencia && (
                                 <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full">{seg.causa_ausencia}</span>
                               )}

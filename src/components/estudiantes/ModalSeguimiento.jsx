@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
-import { TIPOS_GESTION, CAUSAS_AUSENCIA } from '../../utils/constants';
+import { TIPOS_GESTION, CAUSAS_AUSENCIA, TIPOS_SEGUIMIENTO } from '../../utils/constants';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiante, conInasistencia = false }) {
@@ -13,6 +13,7 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
   const [archivos, setArchivos] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
   const [cerrarInasistencia, setCerrarInasistencia] = useState(true);
+  const [tipoSeguimiento, setTipoSeguimiento] = useState('inasistencia');
   const fechaHoy = new Date().toISOString().split('T')[0];
 
   const subirArchivos = async (seguimientoId) => {
@@ -70,7 +71,8 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
     const datos = {
       estudiante_id: estudiante.id,
       tipo_gestion: tipo,
-      causa_ausencia: formData.get('causa') || null,
+      tipo_seguimiento: conInasistencia ? 'inasistencia' : tipoSeguimiento,
+      causa_ausencia: (!conInasistencia && tipoSeguimiento === 'rendimiento_academico') ? null : (formData.get('causa') || null),
       resultado: resultado_texto,
       fecha_contacto: fecha,
       ...(conInasistencia && { cerrarInasistencia })
@@ -138,14 +140,38 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
               </select>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">🔍 Causa de Ausencia</label>
-              <select name="causa" className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
-                <option value="">Seleccionar (opcional)...</option>
-                {CAUSAS_AUSENCIA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
-            </div>
-            
+            {!conInasistencia && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Seguimiento *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TIPOS_SEGUIMIENTO.map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setTipoSeguimiento(t.value)}
+                      className={`p-3 rounded-lg border-2 text-sm font-medium transition text-center ${
+                        tipoSeguimiento === t.value
+                          ? 'border-primary bg-primary/5 text-primary-dark'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(conInasistencia || tipoSeguimiento === 'inasistencia') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">🔍 Causa de Ausencia</label>
+                <select name="causa" className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
+                  <option value="">Seleccionar (opcional)...</option>
+                  {CAUSAS_AUSENCIA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">📋 Resultado *</label>
               <textarea name="resultado" required rows={4} placeholder="Describa detalladamente..." className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base resize-none"></textarea>
