@@ -5,10 +5,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
+import { useAuth } from '../../context/AuthContext';
 import ModalMallaHomologacion from './ModalMallaHomologacion';
 
 export default function UniversidadCRUDCard({ universidad, onEliminar, onRecargar }) {
   const notificacion = useNotificacion();
+  const { perfil: usuario } = useAuth();
+  const esAdmin = usuario?.rol === 'admin';
   const [programas, setProgramas] = useState([]);
   const [totalProgramas, setTotalProgramas] = useState(0); // 🔥 NUEVO: total sin expandir
   const [expandido, setExpandido] = useState(false);
@@ -185,17 +188,36 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
           ) : (
             <>
               {programas.length > 0 ? (
-                <div className="space-y-2 mb-4">
+                <div className="space-y-1.5 mb-4">
                   {programas.map(programa => (
-                    <div key={programa.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">📚</span>
-                        <span className="text-gray-800 text-sm">{programa.nombre}</span>
+                    <div key={programa.id} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-2 hover:border-gray-300 hover:shadow-sm transition">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-base flex-shrink-0">📚</span>
+                        <span className="text-gray-800 text-sm truncate">{programa.nombre}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <button onClick={() => setProgramaHomologacion(programa)} className="text-primary hover:text-primary-dark px-2 py-1 text-xs rounded-lg hover:bg-primary/5" title="Malla de homologación">🎓 Homologación</button>
-                        <button onClick={() => handleEditarPrograma(programa.id, programa.nombre)} className="text-blue-500 hover:text-blue-700 p-1 text-xs" title="Editar">✏️</button>
-                        <button onClick={() => handleEliminarPrograma(programa.id, programa.nombre)} className="text-red-500 hover:text-red-700 p-1 text-xs" title="Eliminar">🗑️</button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => setProgramaHomologacion(programa)}
+                          className="flex items-center gap-1.5 text-primary hover:text-primary-dark hover:bg-primary/10 px-2.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap"
+                          title="Malla de homologación"
+                        >
+                          🎓 Homologación
+                        </button>
+                        <span className="w-px h-5 bg-gray-200 mx-0.5"></span>
+                        <button
+                          onClick={() => handleEditarPrograma(programa.id, programa.nombre)}
+                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          title="Editar programa"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleEliminarPrograma(programa.id, programa.nombre)}
+                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Eliminar programa"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -224,6 +246,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
         isOpen={!!programaHomologacion}
         onClose={() => setProgramaHomologacion(null)}
         programa={programaHomologacion}
+        soloLectura={!esAdmin}
       />
     </div>
   );

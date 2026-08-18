@@ -13,6 +13,13 @@ import { supabase } from '../../lib/supabaseClient';
 import { NOMBRE_CERTIFICADO_HOMOLOGACION } from '../../utils/constants';
 import { formatearFecha } from '../../utils/helpers';
 
+// Orden: alfabético por materia y, dentro de una misma materia, grado de
+// menor a mayor — comparar el texto del grado directamente ordenaría "10°"
+// antes que "4°", por eso se compara el número.
+function compararMallaItems(a, b) {
+  return a.materia.localeCompare(b.materia, 'es') || (parseInt(a.grado, 10) - parseInt(b.grado, 10));
+}
+
 export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
   const [cargando, setCargando] = useState(false);
   const [malla, setMalla] = useState([]);
@@ -47,9 +54,7 @@ export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
     const { data: mallaData } = await supabase
       .from('malla_homologacion')
       .select('id, materia, grado')
-      .eq('programa_id', programa.id)
-      .order('grado')
-      .order('materia');
+      .eq('programa_id', programa.id);
 
     const { data: estudiantesData } = await supabase
       .from('estudiantes')
@@ -87,7 +92,7 @@ export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
 
     const nombreInstitucionPorId = new Map(institucionesFiltradas.map(i => [i.id, i.nombre]));
 
-    setMalla(mallaData || []);
+    setMalla((mallaData || []).sort(compararMallaItems));
     setEstudiantes(estudiantesData || []);
     setNotasPorClave(notas);
     setCertificados((certificadosData || []).map(c => ({ ...c, institucion_nombre: nombreInstitucionPorId.get(c.institucion_id) || '—' })));

@@ -15,6 +15,13 @@ import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/e
 import ReportesPanel from '../../components/reportes/ReportesPanel';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
 import { ESTADOS_ESTUDIANTE, NOMBRE_CERTIFICADO_HOMOLOGACION } from '../../utils/constants';
+
+// Orden: alfabético por materia y, dentro de una misma materia, grado de
+// menor a mayor — comparar el texto del grado directamente ordenaría "10°"
+// antes que "4°", por eso se compara el número.
+function compararMallaItems(a, b) {
+  return a.materia.localeCompare(b.materia, 'es') || (parseInt(a.grado, 10) - parseInt(b.grado, 10));
+}
 import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
 import GraficoGeneroDoughnut from '../../components/estadisticas/GraficoGeneroDoughnut';
@@ -143,10 +150,10 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         const { data: mallaData } = await supabase
           .from('malla_homologacion')
           .select('id, programa_id, materia, grado')
-          .in('programa_id', idsProgramas)
-          .order('grado')
-          .order('materia');
-        malla = (mallaData || []).map(m => ({ ...m, programa_nombre: nombrePorProgramaId.get(m.programa_id) }));
+          .in('programa_id', idsProgramas);
+        malla = (mallaData || [])
+          .map(m => ({ ...m, programa_nombre: nombrePorProgramaId.get(m.programa_id) }))
+          .sort(compararMallaItems);
       }
     }
     setMallaHomologacionUniversidad(malla);
