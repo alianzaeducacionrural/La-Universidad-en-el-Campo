@@ -97,7 +97,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
   function tituloHomologacion(programa) {
     const info = estadoHomologacion[programa.id];
     if (!info || info.nivel === 'vacia') return 'Aún no se ha agregado ninguna materia a la malla de este técnico';
-    if (info.nivel === 'completa') return 'Malla de homologación completa';
+    if (info.nivel === 'completa') return 'Malla de reconocimiento de aprendizajes completa';
     return `Malla en progreso: ${info.mallaCount} materia${info.mallaCount !== 1 ? 's' : ''} agregada${info.mallaCount !== 1 ? 's' : ''}, sin confirmar`;
   }
 
@@ -250,7 +250,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
                           title={tituloHomologacion(programa)}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ESTILOS_HOMOLOGACION[estadoHomologacion[programa.id]?.nivel || 'vacia'].dot}`}></span>
-                          🎓 Homologación
+                          🎓 Reconocimiento de Aprendizajes
                         </button>
                         <span className="w-px h-5 bg-gray-200 mx-0.5"></span>
                         <button

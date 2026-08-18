@@ -15,8 +15,7 @@ const SECCIONES = [
   { id: 'grupos', label: 'Grupos', icon: '📚' },
   { id: 'estadisticas', label: 'Estadísticas', icon: '📈' },
   { id: 'reportes', label: 'Reportes', icon: '📑' },
-  { id: 'estudiantesUniversidad', label: 'Estudiantes', icon: '👥' },
-  { id: 'homologacion', label: 'Homologación', icon: '🎓' }
+  { id: 'estudiantesUniversidad', label: 'Estudiantes', icon: '👥' }
 ];
 
 export default function SidebarUniversidad({ seccionActiva, setSeccionActiva, universidad }) {

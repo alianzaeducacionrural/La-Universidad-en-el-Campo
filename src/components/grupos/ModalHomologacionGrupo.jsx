@@ -107,7 +107,7 @@ export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
         <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-lg font-bold text-gray-800">🎓 Homologación — Reconocimiento de Aprendizajes</h3>
+              <h3 className="text-lg font-bold text-gray-800">🎓 Reconocimiento de Aprendizajes</h3>
               <p className="text-sm text-gray-500 mt-1 truncate">{grupo.programa} · {grupo.universidad}</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
@@ -120,7 +120,7 @@ export default function ModalHomologacionGrupo({ isOpen, onClose, grupo }) {
           ) : sinPrograma ? (
             <p className="text-sm text-gray-400 text-center py-8">No se encontró el técnico de este grupo en el catálogo de programas.</p>
           ) : malla.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">Este técnico aún no tiene malla de homologación configurada.</p>
+            <p className="text-sm text-gray-400 text-center py-8">Este técnico aún no tiene malla de reconocimiento de aprendizajes configurada.</p>
           ) : (
             <>
               <div className="overflow-x-auto mb-6">

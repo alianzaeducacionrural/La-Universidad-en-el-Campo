@@ -142,7 +142,7 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
   }
 
   async function eliminarItem(id) {
-    if (!confirm('¿Eliminar esta materia de la malla de homologación?')) return;
+    if (!confirm('¿Eliminar esta materia de la malla de reconocimiento de aprendizajes?')) return;
     const { error } = await supabase.from('malla_homologacion').delete().eq('id', id);
     if (error) {
       notificacion.error(interpretarError(error), 'Error al eliminar');
@@ -222,7 +222,7 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
         <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-lg font-bold text-gray-800">🎓 Malla de Homologación</h3>
+              <h3 className="text-lg font-bold text-gray-800">🎓 Malla de Reconocimiento de Aprendizajes</h3>
               <p className="text-sm text-gray-500 mt-1 truncate">{programa.nombre}</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition flex-shrink-0">✕</button>
@@ -379,7 +379,7 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
           ) : items.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Este técnico aún no tiene materias de homologación configuradas</p>
+            <p className="text-sm text-gray-400 text-center py-6">Este técnico aún no tiene materias de reconocimiento de aprendizajes configuradas</p>
           ) : (
             <div className="space-y-2">
               {items.map(item => (
@@ -419,7 +419,7 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
                   autoFocus
                   onFocus={e => e.target.select()}
                 />
-                <p className="text-xs text-gray-400 mt-2">Se actualizará en el catálogo y en cualquier malla de homologación que ya use este nombre.</p>
+                <p className="text-xs text-gray-400 mt-2">Se actualizará en el catálogo y en cualquier malla de reconocimiento de aprendizajes que ya use este nombre.</p>
               </div>
               <div className="p-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex justify-end gap-2">
                 <button type="button" onClick={() => setMateriaEditando(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>

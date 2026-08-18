@@ -329,7 +329,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={(e) => { e.stopPropagation(); setModalEnlaces(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🔗 Enlaces de Instituciones</button>
             <button onClick={(e) => { e.stopPropagation(); setModalCronograma(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🗓️ Ver Cronograma</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalHomologacion(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🎓 Homologación</button>
+            <button onClick={(e) => { e.stopPropagation(); setModalHomologacion(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🎓 Reconocimiento de Aprendizajes</button>
           </div>
 
           <div>

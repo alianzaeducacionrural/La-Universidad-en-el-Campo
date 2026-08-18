@@ -149,7 +149,7 @@ export default function GrupoInfo({
           onClick={() => setModalHomologacion(true)}
           className="w-full lg:w-auto text-center bg-white hover:bg-gray-50 text-gray-700 px-2 py-2 lg:px-4 lg:py-2.5 rounded-lg text-xs lg:text-sm font-medium transition border-2 border-gray-300 shadow-sm"
         >
-          🎓 Homologación
+          🎓 Reconocimiento de Aprendizajes
         </button>
       </div>
 

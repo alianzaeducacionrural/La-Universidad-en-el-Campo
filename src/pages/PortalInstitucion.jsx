@@ -35,7 +35,18 @@ const FUNCIONES_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-
 const FUNCIONES_HOMOLOGACION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-homologacion`;
 const TAB_RESUMEN = '__resumen__';
 const TAB_REPORTES = '__reportes__';
-const TAB_HOMOLOGACION = '__homologacion__';
+
+async function llamarHomologacion(token, body) {
+  const res = await fetch(FUNCIONES_HOMOLOGACION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(import.meta.env.VITE_SUPABASE_ANON_KEY ? { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY } : {})
+    },
+    body: JSON.stringify({ token, ...body })
+  });
+  return res.json();
+}
 
 // Paleta rotativa para diferenciar cada grupo a simple vista — el mismo
 // grupo conserva siempre el mismo color mientras no cambie su posición en
@@ -110,6 +121,18 @@ export default function PortalInstitucion() {
   const [filtrosResumen, setFiltrosResumen] = useState(FILTROS_VACIOS);
   const buscadorRef = useRef(null);
 
+  // Reconocimiento de Aprendizajes (homologación colegio -> técnico): se
+  // carga una sola vez para toda la institución (no por pestaña) porque
+  // cada grupo solo necesita filtrar sobre los mismos datos por grupo_id —
+  // así se evita repetir la llamada a la Edge Function cada vez que se
+  // cambia de pestaña de grupo. Es la única sección de este portal que
+  // escribe datos, por eso usa `portal-homologacion` en vez de la función
+  // de solo-lectura `portal-institucion`.
+  const [homologacion, setHomologacion] = useState(null);
+  const [cargandoHomologacion, setCargandoHomologacion] = useState(true);
+  const [guardandoClaveHomologacion, setGuardandoClaveHomologacion] = useState(null);
+  const [subiendoCertificadoHomologacion, setSubiendoCertificadoHomologacion] = useState(false);
+
   useEffect(() => {
     async function cargar() {
       setCargando(true);
@@ -133,6 +156,57 @@ export default function PortalInstitucion() {
     }
     if (token) cargar();
   }, [token]);
+
+  useEffect(() => {
+    async function cargarHomologacion() {
+      setCargandoHomologacion(true);
+      const data = await llamarHomologacion(token, { accion: 'listar' });
+      setHomologacion(data);
+      setCargandoHomologacion(false);
+    }
+    if (token) cargarHomologacion();
+  }, [token]);
+
+  async function guardarNotaHomologacion(malla_item_id, estudiante_id, valorTexto) {
+    const nota = valorTexto === '' ? null : Number(valorTexto);
+    if (nota !== null && (Number.isNaN(nota) || nota < 0 || nota > 5)) return;
+    const clave = `${malla_item_id}::${estudiante_id}`;
+    setGuardandoClaveHomologacion(clave);
+    setHomologacion(prev => prev && ({
+      ...prev,
+      estudiantes: prev.estudiantes.map(e => e.id !== estudiante_id ? e : {
+        ...e,
+        notas: [...(e.notas || []).filter(n => n.malla_item_id !== malla_item_id), { malla_item_id, estudiante_id, nota }]
+      })
+    }));
+    await llamarHomologacion(token, { accion: 'guardar_nota', malla_item_id, estudiante_id, nota });
+    setGuardandoClaveHomologacion(null);
+  }
+
+  async function subirCertificadoHomologacion(file) {
+    if (file.type !== 'application/pdf') { alert('Solo se aceptan archivos PDF'); return; }
+    if (file.size > 8 * 1024 * 1024) { alert('El archivo supera el tamaño máximo de 8MB'); return; }
+    setSubiendoCertificadoHomologacion(true);
+    const contenido_base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const resp = await llamarHomologacion(token, { accion: 'subir_certificado', nombre_archivo: file.name, contenido_base64 });
+    if (resp?.certificado) {
+      setHomologacion(prev => prev && ({ ...prev, certificados: [resp.certificado, ...(prev.certificados || [])] }));
+    } else {
+      alert('No se pudo subir el certificado. Intenta de nuevo.');
+    }
+    setSubiendoCertificadoHomologacion(false);
+  }
+
+  async function eliminarCertificadoHomologacion(id) {
+    if (!confirm('¿Eliminar este certificado?')) return;
+    setHomologacion(prev => prev && ({ ...prev, certificados: (prev.certificados || []).filter(c => c.id !== id) }));
+    await llamarHomologacion(token, { accion: 'eliminar_certificado', certificado_id: id });
+  }
 
   const gruposOrdenados = useMemo(() => {
     return [...(datos?.grupos || [])].sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -405,16 +479,6 @@ export default function PortalInstitucion() {
             >
               📑 Reportes
             </button>
-            <button
-              onClick={() => setTabActiva(TAB_HOMOLOGACION)}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                tabActiva === TAB_HOMOLOGACION
-                  ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              🎓 Homologación
-            </button>
             {pestanasPorUniversidad.map(([universidad, gruposUni], idxUni) => (
               <div key={universidad} className="flex items-center gap-1.5 flex-shrink-0">
                 {variasUniversidadesEnPestanas && (
@@ -483,13 +547,18 @@ export default function PortalInstitucion() {
               prefijoArchivo={datos.institucion.nombre}
             />
           </div>
-        ) : tabActiva === TAB_HOMOLOGACION ? (
-          <VistaHomologacion token={token} />
         ) : (
           <VistaGrupo
             grupo={grupoActivoInfo}
             tema={temaActivo}
             estudiantes={estudiantesDeGrupoActivo}
+            homologacion={homologacion}
+            cargandoHomologacion={cargandoHomologacion}
+            guardandoClaveHomologacion={guardandoClaveHomologacion}
+            subiendoCertificadoHomologacion={subiendoCertificadoHomologacion}
+            onGuardarNotaHomologacion={guardarNotaHomologacion}
+            onSubirCertificadoHomologacion={subirCertificadoHomologacion}
+            onEliminarCertificadoHomologacion={eliminarCertificadoHomologacion}
             busqueda={busquedaGrupo}
             setBusqueda={setBusquedaGrupo}
             onVerPerfil={setEstudianteSeleccionado}
@@ -895,7 +964,11 @@ function GraficoMotivosDesercionPortal({ estudiantes }) {
 // =============================================
 // PESTAÑA: DETALLE DE UN GRUPO
 // =============================================
-function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerfil, onDescargar }) {
+function VistaGrupo({
+  grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerfil, onDescargar,
+  homologacion, cargandoHomologacion, guardandoClaveHomologacion, subiendoCertificadoHomologacion,
+  onGuardarNotaHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion
+}) {
   const [subTab, setSubTab] = useState('estudiantes');
 
   if (!grupo || !tema) return null;
@@ -928,6 +1001,7 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
     { id: 'notas', label: '🎓 Notas del Grupo' },
     { id: 'asistencia', label: '📅 Asistencia del Grupo' },
     { id: 'cronograma', label: '🗓️ Cronograma de Clases' },
+    { id: 'homologacion', label: '📘 Reconocimiento de Aprendizajes' },
   ];
 
   return (
@@ -955,8 +1029,8 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
         ))}
       </div>
 
-      {/* Buscador local + descarga (aplica a la sub-pestaña activa; el cronograma no tiene ninguna de las dos) */}
-      {subTab !== 'cronograma' && (
+      {/* Buscador local + descarga (aplica a la sub-pestaña activa; cronograma y reconocimiento de aprendizajes no tienen ninguna de las dos) */}
+      {subTab !== 'cronograma' && subTab !== 'homologacion' && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <input
             type="text"
@@ -981,6 +1055,17 @@ function VistaGrupo({ grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerf
         <TablaAsistenciaGrupo tema={tema} estudiantes={estudiantes} registros={registrosAsistencia} />
       ) : subTab === 'cronograma' ? (
         <TablaCronogramaGrupo tema={tema} cronograma={cronograma} registrosAsistencia={registrosAsistencia} />
+      ) : subTab === 'homologacion' ? (
+        <VistaHomologacionGrupo
+          grupo={grupo}
+          homologacion={homologacion}
+          cargando={cargandoHomologacion}
+          guardandoClave={guardandoClaveHomologacion}
+          subiendoCertificado={subiendoCertificadoHomologacion}
+          onGuardarNota={onGuardarNotaHomologacion}
+          onSubirCertificado={onSubirCertificadoHomologacion}
+          onEliminarCertificado={onEliminarCertificadoHomologacion}
+        />
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
           {estudiantes.length === 0 ? (
@@ -1658,172 +1743,97 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
 }
 
 // =============================================
-// VISTA: HOMOLOGACIÓN (RECONOCIMIENTO DE APRENDIZAJES)
+// VISTA: RECONOCIMIENTO DE APRENDIZAJES DE UN GRUPO
 // =============================================
-// Única sección de este portal donde la institución escribe datos. Por eso
-// no usa `portal-institucion` (solo-lectura) sino la función separada
-// `portal-homologacion`, que valida el mismo token con service_role.
-function VistaHomologacion({ token }) {
-  const [cargando, setCargando] = useState(true);
-  const [datos, setDatos] = useState(null);
-  const [guardandoClave, setGuardandoClave] = useState(null);
-  const [subiendoCertificado, setSubiendoCertificado] = useState(false);
-
-  useEffect(() => { cargar(); }, [token]);
-
-  async function llamar(body) {
-    const res = await fetch(FUNCIONES_HOMOLOGACION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(import.meta.env.VITE_SUPABASE_ANON_KEY ? { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY } : {})
-      },
-      body: JSON.stringify({ token, ...body })
-    });
-    return res.json();
-  }
-
-  async function cargar() {
-    setCargando(true);
-    const data = await llamar({ accion: 'listar' });
-    setDatos(data);
-    setCargando(false);
-  }
-
-  async function guardarNota(malla_item_id, estudiante_id, valorTexto) {
-    const nota = valorTexto === '' ? null : Number(valorTexto);
-    if (nota !== null && (Number.isNaN(nota) || nota < 0 || nota > 5)) return;
-    const clave = `${malla_item_id}::${estudiante_id}`;
-    setGuardandoClave(clave);
-    setDatos(prev => ({
-      ...prev,
-      estudiantes: prev.estudiantes.map(e => e.id !== estudiante_id ? e : {
-        ...e,
-        notas: [...(e.notas || []).filter(n => n.malla_item_id !== malla_item_id), { malla_item_id, estudiante_id, nota }]
-      })
-    }));
-    await llamar({ accion: 'guardar_nota', malla_item_id, estudiante_id, nota });
-    setGuardandoClave(null);
-  }
-
-  async function subirCertificado(file) {
-    if (file.type !== 'application/pdf') { alert('Solo se aceptan archivos PDF'); return; }
-    if (file.size > 8 * 1024 * 1024) { alert('El archivo supera el tamaño máximo de 8MB'); return; }
-    setSubiendoCertificado(true);
-    const contenido_base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    const resp = await llamar({ accion: 'subir_certificado', nombre_archivo: file.name, contenido_base64 });
-    if (resp?.certificado) {
-      setDatos(prev => ({ ...prev, certificados: [resp.certificado, ...(prev.certificados || [])] }));
-    } else {
-      alert('No se pudo subir el certificado. Intenta de nuevo.');
-    }
-    setSubiendoCertificado(false);
-  }
-
-  async function eliminarCertificado(id) {
-    if (!confirm('¿Eliminar este certificado?')) return;
-    setDatos(prev => ({ ...prev, certificados: (prev.certificados || []).filter(c => c.id !== id) }));
-    await llamar({ accion: 'eliminar_certificado', certificado_id: id });
-  }
-
+// Sub-pestaña dentro de un grupo — muestra únicamente el técnico y los
+// estudiantes de ESE grupo (no de toda la institución). Es la única sección
+// de este portal donde la institución escribe datos: guardar nota y subir/
+// eliminar certificado llegan como callbacks desde PortalInstitucion, que
+// mantiene el estado compartido y llama a la función separada
+// `portal-homologacion` (la de solo-lectura `portal-institucion` nunca
+// escribe).
+function VistaHomologacionGrupo({ grupo, homologacion, cargando, guardandoClave, subiendoCertificado, onGuardarNota, onSubirCertificado, onEliminarCertificado }) {
   if (cargando) {
     return <div className="text-center py-10"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   }
-  if (!datos) {
-    return <p className="text-center text-gray-500 py-10">No se pudo cargar la información de homologación.</p>;
+  if (!homologacion) {
+    return <p className="text-center text-gray-500 py-10">No se pudo cargar la información de reconocimiento de aprendizajes.</p>;
   }
 
-  const mallaPorPrograma = {};
-  for (const item of datos.mallaItems || []) {
-    if (!mallaPorPrograma[item.programa_id]) mallaPorPrograma[item.programa_id] = [];
-    mallaPorPrograma[item.programa_id].push(item);
-  }
+  const estudiantesGrupo = (homologacion.estudiantes || []).filter(e => e.grupo_id === grupo.id);
+  const programaId = estudiantesGrupo[0]?.programa_id;
+  const mallaGrupo = programaId ? (homologacion.mallaItems || []).filter(m => m.programa_id === programaId) : [];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-lg font-bold text-gray-800 mb-1">🎓 Homologación — Reconocimiento de Aprendizajes</h2>
-        <p className="text-gray-600 text-sm">Sube las notas de tus estudiantes en las materias que homologan créditos de cada técnico.</p>
-      </div>
+    <div className="space-y-6">
+      <p className="text-gray-600 text-sm">Sube las notas de los estudiantes de este grupo en las materias que homologan créditos de su técnico.</p>
 
-      {Object.keys(mallaPorPrograma).length === 0 ? (
+      {mallaGrupo.length === 0 || estudiantesGrupo.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-500">
-          Aún no hay técnicos con malla de homologación configurada para tus estudiantes.
+          {mallaGrupo.length === 0
+            ? 'Este técnico aún no tiene malla de reconocimiento de aprendizajes configurada.'
+            : 'Ninguno de los estudiantes de este grupo tiene un técnico reconocible para homologar.'}
         </div>
       ) : (
-        Object.entries(mallaPorPrograma).map(([programaId, items]) => {
-          const estudiantesPrograma = (datos.estudiantes || []).filter(e => e.programa_id === programaId);
-          if (estudiantesPrograma.length === 0) return null;
-          const nombrePrograma = estudiantesPrograma[0]?.programa;
-          return (
-            <div key={programaId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-800">📚 {nombrePrograma}</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left py-2 px-4">Estudiante</th>
-                      {items.map(item => (
-                        <th key={item.id} className="text-center py-2 px-3 whitespace-nowrap">
-                          <div className="text-xs font-medium">{item.materia}</div>
-                          <div className="text-[10px] text-gray-400">{item.grado}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {estudiantesPrograma.map(est => (
-                      <tr key={est.id}>
-                        <td className="py-2 px-4">{est.nombre_completo}</td>
-                        {items.map(item => {
-                          const notaActual = est.notas?.find(n => n.malla_item_id === item.id)?.nota;
-                          const clave = `${item.id}::${est.id}`;
-                          return (
-                            <td key={item.id} className="text-center py-2 px-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max="5"
-                                step="0.1"
-                                defaultValue={notaActual ?? ''}
-                                onBlur={e => guardarNota(item.id, est.id, e.target.value)}
-                                disabled={guardandoClave === clave}
-                                className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1 text-sm disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-2 px-4">Estudiante</th>
+                  {mallaGrupo.map(item => (
+                    <th key={item.id} className="text-center py-2 px-3 whitespace-nowrap">
+                      <div className="text-xs font-medium">{item.materia}</div>
+                      <div className="text-[10px] text-gray-400">{item.grado}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {estudiantesGrupo.map(est => (
+                  <tr key={est.id}>
+                    <td className="py-2 px-4">{est.nombre_completo}</td>
+                    {mallaGrupo.map(item => {
+                      const notaActual = est.notas?.find(n => n.malla_item_id === item.id)?.nota;
+                      const clave = `${item.id}::${est.id}`;
+                      return (
+                        <td key={item.id} className="text-center py-2 px-3">
+                          <input
+                            type="number"
+                            min="0"
+                            max="5"
+                            step="0.1"
+                            defaultValue={notaActual ?? ''}
+                            onBlur={e => onGuardarNota(item.id, est.id, e.target.value)}
+                            disabled={guardandoClave === clave}
+                            className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1 text-sm disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       <div>
         <h3 className="font-semibold text-gray-800 mb-3">📄 {NOMBRE_CERTIFICADO_HOMOLOGACION}</h3>
+        <p className="text-xs text-gray-400 mb-3">Estos certificados aplican a toda la institución, no solo a este grupo.</p>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="mb-4">
             <input
               type="file"
               accept="application/pdf"
-              id="certificado-homologacion-input"
+              id={`certificado-homologacion-input-${grupo.id}`}
               className="hidden"
               disabled={subiendoCertificado}
-              onChange={e => { const f = e.target.files[0]; if (f) subirCertificado(f); e.target.value = ''; }}
+              onChange={e => { const f = e.target.files[0]; if (f) onSubirCertificado(f); e.target.value = ''; }}
             />
             <label
-              htmlFor="certificado-homologacion-input"
+              htmlFor={`certificado-homologacion-input-${grupo.id}`}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border cursor-pointer transition ${
                 subiendoCertificado ? 'opacity-50 pointer-events-none' : 'bg-primary/5 border-primary/30 text-primary-dark hover:bg-primary/10'
               }`}
@@ -1831,15 +1841,15 @@ function VistaHomologacion({ token }) {
               {subiendoCertificado ? '⏳ Subiendo...' : '➕ Subir certificado (PDF, máx. 8MB)'}
             </label>
           </div>
-          {(datos.certificados || []).length === 0 ? (
+          {(homologacion.certificados || []).length === 0 ? (
             <p className="text-sm text-gray-400">Aún no has subido certificados.</p>
           ) : (
             <div className="space-y-2">
-              {datos.certificados.map(c => (
+              {homologacion.certificados.map(c => (
                 <div key={c.id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
                   <a href={c.url_archivo} target="_blank" rel="noreferrer" className="text-sm text-gray-700 hover:text-primary truncate flex-1">📎 {c.nombre_archivo}</a>
                   <span className="text-xs text-gray-400 whitespace-nowrap mx-3">{formatearFecha(c.created_at)}</span>
-                  <button onClick={() => eliminarCertificado(c.id)} className="text-gray-300 hover:text-red-500 transition p-1" title="Eliminar">🗑️</button>
+                  <button onClick={() => onEliminarCertificado(c.id)} className="text-gray-300 hover:text-red-500 transition p-1" title="Eliminar">🗑️</button>
                 </div>
               ))}
             </div>
