@@ -20,8 +20,8 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
     if (archivos.length === 0) return [];
     setSubiendo(true);
     const urls = [];
-    
-    for (const archivo of archivos) {
+
+    for (const { file: archivo } of archivos) {
       if (archivo.size > 5 * 1024 * 1024) {
         notificacion.warning(`El archivo ${archivo.name} supera los 5MB`);
         continue;
@@ -91,6 +91,7 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
       
       notificacion.success(`Seguimiento registrado para ${estudiante.nombre_completo}`);
       onClose();
+      archivos.forEach(a => URL.revokeObjectURL(a.preview));
       setArchivos([]);
     } else {
       const mensajeError = resultado?.error || 'Error desconocido al guardar';
@@ -102,12 +103,17 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
   }
 
   const handleFileChange = (e) => {
-    setArchivos(prev => [...prev, ...Array.from(e.target.files)]);
+    const nuevos = Array.from(e.target.files).map(file => ({ file, preview: URL.createObjectURL(file) }));
+    setArchivos(prev => [...prev, ...nuevos]);
     e.target.value = '';
   };
 
   const removerArchivo = (index) => {
-    setArchivos(prev => prev.filter((_, i) => i !== index));
+    setArchivos(prev => {
+      const item = prev[index];
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   if (!isOpen || !estudiante) return null;
@@ -187,11 +193,11 @@ export default function ModalSeguimiento({ isOpen, onClose, onGuardar, estudiant
                 </label>
               </div>
               {archivos.length > 0 && (
-                <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-                  {archivos.map((archivo, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
-                      <span className="text-sm truncate">{archivo.name}</span>
-                      <button type="button" onClick={() => removerArchivo(index)} className="text-red-500">✕</button>
+                <div className="mt-3 flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                  {archivos.map((item, index) => (
+                    <div key={index} className="relative">
+                      <img src={item.preview} alt={item.file.name} className="w-16 h-16 object-cover rounded-lg border" />
+                      <button type="button" onClick={() => removerArchivo(index)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">✕</button>
                     </div>
                   ))}
                 </div>

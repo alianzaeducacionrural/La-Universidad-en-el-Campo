@@ -23,7 +23,7 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
     if (nuevosArchivos.length === 0) return [];
     setSubiendo(true);
     const urls = [];
-    for (const archivo of nuevosArchivos) {
+    for (const { file: archivo } of nuevosArchivos) {
       if (archivo.size > 5 * 1024 * 1024) { notificacion.warning(`El archivo ${archivo.name} supera los 5MB`); continue; }
       if (!archivo.type.startsWith('image/')) { notificacion.warning(`El archivo ${archivo.name} no es una imagen`); continue; }
       const nombreSeguro = archivo.name
@@ -83,8 +83,16 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
     else { notificacion.error(resultado.error, 'Error al actualizar'); }
   }
 
-  const handleFileChange = (e) => { setNuevosArchivos(prev => [...prev, ...Array.from(e.target.files)]); e.target.value = ''; };
-  const removerNuevoArchivo = (index) => setNuevosArchivos(prev => prev.filter((_, i) => i !== index));
+  const handleFileChange = (e) => {
+    const nuevos = Array.from(e.target.files).map(file => ({ file, preview: URL.createObjectURL(file) }));
+    setNuevosArchivos(prev => [...prev, ...nuevos]);
+    e.target.value = '';
+  };
+  const removerNuevoArchivo = (index) => setNuevosArchivos(prev => {
+    const item = prev[index];
+    if (item) URL.revokeObjectURL(item.preview);
+    return prev.filter((_, i) => i !== index);
+  });
   const marcarParaEliminar = (url) => { setEvidenciasEliminadas(prev => [...prev, url]); setEvidenciasExistentes(prev => prev.filter(u => u !== url)); };
   const restaurarEvidencia = (url) => { setEvidenciasEliminadas(prev => prev.filter(u => u !== url)); setEvidenciasExistentes(prev => [...prev, url]); };
 
@@ -128,7 +136,19 @@ export default function ModalEditarSeguimiento({ isOpen, onClose, onGuardar, seg
               {evidenciasExistentes.length > 0 && <div className="mb-4"><p className="text-xs text-gray-600 mb-2">📌 Evidencias actuales:</p><div className="flex flex-wrap gap-2">{evidenciasExistentes.map((url, idx) => <div key={idx} className="relative"><img src={url} alt={`Evidencia ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border" /><button type="button" onClick={() => marcarParaEliminar(url)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">✕</button></div>)}</div></div>}
               {evidenciasEliminadas.length > 0 && <div className="mb-4"><p className="text-xs text-gray-400 mb-2">🗑️ Marcadas para eliminar:</p><div className="flex flex-wrap gap-2 opacity-50">{evidenciasEliminadas.map((url, idx) => <div key={idx} className="relative"><img src={url} alt={`Eliminada ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border grayscale" /><button type="button" onClick={() => restaurarEvidencia(url)} className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-5 h-5 text-xs">↻</button></div>)}</div></div>}
               <div className="mt-3"><p className="text-xs text-gray-600 mb-2">➕ Agregar nuevas evidencias:</p><div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center"><input type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" id="nuevas-evidencias" /><label htmlFor="nuevas-evidencias" className="cursor-pointer"><div className="text-2xl mb-1">📷</div><p className="text-xs text-gray-600">Haz clic para agregar</p></label></div>
-                {nuevosArchivos.length > 0 && <div className="mt-3 space-y-2">{nuevosArchivos.map((archivo, i) => <div key={i} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg"><span className="text-xs truncate">{archivo.name}</span><button type="button" onClick={() => removerNuevoArchivo(i)} className="text-red-500">✕</button></div>)}</div>}
+                {nuevosArchivos.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-600 mb-2">🆕 Nuevas (se subirán al guardar):</p>
+                    <div className="flex flex-wrap gap-2">
+                      {nuevosArchivos.map((item, i) => (
+                        <div key={i} className="relative">
+                          <img src={item.preview} alt={item.file.name} className="w-16 h-16 object-cover rounded-lg border" />
+                          <button type="button" onClick={() => removerNuevoArchivo(i)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
