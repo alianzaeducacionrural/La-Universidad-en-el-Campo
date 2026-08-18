@@ -2,7 +2,7 @@
 // MODAL: MALLA DE HOMOLOGACIÓN DE UN TÉCNICO
 // =============================================
 // Configura, por técnico (programa), qué materias del colegio (con su
-// grado, 4° a 11°) se homologan con créditos de ese técnico. Esta malla es
+// grado, 1° a 11°) se homologan con créditos de ese técnico. Esta malla es
 // la que luego usan las instituciones educativas para saber qué notas
 // deben subir desde su portal.
 //
