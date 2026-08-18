@@ -8,6 +8,16 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
 import ModalMallaHomologacion from './ModalMallaHomologacion';
 
+// Estilo del chip del botón "Homologación" según el estado de la malla de
+// ese técnico: vacia (aún no se agregó ninguna materia), en_progreso (ya
+// tiene materias pero el admin no ha confirmado que estén completas) y
+// completa (el admin confirmó que ya se subieron todas las materias).
+const ESTILOS_HOMOLOGACION = {
+  vacia: { chip: 'bg-red-50 text-red-700 border-red-300 hover:bg-red-100', dot: 'bg-red-500' },
+  en_progreso: { chip: 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100', dot: 'bg-amber-500' },
+  completa: { chip: 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100', dot: 'bg-green-500' }
+};
+
 export default function UniversidadCRUDCard({ universidad, onEliminar, onRecargar }) {
   const notificacion = useNotificacion();
   const { perfil: usuario } = useAuth();
@@ -20,6 +30,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
   const [modalPrograma, setModalPrograma] = useState(false);
   const [nuevoProgramaNombre, setNuevoProgramaNombre] = useState('');
   const [programaHomologacion, setProgramaHomologacion] = useState(null);
+  const [estadoHomologacion, setEstadoHomologacion] = useState({});
 
   // 🔥 Cargar total de programas al montar
   useEffect(() => {
@@ -51,9 +62,43 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
     if (data) {
       setProgramas(data);
       setTotalProgramas(data.length); // Actualizar total
+      cargarEstadoHomologacion(data);
     }
     setDatosCargados(true);
     setCargando(false);
+  }
+
+  // Calcula, por programa, el estado de su malla de homologación: vacía (sin
+  // ninguna materia agregada), en_progreso (tiene materias pero nadie ha
+  // confirmado que la malla esté completa) o completa (el admin la marcó
+  // como tal desde el modal). 2 consultas batched, no una por programa.
+  async function cargarEstadoHomologacion(listaProgramas) {
+    const idsProgramas = listaProgramas.map(p => p.id);
+    if (idsProgramas.length === 0) { setEstadoHomologacion({}); return; }
+
+    const { data: mallaData } = await supabase.from('malla_homologacion').select('id, programa_id').in('programa_id', idsProgramas);
+    const mallaCountPorPrograma = {};
+    for (const m of mallaData || []) mallaCountPorPrograma[m.programa_id] = (mallaCountPorPrograma[m.programa_id] || 0) + 1;
+
+    const { data: estadoData } = await supabase.from('malla_homologacion_estado').select('programa_id, completa').in('programa_id', idsProgramas);
+    const completaPorPrograma = {};
+    for (const e of estadoData || []) completaPorPrograma[e.programa_id] = e.completa;
+
+    const nuevoEstado = {};
+    for (const p of listaProgramas) {
+      const mallaCount = mallaCountPorPrograma[p.id] || 0;
+      let nivel = 'vacia';
+      if (mallaCount > 0) nivel = completaPorPrograma[p.id] ? 'completa' : 'en_progreso';
+      nuevoEstado[p.id] = { nivel, mallaCount };
+    }
+    setEstadoHomologacion(nuevoEstado);
+  }
+
+  function tituloHomologacion(programa) {
+    const info = estadoHomologacion[programa.id];
+    if (!info || info.nivel === 'vacia') return 'Aún no se ha agregado ninguna materia a la malla de este técnico';
+    if (info.nivel === 'completa') return 'Malla de homologación completa';
+    return `Malla en progreso: ${info.mallaCount} materia${info.mallaCount !== 1 ? 's' : ''} agregada${info.mallaCount !== 1 ? 's' : ''}, sin confirmar`;
   }
 
   function toggleExpandir() {
@@ -138,6 +183,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
     if (nuevosProgramas) {
       setProgramas(nuevosProgramas);
       setTotalProgramas(nuevosProgramas.length);
+      cargarEstadoHomologacion(nuevosProgramas);
     }
     onRecargar();
   }
@@ -198,9 +244,12 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={() => setProgramaHomologacion(programa)}
-                          className="flex items-center gap-1.5 text-primary hover:text-primary-dark hover:bg-primary/10 px-2.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap"
-                          title="Malla de homologación"
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap border ${
+                            ESTILOS_HOMOLOGACION[estadoHomologacion[programa.id]?.nivel || 'vacia'].chip
+                          }`}
+                          title={tituloHomologacion(programa)}
                         >
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ESTILOS_HOMOLOGACION[estadoHomologacion[programa.id]?.nivel || 'vacia'].dot}`}></span>
                           🎓 Homologación
                         </button>
                         <span className="w-px h-5 bg-gray-200 mx-0.5"></span>
@@ -244,7 +293,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
 
       <ModalMallaHomologacion
         isOpen={!!programaHomologacion}
-        onClose={() => setProgramaHomologacion(null)}
+        onClose={() => { setProgramaHomologacion(null); cargarEstadoHomologacion(programas); }}
         programa={programaHomologacion}
         soloLectura={!esAdmin}
       />
