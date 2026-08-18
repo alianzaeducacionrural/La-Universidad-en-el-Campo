@@ -33,8 +33,15 @@ ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Le
 
 const FUNCIONES_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-institucion`;
 const FUNCIONES_HOMOLOGACION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-homologacion`;
-const TAB_RESUMEN = '__resumen__';
-const TAB_REPORTES = '__reportes__';
+const SECCION_RESUMEN = '__resumen__';
+const SECCION_REPORTES = '__reportes__';
+const SECCION_GRUPOS = '__grupos__';
+
+const SECCIONES_PORTAL = [
+  { id: SECCION_RESUMEN, label: 'Resumen', icon: '📊' },
+  { id: SECCION_GRUPOS, label: 'Grupos', icon: '📚' },
+  { id: SECCION_REPORTES, label: 'Reportes', icon: '📑' },
+];
 
 async function llamarHomologacion(token, body) {
   const res = await fetch(FUNCIONES_HOMOLOGACION_URL, {
@@ -62,29 +69,6 @@ const TEMAS_GRUPO = [
   { nombre: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-400', dot: 'bg-cyan-400', activo: 'bg-cyan-400 text-white border-cyan-400 shadow-md shadow-cyan-200', gradiente: 'from-cyan-200 to-cyan-300', anillo: 'focus-visible:ring-cyan-400' },
 ];
 
-function TarjetaGrupo({ g, tema, stats, onIrAGrupo }) {
-  const pctActivos = stats.total > 0 ? Math.round(((stats.activos + stats.enRiesgo) / stats.total) * 100) : 0;
-  return (
-    <button
-      onClick={() => onIrAGrupo(g.id)}
-      className={`text-left rounded-xl border ${tema.border} ${tema.bg} p-4 transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 ${tema.anillo}`}
-    >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${tema.dot} flex-shrink-0`}></span>
-        <span className="text-xs font-medium text-gray-500 ml-auto">{stats.total} estudiante{stats.total !== 1 ? 's' : ''}</span>
-      </div>
-      <p className={`font-bold ${tema.text} leading-snug mb-3`}>{etiquetaGrupo(g)}</p>
-      <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1.5">
-        <div className={`h-full ${tema.solido}`} style={{ width: `${pctActivos}%` }}></div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>{pctActivos}% activos</span>
-        {stats.desertores > 0 && <span className="text-red-500">{stats.desertores} desertor{stats.desertores !== 1 ? 'es' : ''}</span>}
-      </div>
-    </button>
-  );
-}
-
 function iniciales(nombre) {
   const partes = (nombre || '').trim().split(/\s+/);
   return ((partes[0]?.[0] || '') + (partes[1]?.[0] || '')).toUpperCase();
@@ -109,6 +93,74 @@ function etiquetaGrupo(g) {
   return `${universidad} - ${programa} - Cohorte ${g.cohorte}`;
 }
 
+// Barra de navegación del portal — mismo patrón de barra lateral fija (escritorio)
+// / barra horizontal (móvil) que usa el coordinador de universidad en su panel,
+// para que la gestión de grupos se sienta consistente entre ambas vistas.
+function SidebarPortalInstitucion({ seccionActiva, setSeccionActiva, institucion }) {
+  return (
+    <>
+      <div className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 bg-white border-r border-gray-200 min-h-screen sticky top-0">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+              <span className="text-white text-xl font-bold">☕</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-gray-800 text-sm truncate">{institucion.nombre}</p>
+              <p className="text-xs text-gray-500 truncate">{institucion.municipio}</p>
+            </div>
+          </div>
+        </div>
+        <nav className="flex-1 p-2 space-y-1">
+          {SECCIONES_PORTAL.map(s => {
+            const activa = seccionActiva === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSeccionActiva(s.id)}
+                className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 flex items-center space-x-3 ${
+                  activa
+                    ? 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary border-l-4 border-primary shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                }`}
+              >
+                <span className="text-xl flex-shrink-0">{s.icon}</span>
+                <span className="font-medium text-sm">{s.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="p-4 border-t border-gray-200">
+          <p className="text-[11px] text-gray-400 text-center">La Universidad en el Campo</p>
+        </div>
+      </div>
+
+      {/* Móvil / tablet: barra horizontal, sin sticky para no competir con el buscador global que ya es sticky */}
+      <div className="lg:hidden bg-white border-b border-gray-200">
+        <nav className="flex gap-1.5 overflow-x-auto scrollbar-hide px-3 py-2">
+          {SECCIONES_PORTAL.map(s => {
+            const activa = seccionActiva === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSeccionActiva(s.id)}
+                className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition ${
+                  activa
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <span>{s.icon}</span>
+                {s.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </>
+  );
+}
+
 export default function PortalInstitucion() {
   const { token } = useParams();
   const [cargando, setCargando] = useState(true);
@@ -116,7 +168,8 @@ export default function PortalInstitucion() {
   const [datos, setDatos] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [busquedaGrupo, setBusquedaGrupo] = useState('');
-  const [tabActiva, setTabActiva] = useState(TAB_RESUMEN);
+  const [seccionActiva, setSeccionActiva] = useState(SECCION_RESUMEN);
+  const [grupoActivoId, setGrupoActivoId] = useState(null);
   const [estudianteSeleccionado, setEstudianteSeleccionado] = useState(null);
   const [filtrosResumen, setFiltrosResumen] = useState(FILTROS_VACIOS);
   const buscadorRef = useRef(null);
@@ -130,7 +183,6 @@ export default function PortalInstitucion() {
   // de solo-lectura `portal-institucion`.
   const [homologacion, setHomologacion] = useState(null);
   const [cargandoHomologacion, setCargandoHomologacion] = useState(true);
-  const [guardandoClaveHomologacion, setGuardandoClaveHomologacion] = useState(null);
   const [subiendoCertificadoHomologacion, setSubiendoCertificadoHomologacion] = useState(false);
 
   useEffect(() => {
@@ -170,8 +222,6 @@ export default function PortalInstitucion() {
   async function guardarNotaHomologacion(malla_item_id, estudiante_id, valorTexto) {
     const nota = valorTexto === '' ? null : Number(valorTexto);
     if (nota !== null && (Number.isNaN(nota) || nota < 0 || nota > 5)) return;
-    const clave = `${malla_item_id}::${estudiante_id}`;
-    setGuardandoClaveHomologacion(clave);
     setHomologacion(prev => prev && ({
       ...prev,
       estudiantes: prev.estudiantes.map(e => e.id !== estudiante_id ? e : {
@@ -180,7 +230,6 @@ export default function PortalInstitucion() {
       })
     }));
     await llamarHomologacion(token, { accion: 'guardar_nota', malla_item_id, estudiante_id, nota });
-    setGuardandoClaveHomologacion(null);
   }
 
   async function subirCertificadoHomologacion(file) {
@@ -217,19 +266,6 @@ export default function PortalInstitucion() {
     gruposOrdenados.forEach((g, idx) => { mapa[g.id] = TEMAS_GRUPO[idx % TEMAS_GRUPO.length]; });
     return mapa;
   }, [gruposOrdenados]);
-
-  // Solo para el orden visual de las pestañas: agrupa por universidad sin
-  // tocar `gruposOrdenados` (que sigue rigiendo colores y el resto de vistas).
-  const pestanasPorUniversidad = useMemo(() => {
-    const mapa = new Map();
-    gruposOrdenados.forEach(g => {
-      const clave = g.universidad || '';
-      if (!mapa.has(clave)) mapa.set(clave, []);
-      mapa.get(clave).push(g);
-    });
-    return Array.from(mapa.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [gruposOrdenados]);
-  const variasUniversidadesEnPestanas = pestanasPorUniversidad.length > 1;
 
   // Filtros del resumen: municipio/universidad/programa/cohorte/grupo/estado
   // operando en memoria sobre lo que ya trajo la Edge Function — el portal
@@ -353,17 +389,17 @@ export default function PortalInstitucion() {
   }, [datos, busqueda]);
 
   const estudiantesDeGrupoActivo = useMemo(() => {
-    if (tabActiva === TAB_RESUMEN) return [];
-    let lista = (datos?.estudiantes || []).filter(e => e.grupo_id === tabActiva);
+    if (!grupoActivoId) return [];
+    let lista = (datos?.estudiantes || []).filter(e => e.grupo_id === grupoActivoId);
     if (busquedaGrupo.trim()) {
       const q = busquedaGrupo.toLowerCase();
       lista = lista.filter(e => e.nombre_completo.toLowerCase().includes(q) || e.documento?.includes(q));
     }
     return lista;
-  }, [datos, tabActiva, busquedaGrupo]);
+  }, [datos, grupoActivoId, busquedaGrupo]);
 
-  const grupoActivoInfo = gruposOrdenados.find(g => g.id === tabActiva);
-  const temaActivo = temaPorGrupo[tabActiva];
+  const grupoActivoInfo = gruposOrdenados.find(g => g.id === grupoActivoId);
+  const temaActivo = temaPorGrupo[grupoActivoId];
 
   function descargarExcel(lista, nombreArchivo) {
     exportarEstudiantesExcel(lista, nombreArchivo);
@@ -371,7 +407,10 @@ export default function PortalInstitucion() {
 
   function irAEstudiante(est) {
     setBusqueda('');
-    if (est.grupo_id) setTabActiva(est.grupo_id);
+    if (est.grupo_id) {
+      setSeccionActiva(SECCION_GRUPOS);
+      setGrupoActivoId(est.grupo_id);
+    }
     setEstudianteSeleccionado(est);
   }
 
@@ -401,174 +440,110 @@ export default function PortalInstitucion() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ENCABEZADO */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-              <span className="text-white text-xl font-bold">☕</span>
+    <div className="min-h-screen bg-gray-50 lg:flex">
+      <SidebarPortalInstitucion
+        seccionActiva={seccionActiva}
+        setSeccionActiva={setSeccionActiva}
+        institucion={datos.institucion}
+      />
+
+      <div className="flex-1 min-w-0">
+        {/* BUSCADOR GLOBAL, siempre visible sin importar la sección activa */}
+        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 shadow-sm">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 py-3">
+            <div className="relative max-w-md">
+              <input
+                ref={buscadorRef}
+                type="text"
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="🔍 Buscar estudiante en toda la institución..."
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus:border-primary transition"
+              />
+              {resultadosBusqueda.length > 0 && (
+                <div className="absolute mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 animate-fade-in">
+                  {resultadosBusqueda.map(est => {
+                    const tema = temaPorGrupo[est.grupo_id];
+                    const grupoRef = gruposOrdenados.find(g => g.id === est.grupo_id);
+                    const grupoNombre = grupoRef ? etiquetaGrupo(grupoRef) : undefined;
+                    return (
+                      <button
+                        key={est.id}
+                        onClick={() => irAEstudiante(est)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition flex items-center justify-between gap-2 border-b border-gray-100 last:border-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{est.nombre_completo}</p>
+                          <p className="text-xs text-gray-500 truncate">{grupoNombre || 'Sin grupo'}</p>
+                        </div>
+                        {tema && <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${tema.dot}`}></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          </div>
+        </div>
+
+        <div key={seccionActiva === SECCION_GRUPOS ? `grupos-${grupoActivoId || ''}` : seccionActiva} className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-fade-in">
+          {seccionActiva === SECCION_RESUMEN ? (
+            <>
+              <FiltrosReportes
+                filtros={filtrosResumen}
+                onCambio={setFiltrosResumen}
+                opciones={opcionesResumen}
+                filas={datos.estudiantes}
+                getters={gettersInstitucion}
+                mostrarFecha={false}
+                mostrarEstado
+              />
+              <VistaResumen
+                kpis={kpis}
+                estudiantes={estudiantesFiltradosResumen}
+                gruposOrdenados={gruposOrdenados}
+                estadisticasPorGrupo={estadisticasPorGrupo}
+                onDescargarTodo={() => descargarExcel(estudiantesFiltradosResumen, datos.institucion.nombre)}
+              />
+            </>
+          ) : seccionActiva === SECCION_REPORTES ? (
             <div>
-              <h1 className="text-lg md:text-xl font-bold text-gray-800">{datos.institucion.nombre}</h1>
-              <p className="text-sm text-gray-500">{datos.institucion.municipio} · La Universidad en el Campo</p>
+              <h2 className="text-lg font-bold text-gray-800 mb-1">📑 Reportes Descargables</h2>
+              <p className="text-gray-600 mb-6 text-sm">Descarga en Excel la información de {datos.institucion.nombre}</p>
+              <ReportesPanel
+                rawEstudiantes={datos.estudiantes}
+                rawDeserciones={rawDesercionesInstitucion}
+                rawInasistencias={rawInasistenciasInstitucion}
+                rawSeguimientos={rawSeguimientosInstitucion}
+                grupos={gruposEtiquetados}
+                prefijoArchivo={datos.institucion.nombre}
+              />
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* BUSCADOR GLOBAL, siempre visible sin importar la pestaña activa */}
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3">
-          <div className="relative max-w-md">
-            <input
-              ref={buscadorRef}
-              type="text"
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              placeholder="🔍 Buscar estudiante en toda la institución..."
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus:border-primary transition"
-            />
-            {resultadosBusqueda.length > 0 && (
-              <div className="absolute mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 animate-fade-in">
-                {resultadosBusqueda.map(est => {
-                  const tema = temaPorGrupo[est.grupo_id];
-                  const grupoRef = gruposOrdenados.find(g => g.id === est.grupo_id);
-                  const grupoNombre = grupoRef ? etiquetaGrupo(grupoRef) : undefined;
-                  return (
-                    <button
-                      key={est.id}
-                      onClick={() => irAEstudiante(est)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition flex items-center justify-between gap-2 border-b border-gray-100 last:border-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{est.nombre_completo}</p>
-                        <p className="text-xs text-gray-500 truncate">{grupoNombre || 'Sin grupo'}</p>
-                      </div>
-                      {tema && <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${tema.dot}`}></span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* PESTAÑAS: Resumen + una por grupo, coloreadas para identificarlas al instante */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="flex gap-1.5 overflow-x-auto py-2.5 scrollbar-thin">
-            <button
-              onClick={() => setTabActiva(TAB_RESUMEN)}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                tabActiva === TAB_RESUMEN
-                  ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              📊 Resumen
-            </button>
-            <button
-              onClick={() => setTabActiva(TAB_REPORTES)}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                tabActiva === TAB_REPORTES
-                  ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              📑 Reportes
-            </button>
-            {pestanasPorUniversidad.map(([universidad, gruposUni], idxUni) => (
-              <div key={universidad} className="flex items-center gap-1.5 flex-shrink-0">
-                {variasUniversidadesEnPestanas && (
-                  <span className={`flex items-center gap-1.5 flex-shrink-0 ${idxUni > 0 ? 'pl-1.5 ml-0.5 border-l border-gray-200' : ''}`}>
-                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">
-                      {ABREVIATURAS_UNIVERSIDAD[universidad] || universidad || 'Sin universidad'}
-                    </span>
-                  </span>
-                )}
-                {gruposUni.map(g => {
-                  const tema = temaPorGrupo[g.id];
-                  const activa = tabActiva === g.id;
-                  return (
-                    <button
-                      key={g.id}
-                      onClick={() => setTabActiva(g.id)}
-                      className={`flex-shrink-0 flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border transition focus:outline-none focus-visible:ring-2 ${tema.anillo} ${
-                        activa ? tema.activo : `${tema.bg} ${tema.border} ${tema.text} hover:brightness-95`
-                      }`}
-                      title={`${g.universidad} · ${g.programa} · Cohorte ${g.cohorte}`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${activa ? 'bg-white' : tema.dot}`}></span>
-                      {etiquetaGrupo(g)}
-                      <span className={activa ? 'text-white/80' : 'text-gray-400'}>· {g.total_estudiantes_institucion}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div key={tabActiva} className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6 animate-fade-in">
-        {tabActiva === TAB_RESUMEN ? (
-          <>
-            <FiltrosReportes
-              filtros={filtrosResumen}
-              onCambio={setFiltrosResumen}
-              opciones={opcionesResumen}
-              filas={datos.estudiantes}
-              getters={gettersInstitucion}
-              mostrarFecha={false}
-              mostrarEstado
-            />
-            <VistaResumen
-              kpis={kpis}
-              estudiantes={estudiantesFiltradosResumen}
+          ) : (
+            <SeccionGrupos
               gruposOrdenados={gruposOrdenados}
-              temaPorGrupo={temaPorGrupo}
-              estadisticasPorGrupo={estadisticasPorGrupo}
-              onIrAGrupo={setTabActiva}
-              onDescargarTodo={() => descargarExcel(estudiantesFiltradosResumen, datos.institucion.nombre)}
+              grupoActivoId={grupoActivoId}
+              setGrupoActivoId={setGrupoActivoId}
+              grupoActivoInfo={grupoActivoInfo}
+              temaActivo={temaActivo}
+              estudiantesDeGrupoActivo={estudiantesDeGrupoActivo}
+              homologacion={homologacion}
+              cargandoHomologacion={cargandoHomologacion}
+              subiendoCertificadoHomologacion={subiendoCertificadoHomologacion}
+              onGuardarNotaHomologacion={guardarNotaHomologacion}
+              onSubirCertificadoHomologacion={subirCertificadoHomologacion}
+              onEliminarCertificadoHomologacion={eliminarCertificadoHomologacion}
+              busqueda={busquedaGrupo}
+              setBusqueda={setBusquedaGrupo}
+              onVerPerfil={setEstudianteSeleccionado}
+              onDescargar={() => descargarExcel(estudiantesDeGrupoActivo, `${datos.institucion.nombre}_${grupoActivoInfo?.nombre}`)}
             />
-          </>
-        ) : tabActiva === TAB_REPORTES ? (
-          <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-1">📑 Reportes Descargables</h2>
-            <p className="text-gray-600 mb-6 text-sm">Descarga en Excel la información de {datos.institucion.nombre}</p>
-            <ReportesPanel
-              rawEstudiantes={datos.estudiantes}
-              rawDeserciones={rawDesercionesInstitucion}
-              rawInasistencias={rawInasistenciasInstitucion}
-              rawSeguimientos={rawSeguimientosInstitucion}
-              grupos={gruposEtiquetados}
-              prefijoArchivo={datos.institucion.nombre}
-            />
-          </div>
-        ) : (
-          <VistaGrupo
-            grupo={grupoActivoInfo}
-            tema={temaActivo}
-            estudiantes={estudiantesDeGrupoActivo}
-            homologacion={homologacion}
-            cargandoHomologacion={cargandoHomologacion}
-            guardandoClaveHomologacion={guardandoClaveHomologacion}
-            subiendoCertificadoHomologacion={subiendoCertificadoHomologacion}
-            onGuardarNotaHomologacion={guardarNotaHomologacion}
-            onSubirCertificadoHomologacion={subirCertificadoHomologacion}
-            onEliminarCertificadoHomologacion={eliminarCertificadoHomologacion}
-            busqueda={busquedaGrupo}
-            setBusqueda={setBusquedaGrupo}
-            onVerPerfil={setEstudianteSeleccionado}
-            onDescargar={() => descargarExcel(estudiantesDeGrupoActivo, `${datos.institucion.nombre}_${grupoActivoInfo?.nombre}`)}
-          />
-        )}
+          )}
 
-        <p className="text-xs text-gray-400 text-center">
-          Portal de solo lectura · Comité de Cafeteros de Caldas
-        </p>
+          <p className="text-xs text-gray-400 text-center">
+            Comité de Cafeteros de Caldas
+          </p>
+        </div>
       </div>
 
       <PerfilEstudiantePortal
@@ -583,20 +558,7 @@ export default function PortalInstitucion() {
 // =============================================
 // PESTAÑA: RESUMEN GENERAL
 // =============================================
-function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadisticasPorGrupo, onIrAGrupo, onDescargarTodo }) {
-  // Una institución puede tener estudiantes en varias universidades a la vez;
-  // cuando es así, agrupar por universidad orienta mucho más que una grilla plana.
-  const gruposPorUniversidad = useMemo(() => {
-    const mapa = new Map();
-    gruposOrdenados.forEach(g => {
-      const clave = g.universidad || 'Sin universidad';
-      if (!mapa.has(clave)) mapa.set(clave, []);
-      mapa.get(clave).push(g);
-    });
-    return Array.from(mapa.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [gruposOrdenados]);
-  const variasUniversidades = gruposPorUniversidad.length > 1;
-
+function VistaResumen({ kpis, estudiantes, gruposOrdenados, estadisticasPorGrupo, onDescargarTodo }) {
   const segmentos = [
     { valor: kpis.activos, color: 'bg-green-500', label: 'Activos' },
     { valor: kpis.enRiesgo, color: 'bg-amber-400', label: 'En Riesgo' },
@@ -606,6 +568,16 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-gray-700">📊 Resumen general</h2>
+        <button
+          onClick={onDescargarTodo}
+          className="bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow-sm"
+        >
+          📥 Descargar todo (Excel)
+        </button>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl p-4 text-center border border-gray-200 shadow-sm hover:shadow-md transition">
@@ -646,56 +618,6 @@ function VistaResumen({ kpis, estudiantes, gruposOrdenados, temaPorGrupo, estadi
               </span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Tarjetas de grupo, coloreadas para identificarlas de un vistazo */}
-      {gruposOrdenados.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-700">📚 Grupos de esta institución</h2>
-            <button
-              onClick={onDescargarTodo}
-              className="bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow-sm"
-            >
-              📥 Descargar todo (Excel)
-            </button>
-          </div>
-          {variasUniversidades ? (
-            <div className="space-y-5">
-              {gruposPorUniversidad.map(([universidad, gruposUni]) => (
-                <div key={universidad}>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                    🎓 {ABREVIATURAS_UNIVERSIDAD[universidad] || universidad}
-                    <span className="text-gray-400 font-normal normal-case">· {gruposUni.length} grupo{gruposUni.length !== 1 ? 's' : ''}</span>
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {gruposUni.map(g => (
-                      <TarjetaGrupo
-                        key={g.id}
-                        g={g}
-                        tema={temaPorGrupo[g.id]}
-                        stats={estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 }}
-                        onIrAGrupo={onIrAGrupo}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {gruposOrdenados.map(g => (
-                <TarjetaGrupo
-                  key={g.id}
-                  g={g}
-                  tema={temaPorGrupo[g.id]}
-                  stats={estadisticasPorGrupo[g.id] || { total: 0, activos: 0, enRiesgo: 0, desertores: 0 }}
-                  onIrAGrupo={onIrAGrupo}
-                />
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -962,11 +884,119 @@ function GraficoMotivosDesercionPortal({ estudiantes }) {
 }
 
 // =============================================
+// SECCIÓN: GRUPOS (selector de grupo + detalle del grupo elegido)
+// =============================================
+// Mismo espíritu que el panel de coordinador de universidad: primero se elige
+// el grupo en una lista (con filtro de cohorte), luego se muestra su detalle
+// debajo — mismo estilo de selector que ya usa DashboardUniversidad. Los
+// nombres mostrados siguen siendo los que ya entiende una institución
+// (etiquetaGrupo: universidad + programa + cohorte), nunca el nombre interno
+// del grupo — eso no cambia aunque el contenedor visual sea el mismo.
+function SeccionGrupos({
+  gruposOrdenados,
+  grupoActivoId, setGrupoActivoId, grupoActivoInfo, temaActivo, estudiantesDeGrupoActivo,
+  homologacion, cargandoHomologacion, subiendoCertificadoHomologacion,
+  onGuardarNotaHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion,
+  busqueda, setBusqueda, onVerPerfil, onDescargar
+}) {
+  const [cohorteFiltro, setCohorteFiltro] = useState(null);
+
+  const cohortesDisponibles = useMemo(() => {
+    const set = new Set(gruposOrdenados.map(g => g.cohorte).filter(Boolean));
+    return Array.from(set).sort();
+  }, [gruposOrdenados]);
+
+  const gruposDeCohorte = useMemo(() => {
+    if (!cohorteFiltro) return gruposOrdenados;
+    return gruposOrdenados.filter(g => g.cohorte === cohorteFiltro);
+  }, [gruposOrdenados, cohorteFiltro]);
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 shadow-sm">
+        <p className="text-sm font-medium text-gray-700 mb-3">Selecciona un grupo</p>
+
+        {cohortesDisponibles.length > 1 && (
+          <div className="flex items-center gap-1.5 flex-wrap mb-3">
+            <span className="text-xs font-medium text-gray-500 mr-1">📅 Cohorte:</span>
+            <button
+              onClick={() => setCohorteFiltro(null)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                !cohorteFiltro ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Todas
+            </button>
+            {cohortesDisponibles.map(c => (
+              <button
+                key={c}
+                onClick={() => setCohorteFiltro(c)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                  cohorteFiltro === c ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-72 overflow-y-auto">
+          {gruposDeCohorte.map(g => {
+            const activo = grupoActivoId === g.id;
+            return (
+              <button
+                key={g.id}
+                onClick={() => setGrupoActivoId(g.id)}
+                className={`w-full text-left px-3.5 py-2.5 transition flex items-center justify-between gap-3 ${
+                  activo ? 'bg-primary/10 text-primary-dark' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{etiquetaGrupo(g)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">👥 {g.total_estudiantes_institucion} estudiante{g.total_estudiantes_institucion !== 1 ? 's' : ''}</p>
+                </div>
+                {activo && <span className="text-primary flex-shrink-0">✓</span>}
+              </button>
+            );
+          })}
+          {gruposDeCohorte.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">No hay grupos en esta cohorte.</p>
+          )}
+        </div>
+      </div>
+
+      {!grupoActivoInfo ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400 text-sm">
+          Selecciona un grupo arriba para ver sus estudiantes, notas, asistencia y reconocimiento de aprendizajes.
+        </div>
+      ) : (
+        <VistaGrupo
+          grupo={grupoActivoInfo}
+          tema={temaActivo}
+          estudiantes={estudiantesDeGrupoActivo}
+          homologacion={homologacion}
+          cargandoHomologacion={cargandoHomologacion}
+          subiendoCertificadoHomologacion={subiendoCertificadoHomologacion}
+          onGuardarNotaHomologacion={onGuardarNotaHomologacion}
+          onSubirCertificadoHomologacion={onSubirCertificadoHomologacion}
+          onEliminarCertificadoHomologacion={onEliminarCertificadoHomologacion}
+          busqueda={busqueda}
+          setBusqueda={setBusqueda}
+          onVerPerfil={onVerPerfil}
+          onDescargar={onDescargar}
+        />
+      )}
+    </div>
+  );
+}
+
+// =============================================
 // PESTAÑA: DETALLE DE UN GRUPO
 // =============================================
 function VistaGrupo({
   grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerfil, onDescargar,
-  homologacion, cargandoHomologacion, guardandoClaveHomologacion, subiendoCertificadoHomologacion,
+  homologacion, cargandoHomologacion, subiendoCertificadoHomologacion,
   onGuardarNotaHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion
 }) {
   const [subTab, setSubTab] = useState('estudiantes');
@@ -1060,7 +1090,6 @@ function VistaGrupo({
           grupo={grupo}
           homologacion={homologacion}
           cargando={cargandoHomologacion}
-          guardandoClave={guardandoClaveHomologacion}
           subiendoCertificado={subiendoCertificadoHomologacion}
           onGuardarNota={onGuardarNotaHomologacion}
           onSubirCertificado={onSubirCertificadoHomologacion}
@@ -1752,7 +1781,121 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
 // mantiene el estado compartido y llama a la función separada
 // `portal-homologacion` (la de solo-lectura `portal-institucion` nunca
 // escribe).
-function VistaHomologacionGrupo({ grupo, homologacion, cargando, guardandoClave, subiendoCertificado, onGuardarNota, onSubirCertificado, onEliminarCertificado }) {
+function claveNotaHomologacion(itemId, estId) {
+  return `${itemId}::${estId}`;
+}
+
+// Estilo de la celda según la nota: >= 3.0 aprueba (verde), < 3.0 no aprueba
+// (rojo) — misma lectura rápida que ya usan los KPIs de Activos/Desertores
+// en el resto del portal.
+function estiloNotaHomologacion(valor) {
+  if (valor === '' || valor === null || valor === undefined) return 'border-gray-300 bg-white text-gray-700';
+  const n = Number(valor);
+  if (Number.isNaN(n)) return 'border-gray-300 bg-white text-gray-700';
+  return n >= 3
+    ? 'border-green-300 bg-green-50 text-green-700 font-semibold'
+    : 'border-red-300 bg-red-50 text-red-700 font-semibold';
+}
+
+// Tabla de notas: valores locales controlados por celda (para poder colorear
+// en vivo) + un botón "Guardar" por estudiante — así la institución puede
+// completar la malla de a poco (sin llenar todas las materias de una vez) y
+// ver de inmediato que cada fila quedó guardada, en vez de depender de un
+// guardado silencioso al perder el foco de cada celda.
+function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota }) {
+  const [valores, setValores] = useState(() => {
+    const obj = {};
+    estudiantes.forEach(est => {
+      malla.forEach(item => {
+        const nota = est.notas?.find(n => n.malla_item_id === item.id)?.nota;
+        obj[claveNotaHomologacion(item.id, est.id)] = nota === null || nota === undefined ? '' : String(nota);
+      });
+    });
+    return obj;
+  });
+  const [guardandoFila, setGuardandoFila] = useState({});
+  const [filaGuardada, setFilaGuardada] = useState({});
+
+  function cambiarValor(itemId, estId, valor) {
+    setValores(prev => ({ ...prev, [claveNotaHomologacion(itemId, estId)]: valor }));
+    setFilaGuardada(prev => (prev[estId] ? { ...prev, [estId]: false } : prev));
+  }
+
+  async function guardarFila(estId) {
+    setGuardandoFila(prev => ({ ...prev, [estId]: true }));
+    await Promise.all(malla.map(item => onGuardarNota(item.id, estId, valores[claveNotaHomologacion(item.id, estId)] ?? '')));
+    setGuardandoFila(prev => ({ ...prev, [estId]: false }));
+    setFilaGuardada(prev => ({ ...prev, [estId]: true }));
+    setTimeout(() => setFilaGuardada(prev => ({ ...prev, [estId]: false })), 2500);
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="flex flex-wrap items-center gap-4 px-4 py-2.5 border-b border-gray-100 bg-gray-50/60 text-xs text-gray-500">
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>Nota ≥ 3.0 (aprueba)</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>Nota &lt; 3.0 (no aprueba)</span>
+      </div>
+      <div className="overflow-auto max-h-[65vh]">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="sticky left-0 top-0 z-20 bg-gray-50 text-left py-3 px-4 border-b border-gray-200 min-w-[180px]">Estudiante</th>
+              {malla.map(item => (
+                <th key={item.id} className="sticky top-0 z-10 bg-gray-50 text-center py-3 px-3 border-b border-gray-200 whitespace-nowrap min-w-[90px]">
+                  <div className="text-xs font-semibold text-gray-700">{item.materia}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{item.grado}</div>
+                </th>
+              ))}
+              <th className="sticky top-0 z-10 bg-gray-50 text-center py-3 px-3 border-b border-gray-200 min-w-[110px]"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {estudiantes.map((est, idx) => {
+              const filaBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60';
+              return (
+                <tr key={est.id} className="border-b border-gray-100 last:border-0">
+                  <td className={`sticky left-0 z-10 ${filaBg} py-2.5 px-4 font-medium text-gray-700 whitespace-nowrap`}>{est.nombre_completo}</td>
+                  {malla.map(item => {
+                    const clave = claveNotaHomologacion(item.id, est.id);
+                    const valor = valores[clave] ?? '';
+                    return (
+                      <td key={item.id} className={`text-center py-2 px-2 ${filaBg}`}>
+                        <input
+                          type="number"
+                          min="0"
+                          max="5"
+                          step="0.1"
+                          value={valor}
+                          onChange={e => cambiarValor(item.id, est.id, e.target.value)}
+                          className={`w-16 text-center border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition ${estiloNotaHomologacion(valor)}`}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td className={`text-center py-2 px-3 ${filaBg}`}>
+                    <button
+                      onClick={() => guardarFila(est.id)}
+                      disabled={guardandoFila[est.id]}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition disabled:opacity-60 whitespace-nowrap ${
+                        filaGuardada[est.id]
+                          ? 'bg-green-50 border-green-300 text-green-700'
+                          : 'bg-primary/5 border-primary/30 text-primary-dark hover:bg-primary/10'
+                      }`}
+                    >
+                      {guardandoFila[est.id] ? '⏳ Guardando' : filaGuardada[est.id] ? '✅ Guardado' : '💾 Guardar'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function VistaHomologacionGrupo({ grupo, homologacion, cargando, subiendoCertificado, onGuardarNota, onSubirCertificado, onEliminarCertificado }) {
   if (cargando) {
     return <div className="text-center py-10"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   }
@@ -1766,7 +1909,7 @@ function VistaHomologacionGrupo({ grupo, homologacion, cargando, guardandoClave,
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600 text-sm">Sube las notas de los estudiantes de este grupo en las materias que homologan créditos de su técnico.</p>
+      <p className="text-gray-600 text-sm">Sube las notas de los estudiantes de este grupo en las materias que homologan créditos de su técnico. Puedes guardar aunque aún no tengas todas las notas — cada fila se guarda por separado.</p>
 
       {mallaGrupo.length === 0 || estudiantesGrupo.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-500">
@@ -1775,48 +1918,7 @@ function VistaHomologacionGrupo({ grupo, homologacion, cargando, guardandoClave,
             : 'Ninguno de los estudiantes de este grupo tiene un técnico reconocible para homologar.'}
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left py-2 px-4">Estudiante</th>
-                  {mallaGrupo.map(item => (
-                    <th key={item.id} className="text-center py-2 px-3 whitespace-nowrap">
-                      <div className="text-xs font-medium">{item.materia}</div>
-                      <div className="text-[10px] text-gray-400">{item.grado}</div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {estudiantesGrupo.map(est => (
-                  <tr key={est.id}>
-                    <td className="py-2 px-4">{est.nombre_completo}</td>
-                    {mallaGrupo.map(item => {
-                      const notaActual = est.notas?.find(n => n.malla_item_id === item.id)?.nota;
-                      const clave = `${item.id}::${est.id}`;
-                      return (
-                        <td key={item.id} className="text-center py-2 px-3">
-                          <input
-                            type="number"
-                            min="0"
-                            max="5"
-                            step="0.1"
-                            defaultValue={notaActual ?? ''}
-                            onBlur={e => onGuardarNota(item.id, est.id, e.target.value)}
-                            disabled={guardandoClave === clave}
-                            className="w-16 text-center border border-gray-300 rounded-lg px-2 py-1 text-sm disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <TablaNotasHomologacion key={grupo.id} estudiantes={estudiantesGrupo} malla={mallaGrupo} onGuardarNota={onGuardarNota} />
       )}
 
       <div>
