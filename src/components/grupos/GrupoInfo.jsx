@@ -10,6 +10,7 @@ import ModalRegistrarAccion from './ModalRegistrarAccion';
 import ModalHistorialAcciones from './ModalHistorialAcciones';
 import ModalEnlacesInstituciones from './ModalEnlacesInstituciones';
 import ModalCronogramaGrupo from '../coordinador/ModalCronogramaGrupo';
+import ModalHomologacionGrupo from './ModalHomologacionGrupo';
 
 export default function GrupoInfo({
   grupo,
@@ -25,6 +26,7 @@ export default function GrupoInfo({
   const [modalAcciones, setModalAcciones] = useState(false);
   const [modalEnlaces, setModalEnlaces] = useState(false);
   const [modalCronograma, setModalCronograma] = useState(false);
+  const [modalHomologacion, setModalHomologacion] = useState(false);
 
   useEffect(() => {
     if (grupo) cargarEnlaces();
@@ -142,6 +144,13 @@ export default function GrupoInfo({
         >
           🔗 Instituciones
         </button>
+
+        <button
+          onClick={() => setModalHomologacion(true)}
+          className="w-full lg:w-auto text-center bg-white hover:bg-gray-50 text-gray-700 px-2 py-2 lg:px-4 lg:py-2.5 rounded-lg text-xs lg:text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+        >
+          🎓 Homologación
+        </button>
       </div>
 
       {/* MODALES */}
@@ -159,6 +168,11 @@ export default function GrupoInfo({
         onClose={() => setModalCronograma(false)}
         grupo={grupo}
         puedeGestionar={puedeGestionar}
+      />
+      <ModalHomologacionGrupo
+        isOpen={modalHomologacion}
+        onClose={() => setModalHomologacion(false)}
+        grupo={grupo}
       />
     </div>
   );

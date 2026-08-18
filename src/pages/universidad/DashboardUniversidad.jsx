@@ -14,7 +14,7 @@ import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronog
 import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/exportUtils';
 import ReportesPanel from '../../components/reportes/ReportesPanel';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
-import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
+import { ESTADOS_ESTUDIANTE, NOMBRE_CERTIFICADO_HOMOLOGACION } from '../../utils/constants';
 import TarjetaKPI from '../../components/estadisticas/TarjetaKPI';
 import GraficoEstadosDoughnut from '../../components/estadisticas/GraficoEstadosDoughnut';
 import GraficoGeneroDoughnut from '../../components/estadisticas/GraficoGeneroDoughnut';
@@ -103,14 +103,89 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [rawInasistenciasReportes, setRawInasistenciasReportes] = useState([]);
   const [rawSeguimientosReportes, setRawSeguimientosReportes] = useState([]);
 
+  // ESTADOS PARA LA PESTAÑA DE HOMOLOGACIÓN (SOLO COORDINADOR_UNIVERSIDAD, SOLO LECTURA)
+  const [cargandoHomologacion, setCargandoHomologacion] = useState(true);
+  const [homologacionUniversidadCargada, setHomologacionUniversidadCargada] = useState(false);
+  const [mallaHomologacionUniversidad, setMallaHomologacionUniversidad] = useState([]);
+  const [notasHomologacionUniversidad, setNotasHomologacionUniversidad] = useState([]);
+  const [certificadosHomologacionUniversidad, setCertificadosHomologacionUniversidad] = useState([]);
+
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
 
   useEffect(() => {
-    const necesitaDatos = seccionActiva === 'reportes' || seccionActiva === 'estudiantesUniversidad' || seccionActiva === 'estadisticas';
+    const necesitaDatos = seccionActiva === 'reportes' || seccionActiva === 'estudiantesUniversidad' || seccionActiva === 'estadisticas' || seccionActiva === 'homologacion';
     if (usuario && esCoordinadorUniversidad && necesitaDatos && !reportesUniversidadCargados) {
       cargarReportesUniversidad();
     }
   }, [usuario, esCoordinadorUniversidad, seccionActiva, reportesUniversidadCargados]);
+
+  // La malla/notas/certificados de homologación dependen de rawEstudiantesReportes
+  // (ya cargado por cargarReportesUniversidad), así que se cargan aparte una vez
+  // que ese fetch general ya terminó.
+  useEffect(() => {
+    if (usuario && esCoordinadorUniversidad && seccionActiva === 'homologacion' && reportesUniversidadCargados && !homologacionUniversidadCargada) {
+      cargarHomologacionUniversidad();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario, esCoordinadorUniversidad, seccionActiva, reportesUniversidadCargados, homologacionUniversidadCargada]);
+
+  async function cargarHomologacionUniversidad() {
+    setCargandoHomologacion(true);
+
+    const { data: universidadRow } = await supabase.from('universidades').select('id').eq('nombre', usuario.universidad).maybeSingle();
+
+    let malla = [];
+    if (universidadRow) {
+      const { data: programasUni } = await supabase.from('programas').select('id, nombre').eq('universidad_id', universidadRow.id);
+      const nombrePorProgramaId = new Map((programasUni || []).map(p => [p.id, p.nombre]));
+      const idsProgramas = (programasUni || []).map(p => p.id);
+      if (idsProgramas.length > 0) {
+        const { data: mallaData } = await supabase
+          .from('malla_homologacion')
+          .select('id, programa_id, materia, grado')
+          .in('programa_id', idsProgramas)
+          .order('grado')
+          .order('materia');
+        malla = (mallaData || []).map(m => ({ ...m, programa_nombre: nombrePorProgramaId.get(m.programa_id) }));
+      }
+    }
+    setMallaHomologacionUniversidad(malla);
+
+    const idsEstudiantes = rawEstudiantesReportes.map(e => e.id);
+    const { data: notasData } = idsEstudiantes.length > 0
+      ? await supabase.from('notas_homologacion').select('malla_item_id, estudiante_id, nota').in('estudiante_id', idsEstudiantes)
+      : { data: [] };
+    setNotasHomologacionUniversidad(notasData || []);
+
+    const nombresInstituciones = [...new Set(rawEstudiantesReportes.map(e => e.institucion_educativa).filter(Boolean))];
+    const { data: institucionesData } = nombresInstituciones.length > 0
+      ? await supabase.from('instituciones').select('id, nombre').in('nombre', nombresInstituciones)
+      : { data: [] };
+    const idsInstituciones = (institucionesData || []).map(i => i.id);
+    const nombrePorInstitucionId = new Map((institucionesData || []).map(i => [i.id, i.nombre]));
+    const { data: certificadosData } = idsInstituciones.length > 0
+      ? await supabase.from('certificados_homologacion').select('id, nombre_archivo, url_archivo, created_at, institucion_id').in('institucion_id', idsInstituciones).order('created_at', { ascending: false })
+      : { data: [] };
+    setCertificadosHomologacionUniversidad((certificadosData || []).map(c => ({ ...c, institucion_nombre: nombrePorInstitucionId.get(c.institucion_id) || '—' })));
+
+    setCargandoHomologacion(false);
+    setHomologacionUniversidadCargada(true);
+  }
+
+  const mallaHomologacionPorPrograma = useMemo(() => {
+    const map = {};
+    for (const item of mallaHomologacionUniversidad) {
+      if (!map[item.programa_nombre]) map[item.programa_nombre] = [];
+      map[item.programa_nombre].push(item);
+    }
+    return map;
+  }, [mallaHomologacionUniversidad]);
+
+  const notasHomologacionPorClave = useMemo(() => {
+    const map = {};
+    for (const n of notasHomologacionUniversidad) map[`${n.malla_item_id}::${n.estudiante_id}`] = n.nota;
+    return map;
+  }, [notasHomologacionUniversidad]);
 
   // Trae, paginado, todos los estudiantes/deserciones/inasistencias/seguimientos
   // de la universidad (sin los filtros de Estadísticas) para alimentar la
@@ -1511,6 +1586,83 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                     ))}
                   </div>
                 </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* SECCIÓN: HOMOLOGACIÓN (SOLO COORDINADOR_UNIVERSIDAD, SOLO LECTURA) */}
+        {seccionActiva === 'homologacion' && esCoordinadorUniversidad && (
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">🎓 Homologación — Reconocimiento de Aprendizajes</h1>
+            <p className="text-gray-600 mb-6 text-sm">Notas y certificados que las instituciones educativas han subido para homologar créditos de {usuario.universidad}</p>
+
+            {cargandoHomologacion ? (
+              <div className="text-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div></div>
+            ) : Object.keys(mallaHomologacionPorPrograma).length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-500">Aún no hay técnicos con malla de homologación configurada.</div>
+            ) : (
+              <div className="space-y-8">
+                {Object.entries(mallaHomologacionPorPrograma).map(([programaNombre, items]) => {
+                  const estudiantesPrograma = rawEstudiantesReportes.filter(e => e.programa === programaNombre);
+                  return (
+                    <div key={programaNombre} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="px-5 py-4 border-b border-gray-100">
+                        <h2 className="font-semibold text-gray-800">📚 {programaNombre}</h2>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="text-left py-2 px-4">Estudiante</th>
+                              {items.map(item => (
+                                <th key={item.id} className="text-center py-2 px-3 whitespace-nowrap">
+                                  <div className="text-xs font-medium">{item.materia}</div>
+                                  <div className="text-[10px] text-gray-400">{item.grado}</div>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {estudiantesPrograma.length === 0 ? (
+                              <tr><td colSpan={items.length + 1} className="text-center text-gray-400 py-6">Sin estudiantes en este técnico</td></tr>
+                            ) : estudiantesPrograma.map(est => (
+                              <tr key={est.id}>
+                                <td className="py-2 px-4">{est.nombre_completo}</td>
+                                {items.map(item => {
+                                  const nota = notasHomologacionPorClave[`${item.id}::${est.id}`];
+                                  return (
+                                    <td key={item.id} className="text-center py-2 px-3">
+                                      {nota !== undefined && nota !== null ? (
+                                        <span className={`font-medium ${Number(nota) < 3 ? 'text-red-600' : 'text-gray-700'}`}>{Number(nota).toFixed(1)}</span>
+                                      ) : <span className="text-gray-300">—</span>}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mt-8">
+              <h2 className="font-semibold text-gray-800 mb-3">📄 {NOMBRE_CERTIFICADO_HOMOLOGACION}</h2>
+              {certificadosHomologacionUniversidad.length === 0 ? (
+                <p className="text-sm text-gray-400">Aún no hay certificados subidos.</p>
+              ) : (
+                <div className="space-y-2">
+                  {certificadosHomologacionUniversidad.map(c => (
+                    <a key={c.id} href={c.url_archivo} target="_blank" rel="noreferrer" className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-2.5 hover:bg-gray-50 transition">
+                      <span className="text-sm text-gray-700 truncate">📎 {c.nombre_archivo} <span className="text-xs text-gray-400">— {c.institucion_nombre}</span></span>
+                      <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{formatearFecha(c.created_at)}</span>
+                    </a>
+                  ))}
+                </div>
               )}
             </div>
           </div>

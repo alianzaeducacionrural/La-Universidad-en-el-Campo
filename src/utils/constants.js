@@ -115,3 +115,9 @@ export const COLORES_ROL_UNIVERSIDAD = {
   [ROLES_UNIVERSIDAD.DOCENTE]: 'bg-cyan-100 text-cyan-700',
   [ROLES_UNIVERSIDAD.COORDINADOR_UNIVERSIDAD]: 'bg-sky-100 text-sky-700'
 };
+
+// Grados escolares homologables (Reconocimiento de Aprendizajes)
+export const GRADOS_ESCOLARES = ['4°', '5°', '6°', '7°', '8°', '9°', '10°', '11°'];
+
+// Nombre del documento PDF que acredita la validez de las notas homologadas
+export const NOMBRE_CERTIFICADO_HOMOLOGACION = 'Certificación de reconocimiento de saberes';

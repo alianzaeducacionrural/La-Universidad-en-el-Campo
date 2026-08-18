@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
+import ModalMallaHomologacion from './ModalMallaHomologacion';
 
 export default function UniversidadCRUDCard({ universidad, onEliminar, onRecargar }) {
   const notificacion = useNotificacion();
@@ -15,6 +16,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
   const [datosCargados, setDatosCargados] = useState(false);
   const [modalPrograma, setModalPrograma] = useState(false);
   const [nuevoProgramaNombre, setNuevoProgramaNombre] = useState('');
+  const [programaHomologacion, setProgramaHomologacion] = useState(null);
 
   // 🔥 Cargar total de programas al montar
   useEffect(() => {
@@ -191,6 +193,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
                         <span className="text-gray-800 text-sm">{programa.nombre}</span>
                       </div>
                       <div className="flex items-center space-x-1">
+                        <button onClick={() => setProgramaHomologacion(programa)} className="text-primary hover:text-primary-dark px-2 py-1 text-xs rounded-lg hover:bg-primary/5" title="Malla de homologación">🎓 Homologación</button>
                         <button onClick={() => handleEditarPrograma(programa.id, programa.nombre)} className="text-blue-500 hover:text-blue-700 p-1 text-xs" title="Editar">✏️</button>
                         <button onClick={() => handleEliminarPrograma(programa.id, programa.nombre)} className="text-red-500 hover:text-red-700 p-1 text-xs" title="Eliminar">🗑️</button>
                       </div>
@@ -216,6 +219,12 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
           )}
         </div>
       )}
+
+      <ModalMallaHomologacion
+        isOpen={!!programaHomologacion}
+        onClose={() => setProgramaHomologacion(null)}
+        programa={programaHomologacion}
+      />
     </div>
   );
 }

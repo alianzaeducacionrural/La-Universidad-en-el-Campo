@@ -22,6 +22,7 @@ import ModalHistorialAcciones from '../grupos/ModalHistorialAcciones';
 import ModalNotasGrupo from '../notas/ModalNotasGrupo';
 import ModalCronogramaGrupo from '../coordinador/ModalCronogramaGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
+import ModalHomologacionGrupo from '../grupos/ModalHomologacionGrupo';
 
 export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos = null, soloLectura = false }) {
   const notificacion = useNotificacion();
@@ -46,6 +47,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   const [modalAcciones, setModalAcciones] = useState(false);
   const [modalNotas, setModalNotas] = useState(false);
   const [modalCronograma, setModalCronograma] = useState(false);
+  const [modalHomologacion, setModalHomologacion] = useState(false);
 
   // Estados para perfil del estudiante
   const [modalPerfil, setModalPerfil] = useState(false);
@@ -327,6 +329,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={(e) => { e.stopPropagation(); setModalEnlaces(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🔗 Enlaces de Instituciones</button>
             <button onClick={(e) => { e.stopPropagation(); setModalCronograma(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🗓️ Ver Cronograma</button>
+            <button onClick={(e) => { e.stopPropagation(); setModalHomologacion(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🎓 Homologación</button>
           </div>
 
           <div>
@@ -380,6 +383,8 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo}/>
       <ModalNotasGrupo isOpen={modalNotas} onClose={() => setModalNotas(false)} grupo={grupo} />
       <ModalCronogramaGrupo isOpen={modalCronograma} onClose={() => setModalCronograma(false)} grupo={grupo} puedeGestionar={!soloLectura} onActualizado={onRecargar} />
+
+      <ModalHomologacionGrupo isOpen={modalHomologacion} onClose={() => setModalHomologacion(false)} grupo={grupo} />
 
       <ModalConfirmarEliminacion
         isOpen={modalEliminarGrupo}
