@@ -589,7 +589,7 @@ export default function ModalPerfilEstudiante({
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {notasEstudiante.map(ne => (
-                        <tr key={ne.id} className="hover:bg-gray-50">
+                        <tr key={ne.id} className="hover:bg-primary/20 transition-colors">
                           <td className="px-4 py-2.5 font-medium text-gray-800">
                             {ne.notas_modulos?.modulo || 'N/A'}
                           </td>
@@ -679,7 +679,7 @@ export default function ModalPerfilEstudiante({
                           estado === 'justificado' ? 'text-blue-600 bg-blue-50' :
                           'text-amber-600 bg-amber-50';
                         return (
-                          <tr key={ina.id} className="hover:bg-gray-50 align-top">
+                          <tr key={ina.id} className="hover:bg-primary/20 transition-colors align-top">
                             <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
                               {formatearFecha(ra?.fecha)}
                             </td>

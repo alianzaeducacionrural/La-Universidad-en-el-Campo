@@ -148,7 +148,7 @@ export default function ComparativoCohortes({ filtros = {} }) {
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-100 hover:bg-gray-50">
+            <tr className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
               <td className="py-3 px-2 font-medium text-gray-700">👥 Total Estudiantes</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
@@ -156,7 +156,7 @@ export default function ComparativoCohortes({ filtros = {} }) {
                 </td>
               ))}
             </tr>
-            <tr className="border-b border-gray-100 hover:bg-gray-50">
+            <tr className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
               <td className="py-3 px-2 font-medium text-gray-700">🚨 Deserción</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
@@ -165,7 +165,7 @@ export default function ComparativoCohortes({ filtros = {} }) {
                 </td>
               ))}
             </tr>
-            <tr className="hover:bg-gray-50">
+            <tr className="hover:bg-primary/20 transition-colors">
               <td className="py-3 px-2 font-medium text-gray-700">🎓 Graduación</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">

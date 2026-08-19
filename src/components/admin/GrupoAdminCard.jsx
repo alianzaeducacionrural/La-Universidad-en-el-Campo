@@ -348,7 +348,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
                   </thead>
                   <tbody>
                     {estudiantes.map(est => (
-                      <tr key={est.id} className="border-b border-gray-100 hover:bg-white transition">
+                      <tr key={est.id} className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
                         <td className="py-2 px-3 font-medium">{est.nombre_completo}</td>
                         <td className="py-2 px-3"><span className={`px-2 py-0.5 rounded-full text-xs ${est.estado === 'Activo' ? 'bg-green-100 text-green-700' : est.estado === 'Desertor' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{est.estado || 'Activo'}</span></td>
                         <td className="py-2 px-3">{est.total_faltas || 0}</td>

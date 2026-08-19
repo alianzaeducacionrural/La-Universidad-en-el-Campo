@@ -78,7 +78,7 @@ export default function TablaEstudiantes({
           </thead>
           <tbody>
             {estudiantes.map((est) => (
-              <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+              <tr key={est.id} className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
                 <td className="py-3.5 px-4">
                   <p className="font-medium text-gray-800 flex items-center gap-1.5">
                     {est.nombre_completo}

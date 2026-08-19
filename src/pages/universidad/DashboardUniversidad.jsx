@@ -26,7 +26,7 @@ import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoIn
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
-import ModalHomologacionGrupo from '../../components/grupos/ModalHomologacionGrupo';
+import { ContenidoHomologacionGrupo } from '../../components/grupos/ModalHomologacionGrupo';
 
 export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
   const notificacion = useNotificacion();
@@ -60,7 +60,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
   const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
   const [modalCronograma, setModalCronograma] = useState(false);
-  const [modalHomologacionGrupo, setModalHomologacionGrupo] = useState(false);
   const [fechaCronogramaSeleccionadaId, setFechaCronogramaSeleccionadaId] = useState(null);
   const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
     () => derivarModulosYDocentes(cronogramaGrupo),
@@ -104,6 +103,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [rawDesercionesReportes, setRawDesercionesReportes] = useState([]);
   const [rawInasistenciasReportes, setRawInasistenciasReportes] = useState([]);
   const [rawSeguimientosReportes, setRawSeguimientosReportes] = useState([]);
+  const [rawHomologacionReportes, setRawHomologacionReportes] = useState([]);
 
   useEffect(() => { if (usuario) cargarGrupos(); }, [usuario]);
 
@@ -141,12 +141,13 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     // falla silenciosamente (0 resultados). En su lugar se filtra con un join
     // interno directo sobre estudiante.universidad — sin importar cuántos
     // estudiantes tenga la universidad.
-    const [estudiantesUni, gruposUni, desData, inaData, segData] = await Promise.all([
+    const [estudiantesUni, gruposUni, desData, inaData, segData, homData] = await Promise.all([
       paginar('estudiantes', '*', q => q.eq('universidad', usuario.universidad).order('nombre_completo')),
       supabase.from('grupos').select('id, nombre').eq('universidad', usuario.universidad).then(r => r.data || []),
       paginar('registros_desercion', `*, estudiante:estudiante_id!inner (*), usuario:usuario_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad).order('fecha_reporte', { ascending: false })),
       paginar('inasistencias', `*, estudiante:estudiante_id!inner (*), registros_asistencia (fecha, modulo, docente_nombre)`, q => q.eq('estudiante.universidad', usuario.universidad)),
-      paginar('seguimientos', `*, estudiante:estudiante_id!inner (*), padrino:padrino_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad))
+      paginar('seguimientos', `*, estudiante:estudiante_id!inner (*), padrino:padrino_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad)),
+      paginar('notas_homologacion', `*, estudiante:estudiante_id!inner (*), malla_item:malla_item_id (materia, grado)`, q => q.eq('estudiante.universidad', usuario.universidad))
     ]);
     setGruposReportes(gruposUni);
 
@@ -177,10 +178,19 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       padrino_nombre: s.padrino?.nombre_completo || 'N/A'
     }));
 
+    const homologacion = homData.map(n => ({
+      ...n.estudiante,
+      materia: n.malla_item?.materia || '',
+      grado: n.malla_item?.grado || '',
+      nota: n.nota,
+      estado: n.nota === null || n.nota === undefined ? 'Sin nota' : (Number(n.nota) >= 3 ? 'Aprobado' : 'Reprobado')
+    }));
+
     setRawEstudiantesReportes(estudiantesUni);
     setRawDesercionesReportes(deserciones);
     setRawInasistenciasReportes(inasistencias);
     setRawSeguimientosReportes(seguimientos);
+    setRawHomologacionReportes(homologacion);
     setCargandoReportes(false);
     setReportesUniversidadCargados(true);
   }
@@ -606,11 +616,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 lg:flex">
+    <div className="min-h-screen bg-gray-50">
       {esCoordinadorUniversidad && (
         <SidebarUniversidad seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} universidad={usuario.universidad} />
       )}
-      <div className="flex-1 min-w-0">
+      <div className={esCoordinadorUniversidad ? 'lg:pl-64' : ''}>
       <Header />
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {seccionActiva === 'grupos' && (
@@ -715,7 +725,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             <button onClick={() => setVistaActiva('cronograma')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'cronograma' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
               🗓️ Cronograma
             </button>
-            <button onClick={() => setModalHomologacionGrupo(true)} className="pb-3 font-medium text-sm border-b-2 border-transparent text-gray-500 whitespace-nowrap flex-shrink-0 hover:text-gray-700">
+            <button onClick={() => setVistaActiva('homologacion')} className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex-shrink-0 ${vistaActiva === 'homologacion' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
               🎓 Reconocimiento de aprendizajes
             </button>
           </nav>
@@ -1041,7 +1051,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                                 .filter(ne => ne.estudiante)
                                 .sort((a, b) => a.estudiante.nombre_completo.localeCompare(b.estudiante.nombre_completo))
                                 .map(ne => (
-                                  <tr key={ne.id} className="hover:bg-white">
+                                  <tr key={ne.id} className="hover:bg-primary/20 transition-colors">
                                     <td className="px-6 py-2 text-gray-800">{ne.estudiante.nombre_completo}</td>
                                     <td className="px-4 py-2 text-center">
                                       {ne.nota !== null && ne.nota !== undefined ? (
@@ -1119,7 +1129,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                     {estudiantes.map(est => {
                       const faltas = inasistenciasPorEst[est.id] || 0;
                       return (
-                        <tr key={est.id} className={`hover:bg-gray-50 transition ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                        <tr key={est.id} className={`hover:bg-primary/20 transition-colors ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
                           <td className="py-3 px-4">
                             <p className="font-medium text-gray-800 text-sm">{est.nombre_completo}</p>
                             <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
@@ -1257,7 +1267,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                         key={f.id}
                         onClick={() => setFechaCronogramaSeleccionadaId(f.id)}
                         title="Clic para editar esta fecha del cronograma"
-                        className="hover:bg-gray-50 transition cursor-pointer group"
+                        className="hover:bg-primary/20 transition-colors cursor-pointer group"
                       >
                         <td className="py-3 px-4 text-gray-700 whitespace-nowrap">{formatearFecha(f.fecha)}</td>
                         <td className="py-3 px-4">
@@ -1291,6 +1301,17 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             )}
           </div>
         )}
+
+        {/* VISTA: RECONOCIMIENTO DE APRENDIZAJES (SOLO LECTURA) */}
+        {vistaActiva === 'homologacion' && (
+          <div>
+            <div className="mb-4">
+              <h3 className="font-semibold text-gray-800">🎓 Reconocimiento de Aprendizajes</h3>
+              <p className="text-sm text-gray-500 mt-0.5">{grupoSeleccionado?.programa} · {grupoSeleccionado?.nombre}</p>
+            </div>
+            <ContenidoHomologacionGrupo grupo={grupoSeleccionado} />
+          </div>
+        )}
         </>
         )}
 
@@ -1310,6 +1331,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               mostrarFecha={false}
               mostrarEstado
               mostrarInstitucion
+              mostrarUniversidad={false}
             />
 
             <div className="flex justify-end">
@@ -1373,9 +1395,12 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               rawDeserciones={rawDesercionesReportes}
               rawInasistencias={rawInasistenciasReportes}
               rawSeguimientos={rawSeguimientosReportes}
+              rawHomologacion={rawHomologacionReportes}
+              reportesVisibles={['estudiantes', 'deserciones', 'inasistencias', 'seguimientos', 'homologacion']}
               grupos={gruposReportes}
               cargando={cargandoReportes}
               prefijoArchivo={usuario.universidad}
+              mostrarUniversidad={false}
             />
           </div>
         )}
@@ -1406,6 +1431,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               mostrarFecha={false}
               mostrarEstado
               mostrarInstitucion
+              mostrarUniversidad={false}
             />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -1442,7 +1468,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {estudiantesUniversidadFiltrados.map(est => (
-                          <tr key={est.id} className={`hover:bg-gray-50 transition ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
+                          <tr key={est.id} className={`hover:bg-primary/20 transition-colors ${est.estado === 'Desertor' ? 'opacity-60' : ''}`}>
                             <td className="py-3 px-4">
                               <p className="font-medium text-gray-800 text-sm">{est.nombre_completo}</p>
                               <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
@@ -1539,12 +1565,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         grupo={grupoSeleccionado}
         onActualizado={() => cargarCronogramaGrupo(grupoSeleccionado.id)}
         puedeGestionar
-      />
-
-      <ModalHomologacionGrupo
-        isOpen={modalHomologacionGrupo}
-        onClose={() => setModalHomologacionGrupo(false)}
-        grupo={grupoSeleccionado}
       />
 
       <ModalEditarFechaCronograma

@@ -287,7 +287,7 @@ export default function GestionMultas({ onVerPerfil }) {
                   </thead>
                   <tbody>
                     {multasFiltradas.map(multa => (
-                      <tr key={multa.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={multa.id} className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
                         <td className="py-3 px-4">
                           <p className="font-medium">{multa.estudiante?.nombre_completo}</p>
                           <p className="text-xs text-gray-500">{multa.estudiante?.documento} • {multa.estudiante?.municipio}</p>

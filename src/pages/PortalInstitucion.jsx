@@ -59,14 +59,14 @@ async function llamarHomologacion(token, body) {
 // grupo conserva siempre el mismo color mientras no cambie su posición en
 // la lista ordenada alfabéticamente.
 const TEMAS_GRUPO = [
-  { nombre: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', solido: 'bg-blue-400', dot: 'bg-blue-400', activo: 'bg-blue-400 text-white border-blue-400 shadow-md shadow-blue-200', gradiente: 'from-blue-200 to-blue-300', anillo: 'focus-visible:ring-blue-400' },
-  { nombre: 'purple', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', solido: 'bg-purple-400', dot: 'bg-purple-400', activo: 'bg-purple-400 text-white border-purple-400 shadow-md shadow-purple-200', gradiente: 'from-purple-200 to-purple-300', anillo: 'focus-visible:ring-purple-400' },
-  { nombre: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', solido: 'bg-amber-400', dot: 'bg-amber-400', activo: 'bg-amber-400 text-white border-amber-400 shadow-md shadow-amber-200', gradiente: 'from-amber-200 to-amber-300', anillo: 'focus-visible:ring-amber-400' },
-  { nombre: 'rose', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', solido: 'bg-rose-400', dot: 'bg-rose-400', activo: 'bg-rose-400 text-white border-rose-400 shadow-md shadow-rose-200', gradiente: 'from-rose-200 to-rose-300', anillo: 'focus-visible:ring-rose-400' },
-  { nombre: 'teal', bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', solido: 'bg-teal-400', dot: 'bg-teal-400', activo: 'bg-teal-400 text-white border-teal-400 shadow-md shadow-teal-200', gradiente: 'from-teal-200 to-teal-300', anillo: 'focus-visible:ring-teal-400' },
-  { nombre: 'indigo', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', solido: 'bg-indigo-400', dot: 'bg-indigo-400', activo: 'bg-indigo-400 text-white border-indigo-400 shadow-md shadow-indigo-200', gradiente: 'from-indigo-200 to-indigo-300', anillo: 'focus-visible:ring-indigo-400' },
-  { nombre: 'orange', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', solido: 'bg-orange-400', dot: 'bg-orange-400', activo: 'bg-orange-400 text-white border-orange-400 shadow-md shadow-orange-200', gradiente: 'from-orange-200 to-orange-300', anillo: 'focus-visible:ring-orange-400' },
-  { nombre: 'cyan', bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-400', dot: 'bg-cyan-400', activo: 'bg-cyan-400 text-white border-cyan-400 shadow-md shadow-cyan-200', gradiente: 'from-cyan-200 to-cyan-300', anillo: 'focus-visible:ring-cyan-400' },
+  { nombre: 'blue', bg: 'bg-blue-50', bgFuerte: 'bg-blue-100', border: 'border-blue-200', text: 'text-blue-700', solido: 'bg-blue-400', dot: 'bg-blue-400', activo: 'bg-blue-400 text-white border-blue-400 shadow-md shadow-blue-200', gradiente: 'from-blue-200 to-blue-300', anillo: 'focus-visible:ring-blue-400' },
+  { nombre: 'purple', bg: 'bg-purple-50', bgFuerte: 'bg-purple-100', border: 'border-purple-200', text: 'text-purple-700', solido: 'bg-purple-400', dot: 'bg-purple-400', activo: 'bg-purple-400 text-white border-purple-400 shadow-md shadow-purple-200', gradiente: 'from-purple-200 to-purple-300', anillo: 'focus-visible:ring-purple-400' },
+  { nombre: 'amber', bg: 'bg-amber-50', bgFuerte: 'bg-amber-100', border: 'border-amber-200', text: 'text-amber-700', solido: 'bg-amber-400', dot: 'bg-amber-400', activo: 'bg-amber-400 text-white border-amber-400 shadow-md shadow-amber-200', gradiente: 'from-amber-200 to-amber-300', anillo: 'focus-visible:ring-amber-400' },
+  { nombre: 'rose', bg: 'bg-rose-50', bgFuerte: 'bg-rose-100', border: 'border-rose-200', text: 'text-rose-700', solido: 'bg-rose-400', dot: 'bg-rose-400', activo: 'bg-rose-400 text-white border-rose-400 shadow-md shadow-rose-200', gradiente: 'from-rose-200 to-rose-300', anillo: 'focus-visible:ring-rose-400' },
+  { nombre: 'teal', bg: 'bg-teal-50', bgFuerte: 'bg-teal-100', border: 'border-teal-200', text: 'text-teal-700', solido: 'bg-teal-400', dot: 'bg-teal-400', activo: 'bg-teal-400 text-white border-teal-400 shadow-md shadow-teal-200', gradiente: 'from-teal-200 to-teal-300', anillo: 'focus-visible:ring-teal-400' },
+  { nombre: 'indigo', bg: 'bg-indigo-50', bgFuerte: 'bg-indigo-100', border: 'border-indigo-200', text: 'text-indigo-700', solido: 'bg-indigo-400', dot: 'bg-indigo-400', activo: 'bg-indigo-400 text-white border-indigo-400 shadow-md shadow-indigo-200', gradiente: 'from-indigo-200 to-indigo-300', anillo: 'focus-visible:ring-indigo-400' },
+  { nombre: 'orange', bg: 'bg-orange-50', bgFuerte: 'bg-orange-100', border: 'border-orange-200', text: 'text-orange-700', solido: 'bg-orange-400', dot: 'bg-orange-400', activo: 'bg-orange-400 text-white border-orange-400 shadow-md shadow-orange-200', gradiente: 'from-orange-200 to-orange-300', anillo: 'focus-visible:ring-orange-400' },
+  { nombre: 'cyan', bg: 'bg-cyan-50', bgFuerte: 'bg-cyan-100', border: 'border-cyan-200', text: 'text-cyan-700', solido: 'bg-cyan-400', dot: 'bg-cyan-400', activo: 'bg-cyan-400 text-white border-cyan-400 shadow-md shadow-cyan-200', gradiente: 'from-cyan-200 to-cyan-300', anillo: 'focus-visible:ring-cyan-400' },
 ];
 
 function iniciales(nombre) {
@@ -99,7 +99,7 @@ function etiquetaGrupo(g) {
 function SidebarPortalInstitucion({ seccionActiva, setSeccionActiva, institucion }) {
   return (
     <>
-      <div className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 bg-white border-r border-gray-200 min-h-screen sticky top-0">
+      <div className="hidden lg:flex lg:flex-col w-64 fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-30">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
@@ -379,6 +379,29 @@ export default function PortalInstitucion() {
     return filas;
   }, [datos]);
 
+  const rawHomologacionInstitucion = useMemo(() => {
+    if (!homologacion) return [];
+    const datosPorId = new Map((datos?.estudiantes || []).map(e => [e.id, e]));
+    const mallaPorId = new Map((homologacion.mallaItems || []).map(m => [m.id, m]));
+    const filas = [];
+    (homologacion.estudiantes || []).forEach(est => {
+      (est.notas || []).forEach(n => {
+        const item = mallaPorId.get(n.malla_item_id);
+        if (!item) return;
+        const base = datosPorId.get(est.id) || est;
+        filas.push({
+          ...base,
+          institucion_educativa: datos.institucion.nombre,
+          materia: item.materia,
+          grado: item.grado,
+          nota: n.nota,
+          estado: n.nota === null || n.nota === undefined ? 'Sin nota' : (Number(n.nota) >= 3 ? 'Aprobado' : 'Reprobado')
+        });
+      });
+    });
+    return filas;
+  }, [homologacion, datos]);
+
   const resultadosBusqueda = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return [];
@@ -440,14 +463,14 @@ export default function PortalInstitucion() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 lg:flex">
+    <div className="min-h-screen bg-gray-50">
       <SidebarPortalInstitucion
         seccionActiva={seccionActiva}
         setSeccionActiva={setSeccionActiva}
         institucion={datos.institucion}
       />
 
-      <div className="flex-1 min-w-0">
+      <div className="lg:pl-64">
         {/* BUSCADOR GLOBAL, siempre visible sin importar la sección activa */}
         <div className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 md:px-6 py-3">
@@ -515,6 +538,8 @@ export default function PortalInstitucion() {
                 rawDeserciones={rawDesercionesInstitucion}
                 rawInasistencias={rawInasistenciasInstitucion}
                 rawSeguimientos={rawSeguimientosInstitucion}
+                rawHomologacion={rawHomologacionInstitucion}
+                reportesVisibles={['estudiantes', 'deserciones', 'inasistencias', 'seguimientos', 'homologacion']}
                 grupos={gruposEtiquetados}
                 prefijoArchivo={datos.institucion.nombre}
               />
@@ -838,7 +863,7 @@ function ComparativoCohortesPortal({ estudiantes }) {
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-100 hover:bg-gray-50">
+            <tr className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
               <td className="py-3 px-2 font-medium text-gray-700">👥 Total Estudiantes</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
@@ -846,7 +871,7 @@ function ComparativoCohortesPortal({ estudiantes }) {
                 </td>
               ))}
             </tr>
-            <tr className="border-b border-gray-100 hover:bg-gray-50">
+            <tr className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
               <td className="py-3 px-2 font-medium text-gray-700">🚨 Deserción</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
@@ -855,7 +880,7 @@ function ComparativoCohortesPortal({ estudiantes }) {
                 </td>
               ))}
             </tr>
-            <tr className="hover:bg-gray-50">
+            <tr className="hover:bg-primary/20 transition-colors">
               <td className="py-3 px-2 font-medium text-gray-700">🎓 Graduación</td>
               {datos.map(d => (
                 <td key={d.cohorte} className="text-center py-3 px-2">
@@ -1088,6 +1113,7 @@ function VistaGrupo({
       ) : subTab === 'homologacion' ? (
         <VistaHomologacionGrupo
           grupo={grupo}
+          tema={tema}
           homologacion={homologacion}
           cargando={cargandoHomologacion}
           subiendoCertificado={subiendoCertificadoHomologacion}
@@ -1116,7 +1142,7 @@ function VistaGrupo({
                   </thead>
                   <tbody>
                     {estudiantes.map(est => (
-                      <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                      <tr key={est.id} className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <span className={`w-8 h-8 rounded-full ${tema.bg} ${tema.text} border ${tema.border} flex items-center justify-center text-xs font-semibold flex-shrink-0`}>
@@ -1234,8 +1260,8 @@ function TablaNotasGrupo({ tema, estudiantes, notasModulos }) {
               ? (notasEnEsteGrupo.reduce((s, n) => s + Number(n), 0) / notasEnEsteGrupo.length)
               : null;
             return (
-              <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className={`sticky left-0 z-10 bg-white py-2.5 px-4 font-medium text-gray-800 border-r ${tema.border} whitespace-nowrap`}>
+              <tr key={est.id} className="group border-b border-gray-100 hover:bg-primary/20 transition-colors">
+                <td className={`sticky left-0 z-10 bg-white group-hover:bg-primary/20 py-2.5 px-4 font-medium text-gray-800 border-r ${tema.border} whitespace-nowrap transition-colors`}>
                   {est.nombre_completo}
                 </td>
                 {notasModulos.map(nm => {
@@ -1301,8 +1327,8 @@ function TablaAsistenciaGrupo({ tema, estudiantes, registros }) {
             const registroIdsAusente = new Set((est.inasistencias || []).map(i => i.registro_id));
             const faltasEnEsteGrupo = registros.filter(r => registroIdsAusente.has(r.id)).length;
             return (
-              <tr key={est.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className={`sticky left-0 z-10 bg-white py-2.5 px-4 font-medium text-gray-800 border-r ${tema.border} whitespace-nowrap`}>
+              <tr key={est.id} className="group border-b border-gray-100 hover:bg-primary/20 transition-colors">
+                <td className={`sticky left-0 z-10 bg-white group-hover:bg-primary/20 py-2.5 px-4 font-medium text-gray-800 border-r ${tema.border} whitespace-nowrap transition-colors`}>
                   {est.nombre_completo}
                 </td>
                 {registros.map(r => {
@@ -1359,7 +1385,7 @@ function TablaCronogramaGrupo({ tema, cronograma, registrosAsistencia }) {
         </thead>
         <tbody>
           {filas.map(c => (
-            <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+            <tr key={c.id} className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
               <td className="py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap align-top">{formatearFecha(c.fecha)}</td>
               <td className="py-2.5 px-4 text-gray-700 align-top">
                 {c.moduloEfectivo || '—'}
@@ -1612,7 +1638,7 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {notas.map(ne => (
-                      <tr key={ne.id} className="hover:bg-gray-50">
+                      <tr key={ne.id} className="hover:bg-primary/20 transition-colors">
                         <td className="px-4 py-2.5 font-medium text-gray-800">{ne.notas_modulos?.modulo || 'N/A'}</td>
                         <td className="px-4 py-2.5 text-center text-gray-500 text-xs">{formatearFecha(ne.notas_modulos?.fecha_evaluacion)}</td>
                         <td className="px-4 py-2.5 text-center">
@@ -1677,7 +1703,7 @@ function PerfilEstudiantePortal({ estudiante, tema, onClose }) {
                         estado === 'justificado' ? 'text-blue-600 bg-blue-50' :
                         'text-amber-600 bg-amber-50';
                       return (
-                        <tr key={ina.id} className="hover:bg-gray-50 align-top">
+                        <tr key={ina.id} className="hover:bg-primary/20 transition-colors align-top">
                           <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">{formatearFecha(ra?.fecha)}</td>
                           <td className="px-4 py-2.5 font-medium text-gray-800">{ra?.modulo || 'N/A'}</td>
                           <td className="px-4 py-2.5 text-gray-600">{ra?.grupos ? etiquetaGrupo(ra.grupos) : 'N/A'}</td>
@@ -1798,11 +1824,11 @@ function estiloNotaHomologacion(valor) {
 }
 
 // Tabla de notas: valores locales controlados por celda (para poder colorear
-// en vivo) + un botón "Guardar" por estudiante — así la institución puede
-// completar la malla de a poco (sin llenar todas las materias de una vez) y
-// ver de inmediato que cada fila quedó guardada, en vez de depender de un
-// guardado silencioso al perder el foco de cada celda.
-function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota }) {
+// en vivo) + un único botón "Guardar" general para toda la tabla — así la
+// institución puede completar la malla de a poco (sin llenar todas las
+// materias de una vez) y guardar todo lo que lleve escrito de una sola vez,
+// en vez de depender de un guardado silencioso al perder el foco de cada celda.
+function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota, tema }) {
   const [valores, setValores] = useState(() => {
     const obj = {};
     estudiantes.forEach(est => {
@@ -1813,27 +1839,47 @@ function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota }) {
     });
     return obj;
   });
-  const [guardandoFila, setGuardandoFila] = useState({});
-  const [filaGuardada, setFilaGuardada] = useState({});
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+  const [filaSeleccionada, setFilaSeleccionada] = useState(null);
 
   function cambiarValor(itemId, estId, valor) {
     setValores(prev => ({ ...prev, [claveNotaHomologacion(itemId, estId)]: valor }));
-    setFilaGuardada(prev => (prev[estId] ? { ...prev, [estId]: false } : prev));
+    setGuardado(false);
   }
 
-  async function guardarFila(estId) {
-    setGuardandoFila(prev => ({ ...prev, [estId]: true }));
-    await Promise.all(malla.map(item => onGuardarNota(item.id, estId, valores[claveNotaHomologacion(item.id, estId)] ?? '')));
-    setGuardandoFila(prev => ({ ...prev, [estId]: false }));
-    setFilaGuardada(prev => ({ ...prev, [estId]: true }));
-    setTimeout(() => setFilaGuardada(prev => ({ ...prev, [estId]: false })), 2500);
+  async function guardarTodo() {
+    setGuardando(true);
+    const tareas = [];
+    estudiantes.forEach(est => {
+      malla.forEach(item => {
+        tareas.push(onGuardarNota(item.id, est.id, valores[claveNotaHomologacion(item.id, est.id)] ?? ''));
+      });
+    });
+    await Promise.all(tareas);
+    setGuardando(false);
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 2500);
   }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex flex-wrap items-center gap-4 px-4 py-2.5 border-b border-gray-100 bg-gray-50/60 text-xs text-gray-500">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>Nota ≥ 3.0 (aprueba)</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>Nota &lt; 3.0 (no aprueba)</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>Nota ≥ 3.0 (aprueba)</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>Nota &lt; 3.0 (no aprueba)</span>
+        </div>
+        <button
+          onClick={guardarTodo}
+          disabled={guardando}
+          className={`px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition disabled:opacity-60 whitespace-nowrap ${
+            guardado
+              ? 'bg-green-50 border-green-300 text-green-700'
+              : 'bg-primary/5 border-primary/30 text-primary-dark hover:bg-primary/10'
+          }`}
+        >
+          {guardando ? '⏳ Guardando...' : guardado ? '✅ Guardado' : '💾 Guardar'}
+        </button>
       </div>
       <div className="overflow-auto max-h-[65vh]">
         <table className="w-full text-sm border-collapse">
@@ -1846,20 +1892,25 @@ function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota }) {
                   <div className="text-[10px] text-gray-400 mt-0.5">{item.grado}</div>
                 </th>
               ))}
-              <th className="sticky top-0 z-10 bg-gray-50 text-center py-3 px-3 border-b border-gray-200 min-w-[110px]"></th>
             </tr>
           </thead>
           <tbody>
             {estudiantes.map((est, idx) => {
-              const filaBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60';
+              const seleccionada = filaSeleccionada === est.id;
+              const filaBg = seleccionada ? (tema?.bgFuerte || 'bg-primary/20') : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+              const filaBorde = seleccionada ? (tema?.border || 'border-primary/40').replace('border-', 'border-l-4 border-') : 'border-l-4 border-transparent';
               return (
-                <tr key={est.id} className="border-b border-gray-100 last:border-0">
-                  <td className={`sticky left-0 z-10 ${filaBg} py-2.5 px-4 font-medium text-gray-700 whitespace-nowrap`}>{est.nombre_completo}</td>
+                <tr
+                  key={est.id}
+                  onClick={() => setFilaSeleccionada(est.id)}
+                  className="border-b border-gray-100 last:border-0 cursor-pointer"
+                >
+                  <td className={`sticky left-0 z-10 ${filaBg} ${filaBorde} py-2.5 px-4 font-medium text-gray-800 whitespace-nowrap transition-colors`}>{est.nombre_completo}</td>
                   {malla.map(item => {
                     const clave = claveNotaHomologacion(item.id, est.id);
                     const valor = valores[clave] ?? '';
                     return (
-                      <td key={item.id} className={`text-center py-2 px-2 ${filaBg}`}>
+                      <td key={item.id} className={`text-center py-2 px-2 ${filaBg} transition-colors`}>
                         <input
                           type="number"
                           min="0"
@@ -1872,19 +1923,6 @@ function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota }) {
                       </td>
                     );
                   })}
-                  <td className={`text-center py-2 px-3 ${filaBg}`}>
-                    <button
-                      onClick={() => guardarFila(est.id)}
-                      disabled={guardandoFila[est.id]}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition disabled:opacity-60 whitespace-nowrap ${
-                        filaGuardada[est.id]
-                          ? 'bg-green-50 border-green-300 text-green-700'
-                          : 'bg-primary/5 border-primary/30 text-primary-dark hover:bg-primary/10'
-                      }`}
-                    >
-                      {guardandoFila[est.id] ? '⏳ Guardando' : filaGuardada[est.id] ? '✅ Guardado' : '💾 Guardar'}
-                    </button>
-                  </td>
                 </tr>
               );
             })}
@@ -1895,7 +1933,15 @@ function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota }) {
   );
 }
 
-function VistaHomologacionGrupo({ grupo, homologacion, cargando, subiendoCertificado, onGuardarNota, onSubirCertificado, onEliminarCertificado }) {
+function VistaHomologacionGrupo({ grupo, tema, homologacion, cargando, subiendoCertificado, onGuardarNota, onSubirCertificado, onEliminarCertificado }) {
+  const [archivoCertificado, setArchivoCertificado] = useState(null);
+
+  async function guardarCertificado() {
+    if (!archivoCertificado) return;
+    await onSubirCertificado(archivoCertificado);
+    setArchivoCertificado(null);
+  }
+
   if (cargando) {
     return <div className="text-center py-10"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   }
@@ -1918,30 +1964,45 @@ function VistaHomologacionGrupo({ grupo, homologacion, cargando, subiendoCertifi
             : 'Ninguno de los estudiantes de este grupo tiene un técnico reconocible para homologar.'}
         </div>
       ) : (
-        <TablaNotasHomologacion key={grupo.id} estudiantes={estudiantesGrupo} malla={mallaGrupo} onGuardarNota={onGuardarNota} />
+        <TablaNotasHomologacion key={grupo.id} estudiantes={estudiantesGrupo} malla={mallaGrupo} onGuardarNota={onGuardarNota} tema={tema} />
       )}
 
       <div>
         <h3 className="font-semibold text-gray-800 mb-3">📄 {NOMBRE_CERTIFICADO_HOMOLOGACION}</h3>
         <p className="text-xs text-gray-400 mb-3">Estos certificados aplican a toda la institución, no solo a este grupo.</p>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             <input
               type="file"
               accept="application/pdf"
               id={`certificado-homologacion-input-${grupo.id}`}
               className="hidden"
               disabled={subiendoCertificado}
-              onChange={e => { const f = e.target.files[0]; if (f) onSubirCertificado(f); e.target.value = ''; }}
+              onChange={e => { const f = e.target.files[0]; setArchivoCertificado(f || null); e.target.value = ''; }}
             />
             <label
               htmlFor={`certificado-homologacion-input-${grupo.id}`}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border cursor-pointer transition ${
-                subiendoCertificado ? 'opacity-50 pointer-events-none' : 'bg-primary/5 border-primary/30 text-primary-dark hover:bg-primary/10'
+                subiendoCertificado ? 'opacity-50 pointer-events-none' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              {subiendoCertificado ? '⏳ Subiendo...' : '➕ Subir certificado (PDF, máx. 8MB)'}
+              📎 Elegir PDF (máx. 8MB)
             </label>
+
+            {archivoCertificado && (
+              <span className="inline-flex items-center gap-2 text-sm text-gray-600 min-w-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+                <span className="truncate max-w-[220px]">{archivoCertificado.name}</span>
+                <button onClick={() => setArchivoCertificado(null)} className="text-gray-300 hover:text-red-500 transition flex-shrink-0" title="Quitar">✕</button>
+              </span>
+            )}
+
+            <button
+              onClick={guardarCertificado}
+              disabled={!archivoCertificado || subiendoCertificado}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-primary/30 bg-primary/5 text-primary-dark transition hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary/5"
+            >
+              {subiendoCertificado ? '⏳ Guardando...' : '💾 Guardar certificado'}
+            </button>
           </div>
           {(homologacion.certificados || []).length === 0 ? (
             <p className="text-sm text-gray-400">Aún no has subido certificados.</p>

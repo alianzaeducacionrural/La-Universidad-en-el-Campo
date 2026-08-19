@@ -62,11 +62,23 @@ const LABELS_SEGUIMIENTOS = {
   causa_ausencia: 'Causa', resultado: 'Resultado', padrino_nombre: 'Padrino'
 };
 
+const COLUMNAS_HOMOLOGACION = [
+  'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
+  'universidad', 'programa', 'cohorte', 'grupo_nombre', 'materia', 'grado', 'nota', 'estado'
+];
+const LABELS_HOMOLOGACION = {
+  nombre_completo: 'Estudiante', documento: 'Documento', municipio: 'Municipio',
+  institucion_educativa: 'Institución Educativa', universidad: 'Universidad', programa: 'Programa',
+  cohorte: 'Cohorte', grupo_nombre: 'Grupo', materia: 'Materia', grado: 'Grado',
+  nota: 'Nota', estado: 'Estado'
+};
+
 const COLORES_FONDO = {
   blue: 'border-blue-200 bg-blue-50',
   red: 'border-red-200 bg-red-50',
   amber: 'border-amber-200 bg-amber-50',
-  green: 'border-green-200 bg-green-50'
+  green: 'border-green-200 bg-green-50',
+  purple: 'border-purple-200 bg-purple-50'
 };
 
 function formatearFilas(data, columnas, labels) {
@@ -108,11 +120,13 @@ export default function ReportesPanel({
   rawDeserciones = [],
   rawInasistencias = [],
   rawSeguimientos = [],
+  rawHomologacion = [],
   grupos = [],
   municipiosPermitidos = null,
   reportesVisibles: idsVisibles = ['estudiantes', 'deserciones', 'inasistencias', 'seguimientos'],
   cargando = false,
-  prefijoArchivo = ''
+  prefijoArchivo = '',
+  mostrarUniversidad = true
 }) {
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
 
@@ -156,6 +170,11 @@ export default function ReportesPanel({
     [rawSeguimientos, filtros, gruposMap, municipiosPermitidos]
   );
 
+  const homologacionFiltrada = useMemo(
+    () => conGrupoNombre(aplicarFiltros(rawHomologacion, gettersComunes), h => h.grupo_id),
+    [rawHomologacion, filtros, gruposMap, municipiosPermitidos]
+  );
+
   const cohortesDisponibles = useMemo(() => {
     const set = new Set(rawEstudiantes.map(e => e.cohorte).filter(Boolean));
     return Array.from(set).sort();
@@ -164,7 +183,7 @@ export default function ReportesPanel({
   const opcionesFiltro = useMemo(() => {
     const conjunto = campo => {
       const set = new Set();
-      [rawEstudiantes, rawDeserciones, rawInasistencias, rawSeguimientos].forEach(lista =>
+      [rawEstudiantes, rawDeserciones, rawInasistencias, rawSeguimientos, rawHomologacion].forEach(lista =>
         lista.forEach(r => { if (r[campo]) set.add(r[campo]); })
       );
       return Array.from(set).sort().map(v => ({ valor: v, label: v }));
@@ -177,7 +196,7 @@ export default function ReportesPanel({
       grupos: grupos.map(g => ({ valor: g.id, label: g.nombre })),
       estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
     };
-  }, [rawEstudiantes, rawDeserciones, rawInasistencias, rawSeguimientos, grupos, cohortesDisponibles, municipiosPermitidos]);
+  }, [rawEstudiantes, rawDeserciones, rawInasistencias, rawSeguimientos, rawHomologacion, grupos, cohortesDisponibles, municipiosPermitidos]);
 
   const nombreArchivo = sufijo => `${prefijoArchivo ? prefijoArchivo + '_' : ''}${sufijo}`;
 
@@ -249,6 +268,25 @@ export default function ReportesPanel({
       ],
       descargarCompleto: () => descargarExcelCompleto(formatearFilas(seguimientosFiltrados, COLUMNAS_SEGUIMIENTOS, LABELS_SEGUIMIENTOS), nombreArchivo('Reporte_Seguimientos')),
       descargarAgrupado: (campo, nombre) => descargarExcelAgrupado(formatearFilas(seguimientosFiltrados, COLUMNAS_SEGUIMIENTOS, LABELS_SEGUIMIENTOS), LABELS_SEGUIMIENTOS[campo] || campo, nombreArchivo(`Reporte_Seguimientos_Por_${nombre}`))
+    },
+    {
+      id: 'homologacion',
+      titulo: '📘 Reporte de Reconocimiento de Aprendizajes',
+      descripcion: 'Notas de homologación por materia y grado subidas por las instituciones',
+      color: 'purple',
+      total: homologacionFiltrada.length,
+      categorias: [
+        { campo: 'municipio', label: 'Por Municipio' },
+        { campo: 'universidad', label: 'Por Universidad' },
+        { campo: 'programa', label: 'Por Programa' },
+        { campo: 'cohorte', label: 'Por Cohorte' },
+        { campo: 'grupo_nombre', label: 'Por Grupo' },
+        { campo: 'institucion_educativa', label: 'Por Institución Educativa' },
+        { campo: 'materia', label: 'Por Materia' },
+        { campo: 'estado', label: 'Por Estado (Aprobado/Reprobado/Sin nota)' }
+      ],
+      descargarCompleto: () => descargarExcelCompleto(formatearFilas(homologacionFiltrada, COLUMNAS_HOMOLOGACION, LABELS_HOMOLOGACION), nombreArchivo('Reporte_Reconocimiento_Aprendizajes')),
+      descargarAgrupado: (campo, nombre) => descargarExcelAgrupado(formatearFilas(homologacionFiltrada, COLUMNAS_HOMOLOGACION, LABELS_HOMOLOGACION), LABELS_HOMOLOGACION[campo] || campo, nombreArchivo(`Reporte_Reconocimiento_Aprendizajes_Por_${nombre}`))
     }
   ].filter(r => idsVisibles.includes(r.id));
 
@@ -263,6 +301,7 @@ export default function ReportesPanel({
         filas={rawEstudiantes}
         getters={gettersComunes}
         municipiosPermitidos={municipiosPermitidos}
+        mostrarUniversidad={mostrarUniversidad}
       />
 
       {cargando ? (

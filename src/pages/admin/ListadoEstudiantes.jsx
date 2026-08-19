@@ -225,7 +225,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                       <tr
                         key={e.id}
                         onClick={() => onVerPerfil?.(e)}
-                        className="hover:bg-gray-50 cursor-pointer transition"
+                        className="hover:bg-primary/20 cursor-pointer transition-colors"
                       >
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-gray-800">{e.nombre_completo}</p>

@@ -119,7 +119,7 @@ function FilaGrupo({ grupo, expandido, onToggle }) {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {grupo.reportes.map(r => (
-                      <tr key={r.id} className="hover:bg-gray-50 transition">
+                      <tr key={r.id} className="hover:bg-primary/20 transition-colors">
                         <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">
                           {formatearFecha(r.fecha)}
                         </td>

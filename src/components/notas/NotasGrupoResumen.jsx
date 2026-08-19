@@ -151,7 +151,7 @@ export default function NotasGrupoResumen({ grupo, modoModal = false }) {
                             .filter(ne => ne.estudiante)
                             .sort((a, b) => a.estudiante.nombre_completo.localeCompare(b.estudiante.nombre_completo))
                             .map(ne => (
-                              <tr key={ne.id} className="hover:bg-gray-50">
+                              <tr key={ne.id} className="hover:bg-primary/20 transition-colors">
                                 <td className="px-4 py-2 text-gray-800">{ne.estudiante.nombre_completo}</td>
                                 <td className="px-4 py-2 text-center font-semibold">
                                   {ne.nota !== null && ne.nota !== undefined ? (

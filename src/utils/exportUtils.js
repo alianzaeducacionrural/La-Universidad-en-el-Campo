@@ -236,6 +236,31 @@ export function exportarAsistenciaGrupoExcel(registros, estudiantes, grupoNombre
 }
 
 /**
+ * Exporta la matriz de notas de Reconocimiento de Aprendizajes de un grupo:
+ * una fila por estudiante, una columna por materia+grado de la malla, y dos
+ * columnas de resumen (materias evaluadas / aprobadas). `notasPorClave` usa
+ * la misma clave `${malla_item_id}::${estudiante_id}` que ya manejan los
+ * componentes que consultan `notas_homologacion`.
+ */
+export function exportarNotasHomologacionExcel(malla, estudiantes, notasPorClave, grupoNombre) {
+  const cabeceras = ['Estudiante', ...malla.map(m => `${m.materia} (${m.grado})`), 'Materias evaluadas', 'Materias aprobadas'];
+  const filas = estudiantes.map(est => {
+    const notasFila = malla.map(item => {
+      const nota = notasPorClave[`${item.id}::${est.id}`];
+      return nota === null || nota === undefined ? '' : nota;
+    });
+    const evaluadas = notasFila.filter(n => n !== '').length;
+    const aprobadas = notasFila.filter(n => n !== '' && Number(n) >= 3).length;
+    return [est.nombre_completo, ...notasFila, evaluadas, aprobadas];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([cabeceras, ...filas]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Reconocimiento Aprendizajes');
+  XLSX.writeFile(wb, `Reconocimiento_Aprendizajes_${grupoNombre?.replace(/\s+/g, '_') || 'grupo'}.xlsx`);
+}
+
+/**
  * Exporta historial académico de un estudiante a Excel
  */
 export function exportarNotasEstudianteExcel(notas, estudianteNombre) {

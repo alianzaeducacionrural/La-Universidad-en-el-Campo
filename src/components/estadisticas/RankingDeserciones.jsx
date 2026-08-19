@@ -103,7 +103,7 @@ export default function RankingDeserciones({ filtros = {} }) {
         </thead>
         <tbody>
           {datos.map((d, idx) => (
-            <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
+            <tr key={idx} className="border-b border-gray-100 hover:bg-primary/20 transition-colors">
               <td className="py-2 px-2 font-medium text-gray-800">{idx + 1}.</td>
               <td className="py-2 px-2 text-gray-800">{d.nombre}</td>
               <td className="py-2 px-2 text-center text-gray-600">{d.total_estudiantes}</td>

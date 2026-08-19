@@ -282,7 +282,7 @@ export default function GestionDesertores({ onVerPerfil }) {
                       <tr
                         key={d.id}
                         onClick={() => onVerPerfil?.(d)}
-                        className="hover:bg-gray-50 cursor-pointer transition"
+                        className="hover:bg-primary/20 cursor-pointer transition-colors"
                       >
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-gray-800">{d.nombre_completo}</p>

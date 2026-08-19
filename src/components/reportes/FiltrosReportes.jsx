@@ -184,6 +184,10 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
   );
 }
 
+// Tailwind necesita ver las clases completas como texto literal para
+// generarlas — de ahí este mapa en vez de interpolar el número directamente.
+const COLUMNAS_LG = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7' };
+
 export default function FiltrosReportes({
   filtros,
   onCambio,
@@ -193,7 +197,8 @@ export default function FiltrosReportes({
   municipiosPermitidos = null,
   mostrarEstado = true,
   mostrarFecha = true,
-  mostrarInstitucion = false
+  mostrarInstitucion = false,
+  mostrarUniversidad = true
 }) {
   const categorias = ['municipios', 'universidades', 'programas', 'cohortes', 'grupoIds', 'instituciones'];
   const hayFiltros = Object.entries(filtros).some(([, v]) =>
@@ -248,9 +253,11 @@ export default function FiltrosReportes({
         )}
       </div>
 
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${mostrarEstado && mostrarInstitucion ? 'lg:grid-cols-7' : mostrarEstado || mostrarInstitucion ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-2.5`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${COLUMNAS_LG[4 + (mostrarUniversidad ? 1 : 0) + (mostrarInstitucion ? 1 : 0) + (mostrarEstado ? 1 : 0)]} gap-2.5`}>
         <MultiSelect label="Municipio" icon={ICONOS_CATEGORIA.municipios} opciones={opciones.municipios} seleccionados={filtros.municipios} onChange={v => set('municipios', v)} disponibles={disponiblesPara('municipios')} />
-        <MultiSelect label="Universidad" icon={ICONOS_CATEGORIA.universidades} opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />
+        {mostrarUniversidad && (
+          <MultiSelect label="Universidad" icon={ICONOS_CATEGORIA.universidades} opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />
+        )}
         <MultiSelect label="Programa" icon={ICONOS_CATEGORIA.programas} opciones={opciones.programas} seleccionados={filtros.programas} onChange={v => set('programas', v)} disponibles={disponiblesPara('programas')} />
         <MultiSelect label="Cohorte" icon={ICONOS_CATEGORIA.cohortes} opciones={opciones.cohortes} seleccionados={filtros.cohortes} onChange={v => set('cohortes', v)} disponibles={disponiblesPara('cohortes')} />
         <MultiSelect label="Grupo" icon={ICONOS_CATEGORIA.grupoIds} opciones={opciones.grupos} seleccionados={filtros.grupoIds} onChange={v => set('grupoIds', v)} disponibles={disponiblesPara('grupoIds')} />
