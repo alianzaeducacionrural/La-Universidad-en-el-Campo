@@ -295,7 +295,7 @@ export default function UniversidadCRUDCard({ universidad, onEliminar, onRecarga
         isOpen={!!programaHomologacion}
         onClose={() => { setProgramaHomologacion(null); cargarEstadoHomologacion(programas); }}
         programa={programaHomologacion}
-        soloLectura={!esAdmin}
+        esAdmin={esAdmin}
       />
     </div>
   );

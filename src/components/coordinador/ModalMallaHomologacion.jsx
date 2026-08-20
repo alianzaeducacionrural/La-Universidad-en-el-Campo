@@ -8,8 +8,10 @@
 //
 // La materia se elige de un catálogo compartido (tabla materias_homologacion)
 // en vez de texto libre por fila, para que el listado de materias sea
-// consistente entre técnicos — el catálogo mismo (agregar/quitar nombres)
-// solo lo gestiona el admin, igual que el resto de esta pantalla.
+// consistente entre técnicos. Cualquier rol de gestión (admin, coordinadores,
+// asistente administrativo) puede agregar/quitar materias de la malla de un
+// técnico eligiendo de ese catálogo; el catálogo en sí (crear/editar/borrar
+// nombres compartidos entre técnicos) solo lo gestiona el admin.
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -25,7 +27,7 @@ function compararMallaItems(a, b) {
   return a.materia.localeCompare(b.materia, 'es') || (parseInt(a.grado, 10) - parseInt(b.grado, 10));
 }
 
-export default function ModalMallaHomologacion({ isOpen, onClose, programa, soloLectura = false }) {
+export default function ModalMallaHomologacion({ isOpen, onClose, programa, esAdmin = false }) {
   const notificacion = useNotificacion();
   const { perfil: usuario } = useAuth();
   const [items, setItems] = useState([]);
@@ -48,7 +50,7 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
     if (isOpen && programa) {
       cargarItems();
       cargarEstado();
-      if (!soloLectura) cargarCatalogo();
+      cargarCatalogo();
     } else {
       setItems([]);
       setCompleta(false);
@@ -230,119 +232,113 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
         </div>
 
         <div className="p-6">
-          {soloLectura ? (
-            <p className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-5">
-              🔒 Solo el equipo administrador puede agregar o eliminar materias de esta malla.
-            </p>
-          ) : (
-            <>
-              <form onSubmit={agregarItem} className="flex flex-wrap gap-2 items-end mb-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <div className="flex-1 min-w-[160px]">
-                  <label className="block text-xs text-gray-500 mb-1">Materia *</label>
-                  {modoNuevaMateria ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={nuevaMateria}
-                        onChange={e => setNuevaMateria(e.target.value)}
-                        placeholder="Nombre de la nueva materia"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                        autoFocus
-                      />
-                      {catalogoMaterias.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => { setModoNuevaMateria(false); setNuevaMateria(''); }}
-                          className="text-xs text-gray-500 hover:text-primary underline whitespace-nowrap"
-                        >
-                          volver a lista
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <select
-                      value={nuevaMateria}
-                      onChange={e => {
-                        if (e.target.value === '__nueva__') { setModoNuevaMateria(true); setNuevaMateria(''); }
-                        else setNuevaMateria(e.target.value);
-                      }}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+          <form onSubmit={agregarItem} className="flex flex-wrap gap-2 items-end mb-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs text-gray-500 mb-1">Materia *</label>
+              {modoNuevaMateria ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nuevaMateria}
+                    onChange={e => setNuevaMateria(e.target.value)}
+                    placeholder="Nombre de la nueva materia"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                    autoFocus
+                  />
+                  {catalogoMaterias.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setModoNuevaMateria(false); setNuevaMateria(''); }}
+                      className="text-xs text-gray-500 hover:text-primary underline whitespace-nowrap"
                     >
-                      <option value="">Seleccionar...</option>
-                      {catalogoMaterias.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
-                      <option value="__nueva__">+ Nueva materia...</option>
-                    </select>
+                      volver a lista
+                    </button>
                   )}
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Grado *</label>
-                  <select value={nuevoGrado} onChange={e => setNuevoGrado(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
-                    {GRADOS_ESCOLARES.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </div>
-                <button type="submit" disabled={guardando || !nuevaMateria.trim()} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
-                  + Agregar
-                </button>
-              </form>
-
-              <div className="mb-5">
-                <button
-                  type="button"
-                  onClick={() => setMostrarCatalogo(v => !v)}
-                  className={`w-full flex items-center justify-between gap-2 border rounded-xl px-4 py-3 text-sm transition ${
-                    mostrarCatalogo
-                      ? 'bg-primary/5 border-primary/30'
-                      : 'bg-white border-gray-200 hover:border-primary/30 hover:bg-primary/5'
-                  }`}
+              ) : (
+                <select
+                  value={nuevaMateria}
+                  onChange={e => {
+                    if (e.target.value === '__nueva__') { setModoNuevaMateria(true); setNuevaMateria(''); }
+                    else setNuevaMateria(e.target.value);
+                  }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
                 >
-                  <span className="flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary-dark flex items-center justify-center text-base flex-shrink-0">🛠️</span>
-                    <span className="text-left">
-                      <span className="block font-medium text-gray-800">Catálogo de materias</span>
-                      <span className="block text-xs text-gray-500">{catalogoMaterias.length} materia{catalogoMaterias.length !== 1 ? 's' : ''} disponible{catalogoMaterias.length !== 1 ? 's' : ''}</span>
-                    </span>
+                  <option value="">Seleccionar...</option>
+                  {catalogoMaterias.map(m => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
+                  {esAdmin && <option value="__nueva__">+ Nueva materia...</option>}
+                </select>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Grado *</label>
+              <select value={nuevoGrado} onChange={e => setNuevoGrado(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                {GRADOS_ESCOLARES.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <button type="submit" disabled={guardando || !nuevaMateria.trim()} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+              + Agregar
+            </button>
+          </form>
+
+          {esAdmin && (
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={() => setMostrarCatalogo(v => !v)}
+                className={`w-full flex items-center justify-between gap-2 border rounded-xl px-4 py-3 text-sm transition ${
+                  mostrarCatalogo
+                    ? 'bg-primary/5 border-primary/30'
+                    : 'bg-white border-gray-200 hover:border-primary/30 hover:bg-primary/5'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary-dark flex items-center justify-center text-base flex-shrink-0">🛠️</span>
+                  <span className="text-left">
+                    <span className="block font-medium text-gray-800">Catálogo de materias</span>
+                    <span className="block text-xs text-gray-500">{catalogoMaterias.length} materia{catalogoMaterias.length !== 1 ? 's' : ''} disponible{catalogoMaterias.length !== 1 ? 's' : ''}</span>
                   </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${mostrarCatalogo ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                {mostrarCatalogo && (
-                  <div className="mt-2 border border-gray-200 rounded-xl p-3 bg-gray-50 animate-fade-in">
-                    <form onSubmit={agregarMateriaCatalogo} className="flex items-center gap-2 mb-3">
-                      <input
-                        type="text"
-                        value={nuevaMateriaCatalogo}
-                        onChange={e => setNuevaMateriaCatalogo(e.target.value)}
-                        placeholder="Nombre de la nueva materia"
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                      />
-                      <button
-                        type="submit"
-                        disabled={guardandoCatalogo || !nuevaMateriaCatalogo.trim()}
-                        className="bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
-                      >
-                        + Agregar
-                      </button>
-                    </form>
-                    <div className="max-h-40 overflow-y-auto space-y-1.5">
-                    {catalogoMaterias.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-3">Aún no hay materias en el catálogo</p>
-                    ) : (
-                      catalogoMaterias.map(m => (
-                        <div key={m.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
-                          <span className="text-sm text-gray-700">{m.nombre}</span>
-                          <div className="flex items-center gap-1">
-                            <button type="button" onClick={() => abrirEdicionMateria(m)} className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editar nombre">✏️</button>
-                            <button type="button" onClick={() => eliminarMateriaCatalogo(m.id, m.nombre)} className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Eliminar del catálogo">🗑️</button>
-                          </div>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${mostrarCatalogo ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {mostrarCatalogo && (
+                <div className="mt-2 border border-gray-200 rounded-xl p-3 bg-gray-50 animate-fade-in">
+                  <form onSubmit={agregarMateriaCatalogo} className="flex items-center gap-2 mb-3">
+                    <input
+                      type="text"
+                      value={nuevaMateriaCatalogo}
+                      onChange={e => setNuevaMateriaCatalogo(e.target.value)}
+                      placeholder="Nombre de la nueva materia"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                    />
+                    <button
+                      type="submit"
+                      disabled={guardandoCatalogo || !nuevaMateriaCatalogo.trim()}
+                      className="bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap"
+                    >
+                      + Agregar
+                    </button>
+                  </form>
+                  <div className="max-h-40 overflow-y-auto space-y-1.5">
+                  {catalogoMaterias.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">Aún no hay materias en el catálogo</p>
+                  ) : (
+                    catalogoMaterias.map(m => (
+                      <div key={m.id} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                        <span className="text-sm text-gray-700">{m.nombre}</span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => abrirEdicionMateria(m)} className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editar nombre">✏️</button>
+                          <button type="button" onClick={() => eliminarMateriaCatalogo(m.id, m.nombre)} className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Eliminar del catálogo">🗑️</button>
                         </div>
-                      ))
-                    )}
-                    </div>
+                      </div>
+                    ))
+                  )}
                   </div>
-                )}
-              </div>
-            </>
+                </div>
+              )}
+            </div>
           )}
 
           {!cargando && items.length > 0 && (
@@ -353,24 +349,20 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
                   <p className={`text-sm font-medium ${completa ? 'text-green-800' : 'text-amber-800'}`}>
                     {completa ? 'Malla marcada como completa' : 'Malla en progreso'}
                   </p>
-                  {!soloLectura && (
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {completa ? 'Ya no se esperan más materias para este técnico.' : 'Confirma cuando ya hayas subido todas las materias necesarias.'}
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {completa ? 'Ya no se esperan más materias para este técnico.' : 'Confirma cuando ya hayas subido todas las materias necesarias.'}
+                  </p>
                 </div>
               </div>
-              {!soloLectura && (
-                <button
-                  onClick={() => marcarCompleta(!completa)}
-                  disabled={guardandoEstado}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition disabled:opacity-50 whitespace-nowrap flex-shrink-0 ${
-                    completa ? 'bg-white border border-green-300 text-green-700 hover:bg-green-100' : 'bg-primary hover:bg-primary-dark text-white'
-                  }`}
-                >
-                  {completa ? '↩️ Marcar incompleta' : '✅ Confirmar completa'}
-                </button>
-              )}
+              <button
+                onClick={() => marcarCompleta(!completa)}
+                disabled={guardandoEstado}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition disabled:opacity-50 whitespace-nowrap flex-shrink-0 ${
+                  completa ? 'bg-white border border-green-300 text-green-700 hover:bg-green-100' : 'bg-primary hover:bg-primary-dark text-white'
+                }`}
+              >
+                {completa ? '↩️ Marcar incompleta' : '✅ Confirmar completa'}
+              </button>
             </div>
           )}
 
@@ -388,9 +380,7 @@ export default function ModalMallaHomologacion({ isOpen, onClose, programa, solo
                     <span className="text-xs font-medium bg-primary/10 text-primary-dark px-2 py-0.5 rounded-full">{item.grado}</span>
                     <span className="text-sm text-gray-800">{item.materia}</span>
                   </div>
-                  {!soloLectura && (
-                    <button onClick={() => eliminarItem(item.id)} className="text-gray-300 hover:text-red-500 transition p-1" title="Eliminar">🗑️</button>
-                  )}
+                  <button onClick={() => eliminarItem(item.id)} className="text-gray-300 hover:text-red-500 transition p-1" title="Eliminar">🗑️</button>
                 </div>
               ))}
             </div>
