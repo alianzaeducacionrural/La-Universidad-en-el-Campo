@@ -203,7 +203,7 @@ export default function GestionGrupos({ onVerPerfil }) {
             gruposSinAsignarCount={gruposSinAsignarCount}
           />
 
-          {cargando ? (
+          {cargando && grupos.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12">
               <LoadingSpinner mensaje="Cargando grupos..." />
             </div>

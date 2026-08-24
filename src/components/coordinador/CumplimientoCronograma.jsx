@@ -129,7 +129,7 @@ export default function CumplimientoCronograma() {
     XLSX.writeFile(wb, 'Cumplimiento_Cronograma.xlsx');
   }
 
-  if (cargando) {
+  if (cargando && grupos.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
