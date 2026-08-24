@@ -380,7 +380,7 @@ export default function PortalInstitucion() {
   }, [datos]);
 
   const rawHomologacionInstitucion = useMemo(() => {
-    if (!homologacion) return [];
+    if (!homologacion || !datos) return [];
     const datosPorId = new Map((datos?.estudiantes || []).map(e => [e.id, e]));
     const mallaPorId = new Map((homologacion.mallaItems || []).map(m => [m.id, m]));
     const filas = [];
