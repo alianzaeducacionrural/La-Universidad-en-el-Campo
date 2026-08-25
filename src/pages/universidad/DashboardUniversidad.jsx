@@ -616,11 +616,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       {esCoordinadorUniversidad && (
         <SidebarUniversidad seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} universidad={usuario.universidad} />
       )}
-      <div className={esCoordinadorUniversidad ? 'lg:pl-64' : ''}>
+      <div className="flex-1 min-w-0">
       <Header />
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {seccionActiva === 'grupos' && (

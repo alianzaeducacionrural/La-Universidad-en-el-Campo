@@ -21,8 +21,11 @@ const SECCIONES = [
 export default function SidebarUniversidad({ seccionActiva, setSeccionActiva, universidad }) {
   return (
     <>
-      {/* Escritorio: barra lateral fija (no se desplaza con el scroll) */}
-      <div className="hidden lg:flex lg:flex-col w-64 fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-30">
+      {/* Escritorio: barra lateral fija (no se desplaza con el scroll).
+          sticky en vez de fixed: así respeta el flujo normal del documento y
+          no se sobrepone a elementos que vengan antes en el DOM, como el
+          banner de "Ver como..." del admin (VerComo.jsx). */}
+      <div className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 sticky top-0 h-screen bg-white border-r border-gray-200 z-30">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
