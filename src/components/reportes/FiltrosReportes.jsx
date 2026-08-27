@@ -14,7 +14,8 @@ export const FILTROS_VACIOS = {
   instituciones: [],
   estados: [],
   fechaInicio: '',
-  fechaFin: ''
+  fechaFin: '',
+  necesidadesEspeciales: false
 };
 
 const CATEGORIA_A_GETTER = {
@@ -80,6 +81,9 @@ export function aplicarFiltrosGenerico(filas, getters, filtros, municipiosPermit
   }
   if (getters.estado && filtros.estados.length > 0) {
     resultado = resultado.filter(r => filtros.estados.includes(getters.estado(r)));
+  }
+  if (getters.necesidadesEspeciales && filtros.necesidadesEspeciales) {
+    resultado = resultado.filter(r => getters.necesidadesEspeciales(r));
   }
   if (getters.fecha && (filtros.fechaInicio || filtros.fechaFin)) {
     resultado = resultado.filter(r => {
@@ -184,9 +188,28 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
   );
 }
 
+// Toggle simple (no multiselección) para filtros booleanos — mismo estilo
+// visual que el botón de un MultiSelect, pero sin dropdown.
+function ToggleFiltro({ label, icon, activo, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!activo)}
+      className={`w-full h-10 px-3 rounded-lg text-sm border transition-colors flex items-center gap-2 whitespace-nowrap ${
+        activo
+          ? 'bg-primary border-primary text-white shadow-sm'
+          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+      }`}
+    >
+      <span className="text-base leading-none">{icon}</span>
+      <span className="truncate flex-1 text-left font-medium">{label}</span>
+    </button>
+  );
+}
+
 // Tailwind necesita ver las clases completas como texto literal para
 // generarlas — de ahí este mapa en vez de interpolar el número directamente.
-const COLUMNAS_LG = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7' };
+const COLUMNAS_LG = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7', 8: 'lg:grid-cols-8' };
 
 export default function FiltrosReportes({
   filtros,
@@ -198,14 +221,16 @@ export default function FiltrosReportes({
   mostrarEstado = true,
   mostrarFecha = true,
   mostrarInstitucion = false,
-  mostrarUniversidad = true
+  mostrarUniversidad = true,
+  mostrarNecesidadesEspeciales = false
 }) {
   const categorias = ['municipios', 'universidades', 'programas', 'cohortes', 'grupoIds', 'instituciones'];
   const hayFiltros = Object.entries(filtros).some(([, v]) =>
     Array.isArray(v) ? v.length > 0 : Boolean(v)
   );
   const totalActivos = categorias.reduce((acc, c) => acc + filtros[c].length, 0)
-    + filtros.estados.length + (filtros.fechaInicio ? 1 : 0) + (filtros.fechaFin ? 1 : 0);
+    + filtros.estados.length + (filtros.fechaInicio ? 1 : 0) + (filtros.fechaFin ? 1 : 0)
+    + (filtros.necesidadesEspeciales ? 1 : 0);
 
   function set(campo, valor) {
     onCambio({ ...filtros, [campo]: valor });
@@ -253,7 +278,7 @@ export default function FiltrosReportes({
         )}
       </div>
 
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${COLUMNAS_LG[4 + (mostrarUniversidad ? 1 : 0) + (mostrarInstitucion ? 1 : 0) + (mostrarEstado ? 1 : 0)]} gap-2.5`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${COLUMNAS_LG[4 + (mostrarUniversidad ? 1 : 0) + (mostrarInstitucion ? 1 : 0) + (mostrarEstado ? 1 : 0) + (mostrarNecesidadesEspeciales ? 1 : 0)]} gap-2.5`}>
         <MultiSelect label="Municipio" icon={ICONOS_CATEGORIA.municipios} opciones={opciones.municipios} seleccionados={filtros.municipios} onChange={v => set('municipios', v)} disponibles={disponiblesPara('municipios')} />
         {mostrarUniversidad && (
           <MultiSelect label="Universidad" icon={ICONOS_CATEGORIA.universidades} opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />
@@ -266,6 +291,9 @@ export default function FiltrosReportes({
         )}
         {mostrarEstado && (
           <MultiSelect label="Estado" icon={ICONOS_CATEGORIA.estados} opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} />
+        )}
+        {mostrarNecesidadesEspeciales && (
+          <ToggleFiltro label="Necesidades Especiales" icon="🧩" activo={filtros.necesidadesEspeciales} onChange={v => set('necesidadesEspeciales', v)} />
         )}
       </div>
 
@@ -317,6 +345,13 @@ export default function FiltrosReportes({
                 <button type="button" onClick={() => quitarValor(campo, valor)} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
               </span>
             ))
+          )}
+          {filtros.necesidadesEspeciales && (
+            <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">
+              <span>🧩</span>
+              <span className="font-semibold">Necesidades Especiales</span>
+              <button type="button" onClick={() => set('necesidadesEspeciales', false)} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
+            </span>
           )}
           {filtros.fechaInicio && (
             <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">

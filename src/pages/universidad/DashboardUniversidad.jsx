@@ -212,7 +212,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     cohorte: r => r.cohorte,
     grupoId: r => r.grupo_id,
     institucion: r => r.institucion_educativa,
-    estado: r => r.estado
+    estado: r => r.estado,
+    necesidadesEspeciales: r => tieneEtiquetaEspecial(r)
   };
 
   const opcionesEstudiantesUniversidad = useMemo(() => {
@@ -244,7 +245,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       activos: contar('Activo'),
       enRiesgo: contar('En Riesgo'),
       desertores: contar('Desertor'),
-      graduados: contar('Graduado')
+      graduados: contar('Graduado'),
+      necesidadesEspeciales: estudiantesEstadisticasFiltrados.filter(tieneEtiquetaEspecial).length
     };
   }, [estudiantesEstadisticasFiltrados]);
 
@@ -650,7 +652,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       activos: contar('Activo'),
       enRiesgo: contar('En Riesgo'),
       desertores: contar('Desertor'),
-      graduados: contar('Graduado')
+      graduados: contar('Graduado'),
+      necesidadesEspeciales: estudiantesUniversidadFiltrados.filter(tieneEtiquetaEspecial).length
     };
   }, [estudiantesUniversidadFiltrados]);
 
@@ -1415,6 +1418,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               mostrarEstado
               mostrarInstitucion
               mostrarUniversidad={false}
+              mostrarNecesidadesEspeciales
             />
 
             <div className="flex justify-end">
@@ -1434,13 +1438,14 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
                 <TarjetaKPI titulo="Total Estudiantes" valor={kpisUniversidad.total} color="from-blue-400 to-blue-500" />
                 <TarjetaKPI titulo="Activos" valor={kpisUniversidad.activos} color="from-emerald-400 to-emerald-500" />
                 <TarjetaKPI titulo="En Riesgo" valor={kpisUniversidad.enRiesgo} color="from-amber-300 to-amber-400" />
                 <TarjetaKPI titulo="Desertores" valor={kpisUniversidad.desertores} color="from-rose-400 to-rose-500" />
                 <TarjetaKPI titulo="Graduados" valor={kpisUniversidad.graduados} color="from-sky-400 to-sky-500" />
                 <TarjetaKPI titulo="Grupos Totales" valor={gruposTotalesUniversidad} color="from-purple-400 to-purple-500" />
+                <TarjetaKPI titulo="Necesidades Especiales" valor={kpisUniversidad.necesidadesEspeciales} color="from-orange-400 to-orange-500" />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1515,13 +1520,15 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
               mostrarEstado
               mostrarInstitucion
               mostrarUniversidad={false}
+              mostrarNecesidadesEspeciales
             />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
               <TarjetaKPI titulo="Activos" valor={kpisEstudiantesUniversidad.activos} color="from-emerald-400 to-emerald-500" />
               <TarjetaKPI titulo="En Riesgo" valor={kpisEstudiantesUniversidad.enRiesgo} color="from-amber-300 to-amber-400" />
               <TarjetaKPI titulo="Desertores" valor={kpisEstudiantesUniversidad.desertores} color="from-rose-400 to-rose-500" />
               <TarjetaKPI titulo="Graduados" valor={kpisEstudiantesUniversidad.graduados} color="from-sky-400 to-sky-500" />
+              <TarjetaKPI titulo="Necesidades Especiales" valor={kpisEstudiantesUniversidad.necesidadesEspeciales} color="from-orange-400 to-orange-500" />
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

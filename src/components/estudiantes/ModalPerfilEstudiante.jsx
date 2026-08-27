@@ -16,6 +16,7 @@ import ModalCambiarGrupo from './ModalCambiarGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 import PasosDesercion from './PasosDesercion';
 import BadgeDiscapacidad from './BadgeDiscapacidad';
+import AvisoDiscapacidadPerfil from './AvisoDiscapacidadPerfil';
 
 const ESTADO_MULTA_COLOR = {
   pendiente: 'bg-red-100 text-red-700',
@@ -236,6 +237,8 @@ export default function ModalPerfilEstudiante({
           </div>
           
           <div className="p-4 sm:p-6">
+            <AvisoDiscapacidadPerfil estudiante={estudiante} />
+
             {/* INFORMACIÓN DE CONTACTO */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">

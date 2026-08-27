@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { getMunicipiosPermitidos } from '../utils/helpers';
+import { getMunicipiosPermitidos, tieneEtiquetaEspecial } from '../utils/helpers';
 import { exportarEstudiantesExcel } from '../utils/exportUtils';
 import { ESTADOS_ESTUDIANTE } from '../utils/constants';
 import Header from '../components/common/Header';
@@ -87,7 +87,8 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
     cohorte: e => e.cohorte,
     grupoId: e => e.grupo_id,
     institucion: e => e.institucion_educativa,
-    estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO
+    estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO,
+    necesidadesEspeciales: e => tieneEtiquetaEspecial(e)
   };
 
   const estudiantesFiltrados = useMemo(
@@ -135,7 +136,8 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
       graduados,
       graduados_pct: total > 0 ? Math.round((graduados / total) * 100 * 10) / 10 : 0,
       en_riesgo: enRiesgo,
-      en_riesgo_pct: total > 0 ? Math.round((enRiesgo / total) * 100 * 10) / 10 : 0
+      en_riesgo_pct: total > 0 ? Math.round((enRiesgo / total) * 100 * 10) / 10 : 0,
+      necesidades_especiales: estudiantesFiltrados.filter(tieneEtiquetaEspecial).length
     };
   }, [estudiantesFiltrados]);
 
@@ -201,6 +203,7 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
             mostrarFecha={false}
             mostrarEstado
             mostrarInstitucion
+            mostrarNecesidadesEspeciales
           />
 
           {cargando ? (
@@ -210,13 +213,14 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
           ) : (
             <div className="space-y-6">
               {/* KPIs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
                 <TarjetaKPI titulo="Total Estudiantes" valor={kpis.total_estudiantes || 0} color="from-blue-400 to-blue-500" />
                 <TarjetaKPI titulo="Activos" valor={`${kpis.activos || 0} (${kpis.activos_pct || 0}%)`} color="from-emerald-400 to-emerald-500" />
                 <TarjetaKPI titulo="Desertores" valor={`${kpis.desertores || 0} (${kpis.desertores_pct || 0}%)`} color="from-rose-400 to-rose-500" />
                 <TarjetaKPI titulo="Graduados" valor={`${kpis.graduados || 0} (${kpis.graduados_pct || 0}%)`} color="from-sky-400 to-sky-500" />
                 <TarjetaKPI titulo="En Riesgo" valor={`${kpis.en_riesgo || 0} (${kpis.en_riesgo_pct || 0}%)`} color="from-amber-300 to-amber-400" />
                 <TarjetaKPI titulo="Grupos Totales" valor={gruposTotales} color="from-purple-400 to-purple-500" />
+                <TarjetaKPI titulo="Necesidades Especiales" valor={kpis.necesidades_especiales || 0} color="from-orange-400 to-orange-500" />
               </div>
 
               {/* GRÁFICOS PRINCIPALES */}

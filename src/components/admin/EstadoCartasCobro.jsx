@@ -2,10 +2,11 @@
 // TABLA: ESTADO DE CARTAS DE COBRO (SOLO LECTURA)
 // =============================================
 // Pestaña dentro de GestionMultas.jsx — muestra, por estudiante elegible con
-// al menos una carta ya enviada, cuántos días han pasado desde esa carta y
-// si está a tiempo, próximo a vencer (25-29 días) o vencido (30+) para el
-// envío de la siguiente. La generación de la carta delega en el flujo ya
-// existente de GestionMultas.jsx (no duplica esa lógica).
+// al menos una carta ya subida como documento, cuántos días han pasado desde
+// esa carta y si está a tiempo, próximo a vencer (25-29 días) o vencido
+// (30+) para la siguiente. "Ver Perfil" lleva al flujo real de subida
+// (Editar Deserción, dentro del perfil del estudiante) — no hay generación
+// aquí, la carta se sube como documento allá.
 
 import { formatearFecha } from '../../utils/helpers';
 
@@ -15,7 +16,7 @@ const ESTADO_INFO = {
   vencido: { label: 'Vencido', color: 'bg-red-100 text-red-700 border-red-300' }
 };
 
-export default function EstadoCartasCobro({ pendientes, cargando, onGenerarCarta }) {
+export default function EstadoCartasCobro({ pendientes, cargando, onVerPerfil }) {
   if (cargando) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
@@ -30,7 +31,7 @@ export default function EstadoCartasCobro({ pendientes, cargando, onGenerarCarta
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
         <p className="text-gray-500">No hay estudiantes con cartas de cobro pendientes de seguimiento.</p>
         <p className="text-xs text-gray-400 mt-1">
-          (Solo se listan estudiantes desertores injustificados con al menos una carta ya enviada y que aún no llegan a la carta 3.)
+          (Solo se listan estudiantes desertores injustificados con al menos una carta ya subida como documento y que aún no llegan a la carta 3.)
         </p>
       </div>
     );
@@ -43,7 +44,7 @@ export default function EstadoCartasCobro({ pendientes, cargando, onGenerarCarta
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left py-3 px-4">Estudiante</th>
-              <th className="text-left py-3 px-4">Última carta enviada</th>
+              <th className="text-left py-3 px-4">Última carta subida</th>
               <th className="text-left py-3 px-4">Días transcurridos</th>
               <th className="text-left py-3 px-4">Estado</th>
               <th className="text-center py-3 px-4">Acciones</th>
@@ -59,7 +60,7 @@ export default function EstadoCartasCobro({ pendientes, cargando, onGenerarCarta
                     <p className="text-xs text-gray-500">{p.estudiante?.documento} • {p.estudiante?.municipio}</p>
                   </td>
                   <td className="py-3 px-4">
-                    #{p.ultimaCarta.numero_carta} · {formatearFecha(p.ultimaCarta.fecha_emision)}
+                    #{p.numeroUltimaCarta} · {formatearFecha(p.fechaUltimaCarta)}
                   </td>
                   <td className="py-3 px-4 font-medium">{p.dias} día{p.dias !== 1 ? 's' : ''}</td>
                   <td className="py-3 px-4">
@@ -69,10 +70,11 @@ export default function EstadoCartasCobro({ pendientes, cargando, onGenerarCarta
                   </td>
                   <td className="py-3 px-4 text-center">
                     <button
-                      onClick={() => onGenerarCarta(p)}
+                      onClick={() => onVerPerfil(p.estudiante)}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm"
+                      title="Abre el perfil del estudiante para subir la carta desde Editar Deserción"
                     >
-                      📄 Generar Carta #{p.siguienteNumeroCarta}
+                      👁️ Ver Perfil · Subir Carta #{p.siguienteNumeroCarta}
                     </button>
                   </td>
                 </tr>

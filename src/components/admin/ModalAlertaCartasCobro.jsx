@@ -43,7 +43,7 @@ export default function ModalAlertaCartasCobro({ isOpen, onClose, alertas = [] }
                   <div key={a.multa.id} className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="font-medium text-gray-800 text-sm">{a.estudiante?.nombre_completo}</p>
                     <p className="text-xs text-gray-600">
-                      Carta #{a.ultimaCarta.numero_carta} enviada el {formatearFecha(a.ultimaCarta.fecha_emision)} · {a.dias} días — falta la carta #{a.siguienteNumeroCarta}
+                      Carta #{a.numeroUltimaCarta} subida el {formatearFecha(a.fechaUltimaCarta)} · {a.dias} días — falta la carta #{a.siguienteNumeroCarta}
                     </p>
                   </div>
                 ))}
@@ -59,7 +59,7 @@ export default function ModalAlertaCartasCobro({ isOpen, onClose, alertas = [] }
                   <div key={a.multa.id} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                     <p className="font-medium text-gray-800 text-sm">{a.estudiante?.nombre_completo}</p>
                     <p className="text-xs text-gray-600">
-                      Carta #{a.ultimaCarta.numero_carta} enviada el {formatearFecha(a.ultimaCarta.fecha_emision)} · {a.dias} días — se acerca el plazo para la carta #{a.siguienteNumeroCarta}
+                      Carta #{a.numeroUltimaCarta} subida el {formatearFecha(a.fechaUltimaCarta)} · {a.dias} días — se acerca el plazo para la carta #{a.siguienteNumeroCarta}
                     </p>
                   </div>
                 ))}

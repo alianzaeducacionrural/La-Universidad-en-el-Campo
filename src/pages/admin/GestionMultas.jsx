@@ -24,7 +24,7 @@ export default function GestionMultas({ onVerPerfil }) {
   // Pestaña interna de esta página (Multas / Estado de Cartas) — independiente
   // de vistaActiva, que solo sirve para resaltar el ítem activo del Sidebar.
   const [tabPagina, setTabPagina] = useState('multas');
-  const { pendientes: cartasPendientes, cargando: cargandoCartas, recargar: recargarEstadoCartas } = useCartasCobro();
+  const { pendientes: cartasPendientes, cargando: cargandoCartas } = useCartasCobro();
   const [modalCarta, setModalCarta] = useState(false);
   const [modalPago, setModalPago] = useState(false);
   const [modalHistorialPagos, setModalHistorialPagos] = useState(false);
@@ -126,7 +126,6 @@ export default function GestionMultas({ onVerPerfil }) {
     }
 
     cargarMultas();
-    recargarEstadoCartas();
   }
 
   async function handleRegistrarPago(e) {
@@ -248,12 +247,7 @@ export default function GestionMultas({ onVerPerfil }) {
             <EstadoCartasCobro
               pendientes={cartasPendientes}
               cargando={cargandoCartas}
-              onGenerarCarta={(p) => {
-                setMultaSeleccionada(p.multa);
-                setNumeroCarta(p.siguienteNumeroCarta);
-                setFechaCarta(new Date().toISOString().split('T')[0]);
-                setModalCarta(true);
-              }}
+              onVerPerfil={onVerPerfil}
             />
           ) : (
           <>

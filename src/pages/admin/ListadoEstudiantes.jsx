@@ -9,7 +9,7 @@ import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
-import { getMunicipiosPermitidos, getEstadoColor } from '../../utils/helpers';
+import { getMunicipiosPermitidos, getEstadoColor, tieneEtiquetaEspecial } from '../../utils/helpers';
 import BadgeDiscapacidad from '../../components/estudiantes/BadgeDiscapacidad';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
 
@@ -92,7 +92,8 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     cohorte: e => e.cohorte,
     grupoId: e => e.grupo_id,
     institucion: e => e.institucion_educativa,
-    estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO
+    estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO,
+    necesidadesEspeciales: e => tieneEtiquetaEspecial(e)
   };
 
   const estudiantesFiltrados = useMemo(() => {
@@ -134,7 +135,8 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     activos: estudiantesFiltrados.filter(e => (e.estado || 'Activo') === ESTADOS_ESTUDIANTE.ACTIVO).length,
     enRiesgo: estudiantesFiltrados.filter(e => e.estado === ESTADOS_ESTUDIANTE.EN_RIESGO).length,
     desertores: estudiantesFiltrados.filter(e => e.estado === ESTADOS_ESTUDIANTE.DESERTOR).length,
-    graduados: estudiantesFiltrados.filter(e => e.estado === ESTADOS_ESTUDIANTE.GRADUADO).length
+    graduados: estudiantesFiltrados.filter(e => e.estado === ESTADOS_ESTUDIANTE.GRADUADO).length,
+    necesidadesEspeciales: estudiantesFiltrados.filter(tieneEtiquetaEspecial).length
   }), [estudiantesFiltrados]);
 
   if (!usuario) return <LoadingSpinner mensaje="Cargando..." />;
@@ -153,7 +155,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
           </div>
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             <div className="bg-white rounded-xl p-4 text-center border border-gray-200">
               <p className="text-2xl font-bold text-gray-800">{kpis.total}</p>
               <p className="text-xs text-gray-500">Total</p>
@@ -174,6 +176,10 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
               <p className="text-2xl font-bold text-blue-700">{kpis.graduados}</p>
               <p className="text-xs text-blue-600">Graduados</p>
             </div>
+            <div className="bg-orange-50 rounded-xl p-4 text-center border border-orange-200">
+              <p className="text-2xl font-bold text-orange-700">{kpis.necesidadesEspeciales}</p>
+              <p className="text-xs text-orange-600">Necesidades Especiales</p>
+            </div>
           </div>
 
           <FiltrosReportes
@@ -185,6 +191,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
             municipiosPermitidos={municipiosPermitidos}
             mostrarFecha={false}
             mostrarInstitucion
+            mostrarNecesidadesEspeciales
           />
 
           <div className="mb-4">
