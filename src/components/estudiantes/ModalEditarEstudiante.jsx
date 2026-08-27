@@ -76,10 +76,26 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    // La institución tarda dos consultas encadenadas en cargar (municipios ->
+    // instituciones del municipio). Mientras carga, el <select> queda
+    // deshabilitado y un campo deshabilitado se excluye de FormData por
+    // completo — leerlo de ahí mandaba `null` a Supabase y violaba el
+    // NOT NULL de la columna. Por eso se lee del estado controlado, no de
+    // FormData, y además se bloquea el guardado si todavía no hay un valor.
+    if (cargandoInstituciones) {
+      notificacion.warning('Espera a que termine de cargar la institución educativa e intenta de nuevo.', 'Cargando...');
+      return;
+    }
+    if (!institucionSeleccionada) {
+      notificacion.warning('Selecciona la institución educativa del estudiante.', 'Campo requerido');
+      return;
+    }
+
     setCargando(true);
     const formData = new FormData(e.target);
     const municipioNombre = municipios.find(m => m.id === municipioSeleccionado)?.nombre || '';
-    
+
     const datos = {
       nombre_completo: formData.get('nombre_completo'),
       telefono: formData.get('telefono') || null,
@@ -87,7 +103,7 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
       acudiente_nombre: formData.get('acudiente_nombre') || null,
       acudiente_telefono: formData.get('acudiente_telefono') || null,
       municipio: municipioNombre,
-      institucion_educativa: formData.get('institucion_educativa')
+      institucion_educativa: institucionSeleccionada
     };
     if (puedeGestionar) {
       datos.total_faltas = parseInt(formData.get('total_faltas')) || 0;
@@ -179,7 +195,9 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
 
           <div className="p-6 bg-gray-50 border-t flex justify-end space-x-3 rounded-b-xl">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancelar</button>
-            <button type="submit" disabled={cargando} className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50">Guardar Cambios</button>
+            <button type="submit" disabled={cargando || cargandoInstituciones} className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50">
+              {cargandoInstituciones ? 'Cargando...' : 'Guardar Cambios'}
+            </button>
           </div>
         </form>
       </div>
