@@ -98,30 +98,6 @@ export default function ModalCrearInstitucion({ isOpen, onClose, onCreada }) {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre de contacto
-              </label>
-              <input
-                type="text"
-                value={contactoNombre}
-                onChange={(e) => setContactoNombre(e.target.value)}
-                placeholder="Opcional"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Correo de contacto
-              </label>
-              <input
-                type="email"
-                value={contactoCorreo}
-                onChange={(e) => setContactoCorreo(e.target.value)}
-                placeholder="Opcional"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm"
-              />
-            </div>
             <p className="text-xs text-gray-500">
               El enlace de solo lectura se genera automáticamente al crear la institución. No aparecerá
               en la lista hasta que tenga estudiantes activos asignados.
