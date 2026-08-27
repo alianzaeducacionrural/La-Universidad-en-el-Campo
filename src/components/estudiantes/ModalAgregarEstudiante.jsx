@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
 import { supabase } from '../../lib/supabaseClient';
+import CampoDiscapacidadTrastorno from './CampoDiscapacidadTrastorno';
 
 export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, grupoSeleccionado }) {
   const notificacion = useNotificacion();
@@ -14,6 +15,8 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
   const [municipioSeleccionado, setMunicipioSeleccionado] = useState('');
   const [instituciones, setInstituciones] = useState([]);
   const [cargandoInstituciones, setCargandoInstituciones] = useState(false);
+  const [discapacidadTipo, setDiscapacidadTipo] = useState('');
+  const [trastornoTipo, setTrastornoTipo] = useState('');
 
   useEffect(() => { if (isOpen) cargarMunicipios(); }, [isOpen]);
   useEffect(() => { if (municipioSeleccionado) cargarInstituciones(municipioSeleccionado); else setInstituciones([]); }, [municipioSeleccionado]);
@@ -82,7 +85,9 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
       universidad: grupoSeleccionado.universidad,
       grupo_id: grupoSeleccionado.id,
       estado: formData.get('estado') || 'Activo',
-      total_faltas: parseInt(formData.get('total_faltas')) || 0
+      total_faltas: parseInt(formData.get('total_faltas')) || 0,
+      discapacidad_tipo: discapacidadTipo || null,
+      trastorno_tipo: trastornoTipo || null
     };
 
     const resultado = await onGuardar(datos);
@@ -91,6 +96,8 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
     if (resultado.success) {
       notificacion.success(`Estudiante "${datos.nombre_completo}" agregado correctamente`);
       setMunicipioSeleccionado('');
+      setDiscapacidadTipo('');
+      setTrastornoTipo('');
       onClose();
     } else {
       notificacion.error(
@@ -140,11 +147,19 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
                 <div><label className="block text-sm mb-1">Institución Educativa *</label><select name="institucion_educativa" required disabled={!municipioSeleccionado || cargandoInstituciones} className="w-full border rounded-lg px-3 py-2.5 disabled:bg-gray-100"><option value="">{cargandoInstituciones ? 'Cargando...' : !municipioSeleccionado ? 'Primero selecciona municipio' : 'Seleccionar...'}</option>{instituciones.map(i => <option key={i.id} value={i.nombre}>{i.nombre}</option>)}</select></div>
               </div>
             </div>
-            <div><h4 className="font-medium mb-3">📊 Estado Académico</h4>
+            <div className="border-b pb-4"><h4 className="font-medium mb-3">📊 Estado Académico</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="block text-sm mb-1">Estado</label><select name="estado" className="w-full border rounded-lg px-3 py-2.5">{Object.values(ESTADOS_ESTUDIANTE).map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div><label className="block text-sm mb-1">Total Faltas</label><input type="number" name="total_faltas" min="0" defaultValue="0" className="w-full border rounded-lg px-3 py-2.5" /></div>
               </div>
+            </div>
+            <div><h4 className="font-medium mb-3">🧩 Necesidades Especiales</h4>
+              <CampoDiscapacidadTrastorno
+                discapacidad={discapacidadTipo}
+                onChangeDiscapacidad={setDiscapacidadTipo}
+                trastorno={trastornoTipo}
+                onChangeTrastorno={setTrastornoTipo}
+              />
             </div>
             <div className="bg-gray-50 rounded-lg p-4"><p className="text-xs text-gray-500"><span className="block">📌 Cohorte: {grupoSeleccionado.cohorte}</span><span className="block">🎓 Universidad: {grupoSeleccionado.universidad}</span><span className="block">📚 Programa: {grupoSeleccionado.programa}</span></p></div>
           </div>

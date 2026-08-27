@@ -16,6 +16,37 @@ export const getEstadoColor = (estado) => {
   return COLORES_ESTADO[estado] || 'bg-gray-100 text-gray-700 border-gray-300';
 };
 
+// 'NO APLICA' y vacío/null cuentan como "sin etiqueta" para badges y alertas —
+// solo un valor de discapacidad/trastorno real activa la UI relacionada.
+const esEtiquetaReal = (valor) => !!valor && valor !== 'NO APLICA';
+
+export const tieneEtiquetaEspecial = (estudiante) =>
+  esEtiquetaReal(estudiante?.discapacidad_tipo) || esEtiquetaReal(estudiante?.trastorno_tipo);
+
+// Aviso de discapacidad/trastorno al docente universitario: una vez por grupo,
+// por día calendario (no por sesión de navegador ni por usuario) — se guarda
+// en localStorage, no en la base de datos.
+const claveAvisoDiscapacidad = (grupoId) => `aviso_discapacidad_${grupoId}`;
+
+export const debeMostrarAvisoDiscapacidad = (grupoId) => {
+  if (!grupoId) return false;
+  try {
+    return localStorage.getItem(claveAvisoDiscapacidad(grupoId)) !== obtenerFechaColombiaHoy();
+  } catch {
+    return false;
+  }
+};
+
+export const registrarAvisoDiscapacidadMostrado = (grupoId) => {
+  if (!grupoId) return;
+  try {
+    localStorage.setItem(claveAvisoDiscapacidad(grupoId), obtenerFechaColombiaHoy());
+  } catch {
+    // localStorage no disponible (modo privado, etc.) — no es crítico, simplemente
+    // el aviso podría repetirse en la siguiente carga.
+  }
+};
+
 // Deriva el checklist de pasos del proceso de deserción a partir del registro (con su
 // `tipo_desercion`, `paso_manual_completado` y `documentos` embebidos) — no se guarda como
 // un texto de "estado actual" para evitar desincronización si se borra un documento.

@@ -16,13 +16,20 @@ import ModalPerfilEstudiante from '../../components/estudiantes/ModalPerfilEstud
 import DashboardUniversidad from '../universidad/DashboardUniversidad';
 import Dashboard from '../Dashboard';
 import Estadisticas from '../Estadisticas';
+import PanelCoordinador from '../coordinador/PanelCoordinador';
 import { getNombreRol } from '../../utils/helpers';
 
 const TABS = [
   { id: 'universidad', label: 'Universidad', icon: '🎓' },
   { id: 'padrino', label: 'Padrino', icon: '👤' },
   { id: 'aliado', label: 'Aliado', icon: '🤝' },
+  { id: 'administrativo', label: 'Administrativo', icon: '🧑‍💼' },
 ];
+
+// Roles administrativos/de coordinación simulables desde "Ver como" — se
+// excluye 'admin' porque solo existe una cuenta y no aporta verse "como" uno
+// mismo.
+const ROLES_ADMINISTRATIVOS = ['coord_superior', 'coord_pedagogico', 'asistente_admin'];
 
 export default function VerComo() {
   const [vistaActiva, setVistaActiva] = useState('ver-como');
@@ -44,6 +51,11 @@ export default function VerComo() {
   const [busquedaAliado, setBusquedaAliado] = useState('');
   const [aliadoElegido, setAliadoElegido] = useState(null);
 
+  // Pestaña Administrativo (coordinadores y asistente administrativo)
+  const [personal, setPersonal] = useState([]);
+  const [busquedaPersonal, setBusquedaPersonal] = useState('');
+  const [personaElegida, setPersonaElegida] = useState(null);
+
   const [cargando, setCargando] = useState(true);
 
   // Modal de perfil de estudiante, manejado localmente en modo solo lectura
@@ -56,14 +68,16 @@ export default function VerComo() {
   useEffect(() => {
     async function cargar() {
       setCargando(true);
-      const [uniRes, padrinosRes, aliadosRes] = await Promise.all([
+      const [uniRes, padrinosRes, aliadosRes, personalRes] = await Promise.all([
         supabase.from('universidades').select('nombre').order('nombre'),
         supabase.from('padrinos').select('*').eq('activo', true).eq('rol', 'padrino').order('nombre_completo'),
         supabase.from('padrinos').select('*').eq('activo', true).eq('rol', 'aliado').order('nombre_completo'),
+        supabase.from('padrinos').select('*').eq('activo', true).in('rol', ROLES_ADMINISTRATIVOS).order('nombre_completo'),
       ]);
       setUniversidades((uniRes.data || []).map(u => u.nombre));
       setPadrinos(padrinosRes.data || []);
       setAliados(aliadosRes.data || []);
+      setPersonal(personalRes.data || []);
       setCargando(false);
     }
     cargar();
@@ -159,6 +173,20 @@ export default function VerComo() {
     );
   }
 
+  // ─── Vista activa: Administrativo ──────────────────────────────────────
+  if (personaElegida) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Banner
+          texto={<>Viendo como <strong>{getNombreRol(personaElegida.rol)}</strong>: <strong>{personaElegida.nombre_completo}</strong></>}
+          onSalir={() => setPersonaElegida(null)}
+        />
+        <PanelCoordinador usuarioForzado={personaElegida} onVerPerfil={abrirPerfil} onSeguimiento={() => {}} />
+        {modalPerfilCompartido}
+      </div>
+    );
+  }
+
   // ─── Selector ───────────────────────────────────────────────────────────
   const padrinosFiltrados = busquedaPadrino.trim()
     ? padrinos.filter(p =>
@@ -172,6 +200,12 @@ export default function VerComo() {
         a.correo?.toLowerCase().includes(busquedaAliado.toLowerCase()))
     : aliados;
 
+  const personalFiltrado = busquedaPersonal.trim()
+    ? personal.filter(p =>
+        p.nombre_completo?.toLowerCase().includes(busquedaPersonal.toLowerCase()) ||
+        p.correo?.toLowerCase().includes(busquedaPersonal.toLowerCase()))
+    : personal;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar vistaActiva={vistaActiva} setVistaActiva={setVistaActiva} rol="admin" />
@@ -180,7 +214,7 @@ export default function VerComo() {
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">🔎 Ver como...</h1>
           <p className="text-gray-600 mb-6">
-            Entra al panel completo de una universidad, un padrino o un aliado, sin iniciar sesión con esa cuenta.
+            Entra al panel completo de una universidad, un padrino, un aliado, o un coordinador/asistente administrativo, sin iniciar sesión con esa cuenta.
           </p>
 
           {/* Pestañas */}
@@ -274,7 +308,7 @@ export default function VerComo() {
                 </div>
               )}
             </>
-          ) : (
+          ) : tab === 'aliado' ? (
             <>
               <p className="text-sm text-gray-600 mb-4">
                 Entra al panel de Estadísticas de cualquier aliado, con el alcance de municipios que ya tiene asignado.
@@ -304,6 +338,42 @@ export default function VerComo() {
                       </div>
                       <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full flex-shrink-0">
                         {(a.municipios_asignados || []).length} municipio{(a.municipios_asignados || []).length !== 1 ? 's' : ''}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600 mb-4">
+                Entra al panel de Control de cualquier coordinador o asistente administrativo — seguimientos, padrinos, universidades, monitoreo e instituciones — exactamente como esa persona lo ve.
+              </p>
+              <input
+                type="text"
+                placeholder="🔍 Buscar por nombre o correo..."
+                value={busquedaPersonal}
+                onChange={e => setBusquedaPersonal(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white shadow-sm mb-4"
+              />
+              {personalFiltrado.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+                  No se encontró personal administrativo
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
+                  {personalFiltrado.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => setPersonaElegida(p)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{p.nombre_completo}</p>
+                        <p className="text-xs text-gray-500 truncate">{p.correo}</p>
+                      </div>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full flex-shrink-0">
+                        {getNombreRol(p.rol)}
                       </span>
                     </button>
                   ))}

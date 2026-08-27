@@ -377,6 +377,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
         onClose={() => setModalEnlaces(false)}
         grupo={grupo}
         municipiosPermitidos={municipiosPermitidos}
+        puedeGestionar={puedeGestionar(usuario?.rol)}
       />
       <ModalEditarGrupo isOpen={modalEditar} onClose={() => setModalEditar(false)} grupo={grupo} onRecargar={onRecargar} />
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />

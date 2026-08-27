@@ -15,6 +15,7 @@ import ModalEditarDesercion from './ModalEditarDesercion';
 import ModalCambiarGrupo from './ModalCambiarGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 import PasosDesercion from './PasosDesercion';
+import BadgeDiscapacidad from './BadgeDiscapacidad';
 
 const ESTADO_MULTA_COLOR = {
   pendiente: 'bg-red-100 text-red-700',
@@ -224,6 +225,7 @@ export default function ModalPerfilEstudiante({
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(estudiante.estado)}`}>
                     {estudiante.estado || 'Activo'}
                   </span>
+                  <BadgeDiscapacidad estudiante={estudiante} />
                   <span className="text-sm text-gray-600">📋 {estudiante.documento || 'Sin documento'}</span>
                 </div>
               </div>

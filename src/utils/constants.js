@@ -98,6 +98,32 @@ export const CAUSAS_AUSENCIA = [
 // Cohortes disponibles
 export const COHORTES = ['2024', '2025', '2026'];
 
+// Tipos de discapacidad reconocidos (caracterización de estudiantes). 'NO APLICA'
+// es una selección explícita (evaluado, no aplica) distinta de no haber marcado nada.
+export const DISCAPACIDAD_OPCIONES = [
+  { value: 'VISUAL - BAJA VISIÓN IRREVERSIBLE', label: 'VISUAL - BAJA VISIÓN IRREVERSIBLE' },
+  { value: 'VISUAL - CEGUERA', label: 'VISUAL - CEGUERA' },
+  { value: 'TRASTORNO DEL ESPECTRO AUTISTA', label: 'TRASTORNO DEL ESPECTRO AUTISTA' },
+  { value: 'DISCAPACIDAD INTELECTUAL', label: 'DISCAPACIDAD INTELECTUAL' },
+  { value: 'DISCAPACIDAD MÚLTIPLE', label: 'DISCAPACIDAD MÚLTIPLE' },
+  { value: 'DISCAPACIDAD AUDITIVA - USUARIO LENGUA DE SEÑAS COLOMBIANA', label: 'DISCAPACIDAD AUDITIVA - USUARIO LENGUA DE SEÑAS COLOMBIANA' },
+  { value: 'DISCAPACIDAD AUDITIVA - USUARIO DEL CASTELLANO', label: 'DISCAPACIDAD AUDITIVA - USUARIO DEL CASTELLANO' },
+  { value: 'SORDOCEGUERA', label: 'SORDOCEGUERA' },
+  { value: 'DISCAPACIDAD FÍSICA', label: 'DISCAPACIDAD FÍSICA' },
+  { value: 'DISCAPACIDAD PSICOSOCIAL (MENTAL)', label: 'DISCAPACIDAD PSICOSOCIAL (MENTAL)' },
+  { value: 'NO APLICA', label: 'NO APLICA' },
+  { value: 'OTRA DISCAPACIDAD', label: 'OTRA DISCAPACIDAD' },
+  { value: 'SISTEMICA', label: 'SISTEMICA' }
+];
+
+// Tipos de trastorno reconocidos (caracterización de estudiantes)
+export const TRASTORNO_OPCIONES = [
+  { value: 'TRASTORNOS ESPECÍFICOS DE APRENDIZAJE ESCOLAR', label: 'TRASTORNOS ESPECÍFICOS DE APRENDIZAJE ESCOLAR' },
+  { value: 'TRASTORNO POR DÉFICIT DE ATENCIÓN CON/SIN HIPERACTIVIDAD', label: 'TRASTORNO POR DÉFICIT DE ATENCIÓN CON/SIN HIPERACTIVIDAD' },
+  { value: 'TRASTORNOS ESPECÍFICOS DE APRENDIZAJE ESCOLAR Y POR DÉFICIT DE ATENCIÓN', label: 'TRASTORNOS ESPECÍFICOS DE APRENDIZAJE ESCOLAR Y POR DÉFICIT DE ATENCIÓN' },
+  { value: 'NO APLICA', label: 'NO APLICA' }
+];
+
 // Roles de universidad
 export const ROLES_UNIVERSIDAD = {
   DOCENTE: 'docente',

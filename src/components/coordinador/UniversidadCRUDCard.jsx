@@ -18,9 +18,13 @@ const ESTILOS_HOMOLOGACION = {
   completa: { chip: 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100', dot: 'bg-green-500' }
 };
 
-export default function UniversidadCRUDCard({ universidad, onEliminar, onRecargar }) {
+export default function UniversidadCRUDCard({ universidad, onEliminar, onRecargar, usuarioForzado = null }) {
   const notificacion = useNotificacion();
-  const { perfil: usuario } = useAuth();
+  const { perfil: usuarioAuth } = useAuth();
+  // usuarioForzado permite que el admin "vea como" un coordinador/asistente
+  // administrativo específico desde VerComo.jsx (vía PanelCoordinador ->
+  // GestionUniversidades) sin heredar los permisos reales del admin.
+  const usuario = usuarioForzado || usuarioAuth;
   const esAdmin = usuario?.rol === 'admin';
   const [programas, setProgramas] = useState([]);
   const [totalProgramas, setTotalProgramas] = useState(0); // 🔥 NUEVO: total sin expandir

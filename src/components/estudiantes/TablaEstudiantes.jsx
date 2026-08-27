@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { getEstadoColor } from '../../utils/helpers';
 import EmptyState from '../common/EmptyState';
+import BadgeDiscapacidad from './BadgeDiscapacidad';
 
 export default function TablaEstudiantes({
   estudiantes,
@@ -98,9 +99,12 @@ export default function TablaEstudiantes({
                   <p className="text-xs text-gray-400">Acud: {est.acudiente_telefono || 'N/A'}</p>
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
-                    {est.estado || 'Activo'}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
+                      {est.estado || 'Activo'}
+                    </span>
+                    <BadgeDiscapacidad estudiante={est} />
+                  </div>
                 </td>
                 <td className="py-3.5 px-4">
                   <span className={`font-semibold text-sm ${est.total_faltas > 3 ? 'text-red-600' : 'text-gray-700'}`}>
@@ -147,6 +151,7 @@ export default function TablaEstudiantes({
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(est.estado)}`}>
                     {est.estado || 'Activo'}
                   </span>
+                  <BadgeDiscapacidad estudiante={est} />
                   <span className={`text-xs font-semibold ${est.total_faltas > 3 ? 'text-red-600' : 'text-gray-500'}`}>
                     {est.total_faltas || 0} falta{(est.total_faltas || 0) !== 1 ? 's' : ''}
                   </span>

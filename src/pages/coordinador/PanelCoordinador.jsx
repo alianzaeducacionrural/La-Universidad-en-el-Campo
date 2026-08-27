@@ -13,8 +13,12 @@ import GestionUniversidades from '../../components/coordinador/GestionUniversida
 import PanelMonitoreoAcciones from '../../components/coordinador/PanelMonitoreoAcciones';
 import GestionInstituciones from '../../components/coordinador/GestionInstituciones';
 
-export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
-  const { perfil: usuario } = useAuth();
+export default function PanelCoordinador({ onSeguimiento, onVerPerfil, usuarioForzado = null }) {
+  const { perfil: usuarioAuth } = useAuth();
+  // usuarioForzado permite que el admin "vea como" un coordinador/asistente
+  // administrativo específico desde VerComo.jsx, sin iniciar sesión con esa
+  // cuenta (mismo patrón que DashboardUniversidad.jsx).
+  const usuario = usuarioForzado || usuarioAuth;
   const [vistaActiva, setVistaActiva] = useState('seguimientos');
 
   if (!usuario) {
@@ -104,7 +108,7 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil }) {
           )}
           
           {vistaActiva === 'universidades' && (
-            <GestionUniversidades />
+            <GestionUniversidades usuarioForzado={usuario} />
           )}
           {vistaActiva === 'monitoreo' && (
             <PanelMonitoreoAcciones />

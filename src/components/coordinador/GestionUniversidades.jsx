@@ -9,7 +9,7 @@ import ModalNuevaUniversidad from './ModalNuevaUniversidad';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { useNotificacion } from '../../context/NotificacionContext';
 
-export default function GestionUniversidades() {
+export default function GestionUniversidades({ usuarioForzado = null }) {
   const notificacion = useNotificacion();
   const [universidades, setUniversidades] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -109,6 +109,7 @@ export default function GestionUniversidades() {
               universidad={universidad}
               onEliminar={handleEliminarUniversidad}
               onRecargar={() => setRecargar(prev => prev + 1)}
+              usuarioForzado={usuarioForzado}
             />
           ))
         )}

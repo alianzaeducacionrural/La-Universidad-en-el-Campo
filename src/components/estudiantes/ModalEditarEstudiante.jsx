@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
+import CampoDiscapacidadTrastorno from './CampoDiscapacidadTrastorno';
 
 export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estudiante, puedeGestionar }) {
   const notificacion = useNotificacion();
@@ -14,11 +15,15 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
   const [instituciones, setInstituciones] = useState([]);
   const [cargandoInstituciones, setCargandoInstituciones] = useState(false);
   const [institucionSeleccionada, setInstitucionSeleccionada] = useState('');
+  const [discapacidadTipo, setDiscapacidadTipo] = useState('');
+  const [trastornoTipo, setTrastornoTipo] = useState('');
 
   // Cargar municipios al abrir
   useEffect(() => {
     if (isOpen && estudiante) {
       cargarMunicipios();
+      setDiscapacidadTipo(estudiante.discapacidad_tipo || '');
+      setTrastornoTipo(estudiante.trastorno_tipo || '');
     }
   }, [isOpen, estudiante]);
 
@@ -84,7 +89,11 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
       municipio: municipioNombre,
       institucion_educativa: formData.get('institucion_educativa')
     };
-    if (puedeGestionar) datos.total_faltas = parseInt(formData.get('total_faltas')) || 0;
+    if (puedeGestionar) {
+      datos.total_faltas = parseInt(formData.get('total_faltas')) || 0;
+      datos.discapacidad_tipo = discapacidadTipo || null;
+      datos.trastorno_tipo = trastornoTipo || null;
+    }
     
     const resultado = await onGuardar(estudiante.id, datos);
     setCargando(false);
@@ -154,8 +163,20 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
                 </div>
               </div>
             </div>
+
+            {puedeGestionar && (
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-700 mb-3">🧩 Necesidades Especiales</h4>
+                <CampoDiscapacidadTrastorno
+                  discapacidad={discapacidadTipo}
+                  onChangeDiscapacidad={setDiscapacidadTipo}
+                  trastorno={trastornoTipo}
+                  onChangeTrastorno={setTrastornoTipo}
+                />
+              </div>
+            )}
           </div>
-          
+
           <div className="p-6 bg-gray-50 border-t flex justify-end space-x-3 rounded-b-xl">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">Cancelar</button>
             <button type="submit" disabled={cargando} className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50">Guardar Cambios</button>

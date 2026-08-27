@@ -10,7 +10,9 @@ import Header from '../../components/common/Header';
 import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
 import SelectConOtro from '../../components/common/SelectConOtro';
-import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis } from '../../utils/helpers';
+import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis, tieneEtiquetaEspecial, debeMostrarAvisoDiscapacidad, registrarAvisoDiscapacidadMostrado } from '../../utils/helpers';
+import BadgeDiscapacidad from '../../components/estudiantes/BadgeDiscapacidad';
+import ModalAvisoDiscapacidad from '../../components/universidad/ModalAvisoDiscapacidad';
 import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/exportUtils';
 import ReportesPanel from '../../components/reportes/ReportesPanel';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
@@ -58,6 +60,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
   const [enlacesGrupo, setEnlacesGrupo] = useState({ estudiantes: null, acudientes: null });
   const [padrinosGrupo, setPadrinosGrupo] = useState([]);
+  const [institucionesGrupo, setInstitucionesGrupo] = useState([]);
   const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
   const [modalCronograma, setModalCronograma] = useState(false);
   const [fechaCronogramaSeleccionadaId, setFechaCronogramaSeleccionadaId] = useState(null);
@@ -84,6 +87,10 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [observacionesInd, setObservacionesInd] = useState({});
   const [modalResumen, setModalResumen] = useState(false);
   const [resumenSesion, setResumenSesion] = useState(null);
+
+  // AVISO DE DISCAPACIDAD/TRASTORNO (una vez por grupo por día, ver helpers.js)
+  const [modalAvisoDiscapacidad, setModalAvisoDiscapacidad] = useState(false);
+  const [estudiantesConEtiqueta, setEstudiantesConEtiqueta] = useState([]);
 
   // ESTADOS PARA LA PESTAÑA DE ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD)
   const [filtrosEstadisticasUniversidad, setFiltrosEstadisticasUniversidad] = useState(FILTROS_VACIOS);
@@ -251,6 +258,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       cargarEstudiantes(grupoSeleccionado.id);
       cargarEnlacesGrupo(grupoSeleccionado.id);
       cargarPadrinosGrupo(grupoSeleccionado.id);
+      cargarInstitucionesGrupo(grupoSeleccionado.id);
       cargarHistorial(grupoSeleccionado.id);
       cargarNotasGrupo(grupoSeleccionado.id);
       cargarCronogramaGrupo(grupoSeleccionado.id);
@@ -279,6 +287,14 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         setObservacionesInd({});
         grupoIdCargadoRef.current = grupoId;
       }
+
+      // Aviso automático de discapacidad/trastorno: una vez por grupo por día
+      const conEtiqueta = data.filter(tieneEtiquetaEspecial);
+      if (conEtiqueta.length > 0 && debeMostrarAvisoDiscapacidad(grupoId)) {
+        setEstudiantesConEtiqueta(conEtiqueta);
+        setModalAvisoDiscapacidad(true);
+        registrarAvisoDiscapacidadMostrado(grupoId);
+      }
     }
     setCargando(false);
   }
@@ -299,6 +315,35 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       .select(`padrinos:padrino_id (id, nombre_completo, telefono, correo)`)
       .eq('grupo_id', grupoId);
     if (data) setPadrinosGrupo(data.map(d => d.padrinos).filter(p => p));
+  }
+
+  // Deriva las instituciones presentes en el grupo a partir de sus estudiantes
+  // (mismo patrón que ModalEnlacesInstituciones.jsx: no hay FK real entre
+  // estudiantes.institucion_educativa y instituciones, se empareja por nombre).
+  // Vista de solo lectura — el docente/coordinador de universidad no edita esto.
+  async function cargarInstitucionesGrupo(grupoId) {
+    const { data: estudiantesGrupo } = await supabase
+      .from('estudiantes')
+      .select('institucion_educativa, municipio')
+      .eq('grupo_id', grupoId);
+
+    const comboMap = new Map();
+    (estudiantesGrupo || []).forEach(e => {
+      if (!e.institucion_educativa || !e.municipio) return;
+      const clave = `${e.institucion_educativa}|${e.municipio}`;
+      if (!comboMap.has(clave)) comboMap.set(clave, { nombre: e.institucion_educativa, municipio: e.municipio });
+    });
+    const combos = [...comboMap.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const nombresUnicos = [...new Set(combos.map(c => c.nombre))];
+
+    const { data: institucionesData } = nombresUnicos.length > 0
+      ? await supabase.from('instituciones').select('nombre, rector_nombre, rector_telefono, rector_correo, docente_lider_nombre, docente_lider_telefono, municipios:municipio_id (nombre)').in('nombre', nombresUnicos)
+      : { data: [] };
+
+    const mapaInstituciones = new Map();
+    (institucionesData || []).forEach(i => mapaInstituciones.set(`${i.nombre}|${i.municipios?.nombre}`, i));
+
+    setInstitucionesGrupo(combos.map(c => ({ ...c, institucion: mapaInstituciones.get(`${c.nombre}|${c.municipio}`) || null })));
   }
 
   async function cargarCronogramaGrupo(grupoId) {
@@ -707,6 +752,37 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
           </div>
         )}
 
+        {/* INFORMACIÓN DE INSTITUCIONES (solo lectura) */}
+        {institucionesGrupo.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 shadow-sm">
+            <p className="text-sm font-medium text-gray-700 mb-3">🏫 Instituciones del grupo:</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {institucionesGrupo.map(f => (
+                <div key={`${f.nombre}|${f.municipio}`} className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-gray-800">{f.nombre}</p>
+                  <p className="text-xs text-gray-500 mb-1">📍 {f.municipio}</p>
+                  {f.institucion?.rector_nombre && (
+                    <p className="text-xs text-gray-600">
+                      🎓 Rector: {f.institucion.rector_nombre}
+                      {f.institucion.rector_telefono && ` · 📞 ${f.institucion.rector_telefono}`}
+                      {f.institucion.rector_correo && ` · ✉️ ${f.institucion.rector_correo}`}
+                    </p>
+                  )}
+                  {f.institucion?.docente_lider_nombre && (
+                    <p className="text-xs text-gray-600">
+                      👩‍🏫 Docente líder: {f.institucion.docente_lider_nombre}
+                      {f.institucion.docente_lider_telefono && ` · 📞 ${f.institucion.docente_lider_telefono}`}
+                    </p>
+                  )}
+                  {!f.institucion?.rector_nombre && !f.institucion?.docente_lider_nombre && (
+                    <p className="text-xs text-gray-400">Sin información de contacto registrada</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* PESTAÑAS */}
         <div className="border-b border-gray-200 mb-6 -mx-4 md:mx-0 px-4 md:px-0">
           <nav className="flex space-x-6 md:space-x-8 overflow-x-auto scrollbar-hide pb-px">
@@ -827,6 +903,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                                 }`}>
                                   {est.estado || 'Activo'}
                                 </span>
+                                <BadgeDiscapacidad estudiante={est} />
                               </div>
                               <p className="text-xs text-gray-500 truncate">{est.municipio} • {est.institucion_educativa}</p>
                             </div>
@@ -1147,9 +1224,12 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                             </span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${estadoClase(est.estado)}`}>
-                              {est.estado || 'Activo'}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${estadoClase(est.estado)}`}>
+                                {est.estado || 'Activo'}
+                              </span>
+                              <BadgeDiscapacidad estudiante={est} />
+                            </div>
                           </td>
                           {onVerPerfil && (
                             <td className="py-3 px-4 text-center">
@@ -1179,9 +1259,12 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                           <p className="font-semibold text-gray-800 text-sm truncate">{est.nombre_completo}</p>
                           <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${estadoClase(est.estado)}`}>
-                          {est.estado || 'Activo'}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoClase(est.estado)}`}>
+                            {est.estado || 'Activo'}
+                          </span>
+                          <BadgeDiscapacidad estudiante={est} />
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-500">
                         <span>📍 {est.municipio || '—'}</span>
@@ -1480,15 +1563,18 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                             <td className="py-3 px-4 text-sm text-gray-600">{gruposReportesMap.get(est.grupo_id) || 'Sin grupo'}</td>
                             <td className="py-3 px-4 text-sm text-gray-600">{est.telefono || '—'}</td>
                             <td className="py-3 px-4">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                                est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
-                                est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
-                                est.estado === 'Desertor' ? 'bg-red-100 text-red-600' :
-                                est.estado === 'Graduado' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-600'
-                              }`}>
-                                {est.estado || 'Activo'}
-                              </span>
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
+                                  est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
+                                  est.estado === 'Desertor' ? 'bg-red-100 text-red-600' :
+                                  est.estado === 'Graduado' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {est.estado || 'Activo'}
+                                </span>
+                                <BadgeDiscapacidad estudiante={est} />
+                              </div>
                             </td>
                             {onVerPerfil && (
                               <td className="py-3 px-4 text-center">
@@ -1515,15 +1601,18 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                             <p className="font-semibold text-gray-800 text-sm truncate">{est.nombre_completo}</p>
                             <p className="text-xs text-gray-400">{est.documento || 'Sin documento'}</p>
                           </div>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
-                            est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
-                            est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
-                            est.estado === 'Desertor' ? 'bg-red-100 text-red-600' :
-                            est.estado === 'Graduado' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
-                            {est.estado || 'Activo'}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              est.estado === 'Activo' ? 'bg-green-100 text-green-700' :
+                              est.estado === 'En Riesgo' ? 'bg-yellow-100 text-yellow-700' :
+                              est.estado === 'Desertor' ? 'bg-red-100 text-red-600' :
+                              est.estado === 'Graduado' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {est.estado || 'Activo'}
+                            </span>
+                            <BadgeDiscapacidad estudiante={est} />
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-500">
                           <span>📍 {est.municipio || '—'}</span>
@@ -1549,6 +1638,12 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
       </div>
       </div>
+
+      <ModalAvisoDiscapacidad
+        isOpen={modalAvisoDiscapacidad}
+        onClose={() => setModalAvisoDiscapacidad(false)}
+        estudiantes={estudiantesConEtiqueta}
+      />
 
       <ModalIngresarNotas
         isOpen={modalNotas}

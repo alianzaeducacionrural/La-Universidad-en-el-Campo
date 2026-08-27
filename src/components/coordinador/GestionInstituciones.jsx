@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { formatearFecha, interpretarError } from '../../utils/helpers';
 import ModalCrearInstitucion from './ModalCrearInstitucion';
+import ModalEditarInstitucion from './ModalEditarInstitucion';
 
 function generarToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
@@ -23,6 +24,7 @@ export default function GestionInstituciones() {
   const [procesandoId, setProcesandoId] = useState(null);
   const [mostrarTodas, setMostrarTodas] = useState(false);
   const [modalCrear, setModalCrear] = useState(false);
+  const [institucionEditando, setInstitucionEditando] = useState(null);
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -201,8 +203,21 @@ export default function GestionInstituciones() {
                           </span>
                         )}
                       </p>
+                      {(inst.rector_nombre || inst.docente_lider_nombre) && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {inst.rector_nombre && <>🎓 Rector: {inst.rector_nombre}</>}
+                          {inst.rector_nombre && inst.docente_lider_nombre && ' · '}
+                          {inst.docente_lider_nombre && <>👩‍🏫 Docente líder: {inst.docente_lider_nombre}</>}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                      <button
+                        onClick={() => setInstitucionEditando(inst)}
+                        className="text-xs bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        ✏️ Editar
+                      </button>
                       {inst.token_activo ? (
                         <>
                           <span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full border border-green-200">🔗 Enlace activo</span>
@@ -249,6 +264,13 @@ export default function GestionInstituciones() {
         isOpen={modalCrear}
         onClose={() => setModalCrear(false)}
         onCreada={() => { setModalCrear(false); cargarDatos(); }}
+      />
+
+      <ModalEditarInstitucion
+        isOpen={!!institucionEditando}
+        institucion={institucionEditando}
+        onClose={() => setInstitucionEditando(null)}
+        onGuardado={() => { setInstitucionEditando(null); cargarDatos(); }}
       />
     </div>
   );

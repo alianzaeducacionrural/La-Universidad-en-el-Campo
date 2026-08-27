@@ -3,11 +3,13 @@
 // =============================================
 
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useState, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
 import { supabase } from './lib/supabaseClient';
 import { puedeGestionar } from './utils/helpers';
+import useCartasCobro from './hooks/useCartasCobro';
+import ModalAlertaCartasCobro from './components/admin/ModalAlertaCartasCobro';
 import Login from './pages/Login';
 import SplashScreen from './components/common/SplashScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -244,6 +246,46 @@ function GlobalModales({
   );
 }
 
+// Alerta global de cartas de cobro — montada solo para asistente_admin (ver
+// AppContent), así el hook (y su consulta) ni siquiera corre para otros
+// roles. Máximo una vez cada 4 horas: el timestamp solo se guarda cuando el
+// modal realmente se muestra, para no ocultar una alerta nueva que surja
+// dentro de la ventana de 4h sin nada pendiente al momento de revisar.
+function AlertaCartasCobroAsistente() {
+  const { alertables, cargando, recargar } = useCartasCobro();
+  const [modalAlertaCartas, setModalAlertaCartas] = useState(false);
+
+  useEffect(() => {
+    if (cargando || alertables.length === 0) return;
+    const CLAVE = 'ultimaAlertaCartasCobroMostrada';
+    const CUATRO_HORAS_MS = 4 * 60 * 60 * 1000;
+    let ultima = null;
+    try { ultima = parseInt(localStorage.getItem(CLAVE), 10) || null; } catch { /* localStorage no disponible */ }
+    if (ultima && Date.now() - ultima < CUATRO_HORAS_MS) return;
+
+    setModalAlertaCartas(true);
+    try { localStorage.setItem(CLAVE, Date.now().toString()); } catch { /* localStorage no disponible */ }
+  }, [cargando, alertables]);
+
+  // Al volver a la pestaña tras una ausencia, refresca los datos — si ya
+  // pasaron 4h desde el último aviso, el efecto de arriba lo vuelve a mostrar.
+  useEffect(() => {
+    function alVolverVisible() {
+      if (document.visibilityState === 'visible') recargar();
+    }
+    document.addEventListener('visibilitychange', alVolverVisible);
+    return () => document.removeEventListener('visibilitychange', alVolverVisible);
+  }, [recargar]);
+
+  return (
+    <ModalAlertaCartasCobro
+      isOpen={modalAlertaCartas}
+      onClose={() => setModalAlertaCartas(false)}
+      alertas={alertables}
+    />
+  );
+}
+
 function AppContent() {
   const { perfil: usuario } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
@@ -445,6 +487,8 @@ function AppContent() {
         cargarHistorialGlobalFn={cargarHistorialGlobalFn}
         usuario={usuario}
       />
+
+      {usuario?.rol === 'asistente_admin' && <AlertaCartasCobroAsistente />}
     </>
   );
 }

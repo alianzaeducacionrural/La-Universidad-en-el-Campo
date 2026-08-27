@@ -161,6 +161,7 @@ export default function GrupoInfo({
         isOpen={modalEnlaces}
         onClose={() => setModalEnlaces(false)}
         grupo={grupo}
+        puedeGestionar={puedeGestionar}
         institucionesPermitidas={grupo.instituciones_asignadas}
       />
       <ModalCronogramaGrupo

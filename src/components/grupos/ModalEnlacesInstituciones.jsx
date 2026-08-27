@@ -8,11 +8,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
+import ModalEditarInstitucion from '../coordinador/ModalEditarInstitucion';
 
-export default function ModalEnlacesInstituciones({ isOpen, onClose, grupo, municipiosPermitidos = null, institucionesPermitidas = null }) {
+export default function ModalEnlacesInstituciones({ isOpen, onClose, grupo, municipiosPermitidos = null, institucionesPermitidas = null, puedeGestionar = false }) {
   const notificacion = useNotificacion();
   const [filas, setFilas] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [institucionEditando, setInstitucionEditando] = useState(null);
 
   useEffect(() => {
     if (isOpen) cargarDatos();
@@ -37,7 +39,7 @@ export default function ModalEnlacesInstituciones({ isOpen, onClose, grupo, muni
 
     const nombresUnicos = [...new Set(combos.map(c => c.nombre))];
     const { data: institucionesData } = nombresUnicos.length > 0
-      ? await supabase.from('instituciones').select('id, nombre, token_acceso, token_activo, municipios:municipio_id (nombre)').in('nombre', nombresUnicos)
+      ? await supabase.from('instituciones').select('id, nombre, municipio_id, token_acceso, token_activo, contacto_nombre, contacto_correo, rector_nombre, rector_telefono, rector_correo, docente_lider_nombre, docente_lider_telefono, municipios:municipio_id (nombre)').in('nombre', nombresUnicos)
       : { data: [] };
 
     const mapaInstituciones = new Map();
@@ -82,20 +84,50 @@ export default function ModalEnlacesInstituciones({ isOpen, onClose, grupo, muni
           ) : (
             <div className="space-y-2">
               {filas.map(f => (
-                <div key={`${f.nombre}|${f.municipio}`} className="flex items-center justify-between bg-gray-50 border border-gray-200 p-3 rounded-lg gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">🏫 {f.nombre}</p>
-                    <p className="text-xs text-gray-500">📍 {f.municipio}</p>
+                <div key={`${f.nombre}|${f.municipio}`} className="bg-gray-50 border border-gray-200 p-3 rounded-lg">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">🏫 {f.nombre}</p>
+                      <p className="text-xs text-gray-500">📍 {f.municipio}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {puedeGestionar && f.institucion && (
+                        <button
+                          onClick={() => setInstitucionEditando(f.institucion)}
+                          className="text-xs bg-white border border-gray-300 text-gray-700 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition"
+                          title="Editar información de contacto"
+                        >
+                          ✏️
+                        </button>
+                      )}
+                      {f.institucion?.token_activo && f.institucion?.token_acceso ? (
+                        <button
+                          onClick={() => copiarLink(f.institucion)}
+                          className="text-xs bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg transition"
+                        >
+                          📋 Copiar
+                        </button>
+                      ) : f.institucion ? (
+                        <span className="text-xs text-amber-600">⚠️ Sin enlace</span>
+                      ) : null}
+                    </div>
                   </div>
-                  {f.institucion?.token_activo && f.institucion?.token_acceso ? (
-                    <button
-                      onClick={() => copiarLink(f.institucion)}
-                      className="flex-shrink-0 text-xs bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg transition"
-                    >
-                      📋 Copiar
-                    </button>
-                  ) : (
-                    <span className="flex-shrink-0 text-xs text-amber-600">⚠️ Sin enlace</span>
+
+                  {!f.institucion && (
+                    <p className="text-xs text-amber-600 mt-2">
+                      ⚠️ Institución no registrada en el catálogo — créala desde Gestión de Instituciones para poder ver/editar su información de contacto.
+                    </p>
+                  )}
+
+                  {f.institucion && (f.institucion.rector_nombre || f.institucion.docente_lider_nombre) && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-600 space-y-0.5">
+                      {f.institucion.rector_nombre && (
+                        <p>🎓 Rector: {f.institucion.rector_nombre}{f.institucion.rector_telefono && ` · 📞 ${f.institucion.rector_telefono}`}{f.institucion.rector_correo && ` · ✉️ ${f.institucion.rector_correo}`}</p>
+                      )}
+                      {f.institucion.docente_lider_nombre && (
+                        <p>👩‍🏫 Docente líder: {f.institucion.docente_lider_nombre}{f.institucion.docente_lider_telefono && ` · 📞 ${f.institucion.docente_lider_telefono}`}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -109,6 +141,13 @@ export default function ModalEnlacesInstituciones({ isOpen, onClose, grupo, muni
           </button>
         </div>
       </div>
+
+      <ModalEditarInstitucion
+        isOpen={!!institucionEditando}
+        institucion={institucionEditando}
+        onClose={() => setInstitucionEditando(null)}
+        onGuardado={() => { setInstitucionEditando(null); cargarDatos(); }}
+      />
     </div>
   );
 }

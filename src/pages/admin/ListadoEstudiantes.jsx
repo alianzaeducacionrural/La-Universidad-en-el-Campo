@@ -10,6 +10,7 @@ import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
 import { getMunicipiosPermitidos, getEstadoColor } from '../../utils/helpers';
+import BadgeDiscapacidad from '../../components/estudiantes/BadgeDiscapacidad';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
 
 export default function ListadoEstudiantes({ onVerPerfil }) {
@@ -241,9 +242,12 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
                         </td>
                         <td className="px-4 py-2.5 text-gray-600">{e.cohorte}</td>
                         <td className="px-4 py-2.5">
-                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${getEstadoColor(e.estado)}`}>
-                            {e.estado || 'Activo'}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${getEstadoColor(e.estado)}`}>
+                              {e.estado || 'Activo'}
+                            </span>
+                            <BadgeDiscapacidad estudiante={e} />
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-center">
                           <button

@@ -11,6 +11,8 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { formatearFecha, interpretarError } from '../../utils/helpers';
 import { generarCartaCobro1 } from '../../utils/docxCartaCobro';
+import useCartasCobro from '../../hooks/useCartasCobro';
+import EstadoCartasCobro from '../../components/admin/EstadoCartasCobro';
 import jsPDF from 'jspdf';
 
 export default function GestionMultas({ onVerPerfil }) {
@@ -19,6 +21,10 @@ export default function GestionMultas({ onVerPerfil }) {
   const [multas, setMultas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaActiva, setVistaActiva] = useState('multas');
+  // Pestaña interna de esta página (Multas / Estado de Cartas) — independiente
+  // de vistaActiva, que solo sirve para resaltar el ítem activo del Sidebar.
+  const [tabPagina, setTabPagina] = useState('multas');
+  const { pendientes: cartasPendientes, cargando: cargandoCartas, recargar: recargarEstadoCartas } = useCartasCobro();
   const [modalCarta, setModalCarta] = useState(false);
   const [modalPago, setModalPago] = useState(false);
   const [modalHistorialPagos, setModalHistorialPagos] = useState(false);
@@ -120,6 +126,7 @@ export default function GestionMultas({ onVerPerfil }) {
     }
 
     cargarMultas();
+    recargarEstadoCartas();
   }
 
   async function handleRegistrarPago(e) {
@@ -214,8 +221,42 @@ export default function GestionMultas({ onVerPerfil }) {
         <Header onVerPerfil={onVerPerfil} />
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">💰 Gestión de Multas por Deserción</h1>
-          <p className="text-gray-600 mb-6">Administra las multas de estudiantes desertores sin justificar</p>
+          <p className="text-gray-600 mb-4">Administra las multas de estudiantes desertores sin justificar</p>
 
+          {/* PESTAÑAS DE LA PÁGINA */}
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="flex space-x-6">
+              <button
+                onClick={() => setTabPagina('multas')}
+                className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap ${tabPagina === 'multas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+              >
+                💰 Multas
+              </button>
+              <button
+                onClick={() => setTabPagina('cartas')}
+                className={`pb-3 font-medium text-sm border-b-2 whitespace-nowrap flex items-center gap-1.5 ${tabPagina === 'cartas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+              >
+                📬 Estado de Cartas
+                {cartasPendientes.some(p => p.estadoAlerta !== 'a_tiempo') && (
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                )}
+              </button>
+            </nav>
+          </div>
+
+          {tabPagina === 'cartas' ? (
+            <EstadoCartasCobro
+              pendientes={cartasPendientes}
+              cargando={cargandoCartas}
+              onGenerarCarta={(p) => {
+                setMultaSeleccionada(p.multa);
+                setNumeroCarta(p.siguienteNumeroCarta);
+                setFechaCarta(new Date().toISOString().split('T')[0]);
+                setModalCarta(true);
+              }}
+            />
+          ) : (
+          <>
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-xl border border-gray-200 p-5 text-center shadow-sm">
@@ -355,6 +396,8 @@ export default function GestionMultas({ onVerPerfil }) {
                 </table>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>
