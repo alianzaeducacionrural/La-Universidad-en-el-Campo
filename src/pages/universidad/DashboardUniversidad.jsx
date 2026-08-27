@@ -2,7 +2,7 @@
 // DASHBOARD PARA UNIVERSIDADES (CON HISTORIAL COMPLETO)
 // =============================================
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -13,6 +13,7 @@ import SelectConOtro from '../../components/common/SelectConOtro';
 import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis, tieneEtiquetaEspecial, debeMostrarAvisoDiscapacidad, registrarAvisoDiscapacidadMostrado } from '../../utils/helpers';
 import BadgeDiscapacidad from '../../components/estudiantes/BadgeDiscapacidad';
 import ModalAvisoDiscapacidad from '../../components/universidad/ModalAvisoDiscapacidad';
+import { useEstudianteActualizado } from '../../hooks/useEstudianteActualizado';
 import { exportarNotasGrupoExcel, exportarEstudiantesExcel } from '../../utils/exportUtils';
 import ReportesPanel from '../../components/reportes/ReportesPanel';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
@@ -266,6 +267,16 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       cargarCronogramaGrupo(grupoSeleccionado.id);
     }
   }, [grupoSeleccionado]);
+
+  // El modal global de "Ver Perfil" (App.jsx) edita fuera de esta página —
+  // sin esto, un cambio (p.ej. discapacidad/trastorno) no se veía reflejado
+  // aquí hasta recargar. Ver hooks/useEstudianteActualizado.js. Se parchean
+  // las dos copias locales: la del grupo seleccionado y la de toda la
+  // universidad (pestaña Estudiantes/Estadísticas).
+  useEstudianteActualizado(useCallback((id, datos) => {
+    setEstudiantes(prev => prev.map(e => (e.id === id ? { ...e, ...datos } : e)));
+    setRawEstudiantesReportes(prev => prev.map(e => (e.id === id ? { ...e, ...datos } : e)));
+  }, []));
 
   async function cargarGrupos() {
     const { data } = await supabase.from('grupos').select('*').eq('universidad', usuario.universidad).eq('activo', true).order('nombre');

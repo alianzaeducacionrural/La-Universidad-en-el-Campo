@@ -2,10 +2,11 @@
 // PÁGINA: ESTADÍSTICAS (CON BUSCADOR GLOBAL)
 // =============================================
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { getMunicipiosPermitidos, tieneEtiquetaEspecial } from '../utils/helpers';
+import { useEstudianteActualizado } from '../hooks/useEstudianteActualizado';
 import { exportarEstudiantesExcel } from '../utils/exportUtils';
 import { ESTADOS_ESTUDIANTE } from '../utils/constants';
 import Header from '../components/common/Header';
@@ -43,6 +44,13 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
     if (usuario) cargarTodo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
+
+  // El modal global de "Ver Perfil" (App.jsx) edita fuera de esta página —
+  // sin esto, un cambio (p.ej. discapacidad/trastorno) no se veía reflejado
+  // aquí hasta recargar. Ver hooks/useEstudianteActualizado.js.
+  useEstudianteActualizado(useCallback((id, datos) => {
+    setRawEstudiantes(prev => prev.map(e => (e.id === id ? { ...e, ...datos } : e)));
+  }, []));
 
   async function obtenerEstudiantesCrudo() {
     let todosLosDatos = [];

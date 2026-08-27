@@ -131,14 +131,14 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
       <button
         type="button"
         onClick={() => setAbierto(a => !a)}
-        className={`w-full h-10 px-3 rounded-lg text-sm border transition-colors flex items-center gap-2 whitespace-nowrap ${
+        className={`h-10 px-3 rounded-lg text-sm border transition-colors flex items-center gap-2 whitespace-nowrap ${
           hayActivos
             ? 'bg-primary border-primary text-white shadow-sm'
             : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
         }`}
       >
         <span className="text-base leading-none">{icon}</span>
-        <span className="truncate flex-1 text-left font-medium">{label}</span>
+        <span className="text-left font-medium">{label}</span>
         {hayActivos && (
           <span className="bg-white/25 text-white text-[11px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 flex-shrink-0">
             {seleccionados.length}
@@ -195,21 +195,17 @@ function ToggleFiltro({ label, icon, activo, onChange }) {
     <button
       type="button"
       onClick={() => onChange(!activo)}
-      className={`w-full h-10 px-3 rounded-lg text-sm border transition-colors flex items-center gap-2 whitespace-nowrap ${
+      className={`h-10 px-3 rounded-lg text-sm border transition-colors flex items-center gap-2 whitespace-nowrap ${
         activo
           ? 'bg-primary border-primary text-white shadow-sm'
           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
       }`}
     >
       <span className="text-base leading-none">{icon}</span>
-      <span className="truncate flex-1 text-left font-medium">{label}</span>
+      <span className="text-left font-medium">{label}</span>
     </button>
   );
 }
-
-// Tailwind necesita ver las clases completas como texto literal para
-// generarlas — de ahí este mapa en vez de interpolar el número directamente.
-const COLUMNAS_LG = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6', 7: 'lg:grid-cols-7', 8: 'lg:grid-cols-8' };
 
 export default function FiltrosReportes({
   filtros,
@@ -278,7 +274,7 @@ export default function FiltrosReportes({
         )}
       </div>
 
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${COLUMNAS_LG[4 + (mostrarUniversidad ? 1 : 0) + (mostrarInstitucion ? 1 : 0) + (mostrarEstado ? 1 : 0) + (mostrarNecesidadesEspeciales ? 1 : 0)]} gap-2.5`}>
+      <div className="flex flex-wrap gap-2.5">
         <MultiSelect label="Municipio" icon={ICONOS_CATEGORIA.municipios} opciones={opciones.municipios} seleccionados={filtros.municipios} onChange={v => set('municipios', v)} disponibles={disponiblesPara('municipios')} />
         {mostrarUniversidad && (
           <MultiSelect label="Universidad" icon={ICONOS_CATEGORIA.universidades} opciones={opciones.universidades} seleccionados={filtros.universidades} onChange={v => set('universidades', v)} disponibles={disponiblesPara('universidades')} />

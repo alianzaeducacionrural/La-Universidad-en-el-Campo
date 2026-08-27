@@ -10,6 +10,7 @@ import { supabase } from './lib/supabaseClient';
 import { puedeGestionar } from './utils/helpers';
 import useCartasCobro from './hooks/useCartasCobro';
 import ModalAlertaCartasCobro from './components/admin/ModalAlertaCartasCobro';
+import { emitirEstudianteActualizado } from './hooks/useEstudianteActualizado';
 import Login from './pages/Login';
 import SplashScreen from './components/common/SplashScreen';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -229,6 +230,12 @@ function GlobalModales({
           const { error } = await supabase.from('estudiantes').update(datos).eq('id', id);
           if (error) return { success: false, error: error.message };
           notificacion.success('Información actualizada correctamente');
+          // Actualiza el perfil abierto ahí mismo y avisa a cualquier otra
+          // página montada que tenga su propia copia de este estudiante (ver
+          // useEstudianteActualizado.js) — sin esto había que recargar la
+          // página para ver reflejado el cambio (p.ej. discapacidad/trastorno).
+          setEstudiantePerfilGlobal(prev => (prev && prev.id === id ? { ...prev, ...datos } : prev));
+          emitirEstudianteActualizado(id, datos);
           return { success: true };
         }}
         estudiante={estudiantePerfilGlobal}
@@ -375,6 +382,12 @@ function AppContent() {
   async function handleActualizarEstudiantePanel(id, datos) {
     const { error } = await supabase.from('estudiantes').update(datos).eq('id', id);
     if (error) return { success: false, error: error.message };
+    // Actualiza el perfil abierto ahí mismo y avisa a cualquier otra página
+    // montada que tenga su propia copia de este estudiante (ver
+    // useEstudianteActualizado.js) — sin esto había que recargar la página
+    // para ver reflejado el cambio (p.ej. discapacidad/trastorno).
+    setEstudianteSeleccionado(prev => (prev && prev.id === id ? { ...prev, ...datos } : prev));
+    emitirEstudianteActualizado(id, datos);
     return { success: true };
   }
 
