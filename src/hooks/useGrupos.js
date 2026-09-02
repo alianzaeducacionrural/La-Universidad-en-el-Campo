@@ -57,13 +57,12 @@ export function useGrupos(padrino) {
       const gruposFiltrados = [...gruposUnicos.values()];
 
       setGruposAsignados(gruposFiltrados);
-      
-      // Solo seleccionar el primer grupo si no hay uno seleccionado
-      if (gruposFiltrados.length > 0) {
-        setGrupoSeleccionado(prev => prev || gruposFiltrados[0]);
-      } else {
-        setGrupoSeleccionado(null);
-      }
+
+      // No se auto-selecciona el primer grupo: hay alertas (p.ej. estudiantes
+      // con necesidades especiales) que se disparan al entrar a un grupo, y
+      // el padrino podría no venir por ese grupo. Debe elegirlo él mismo. Si
+      // el grupo que ya tenía elegido desapareció de la lista, se limpia.
+      setGrupoSeleccionado(prev => (prev && gruposFiltrados.some(g => g.id === prev.id) ? prev : null));
     }
   }, [padrino]);
 

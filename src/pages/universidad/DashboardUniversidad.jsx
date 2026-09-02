@@ -280,13 +280,11 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
   async function cargarGrupos() {
     const { data } = await supabase.from('grupos').select('*').eq('universidad', usuario.universidad).eq('activo', true).order('nombre');
-    if (data) {
-      setGrupos(data);
-      if (data.length > 0) {
-        setGrupoSeleccionado(data[0]);
-        setCohorteFiltro(data[0].cohorte);
-      }
-    }
+    // No se auto-selecciona el primer grupo: hay alertas (p.ej. estudiantes
+    // con necesidades especiales) que se disparan al entrar a un grupo, y el
+    // docente/coordinador podría no venir por ese grupo. Debe elegirlo él
+    // mismo en la lista de abajo.
+    if (data) setGrupos(data);
   }
 
   async function cargarEstudiantes(grupoId) {
@@ -748,6 +746,13 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
           </div>
         </div>
 
+        {!grupoSeleccionado ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <p className="text-gray-500 text-lg mb-1">👆 Selecciona un grupo arriba para continuar</p>
+            <p className="text-gray-400 text-sm">Elige con qué grupo quieres trabajar — asistencia, notas, estudiantes, cronograma.</p>
+          </div>
+        ) : (
+        <>
         {/* INFORMACIÓN DE PADRINOS */}
         {padrinosGrupo.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 shadow-sm">
@@ -1408,6 +1413,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             </div>
             <ContenidoHomologacionGrupo grupo={grupoSeleccionado} />
           </div>
+        )}
+        </>
         )}
         </>
         )}

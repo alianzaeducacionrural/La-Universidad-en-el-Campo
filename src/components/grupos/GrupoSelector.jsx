@@ -29,6 +29,7 @@ export default function GrupoSelector({
             }}
             className="w-full max-w-2xl border border-gray-300 rounded-lg px-4 py-3 bg-white shadow-sm focus:ring-2 focus:ring-primary focus:border-primary text-base"
           >
+            <option value="" disabled hidden>Selecciona un grupo...</option>
             {gruposAsignados.map(g => (
               <option key={g.id} value={g.id}>
                 {g.nombre}{g.instituciones_asignadas ? ` — 🏫 ${g.instituciones_asignadas.join(', ')}` : ''}
