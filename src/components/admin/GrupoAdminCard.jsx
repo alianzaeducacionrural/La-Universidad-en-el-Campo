@@ -431,6 +431,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
         onGuardar={handleActualizarEstudiante}
         estudiante={estudianteSeleccionado}
         puedeGestionar={!soloLectura}
+        esAdmin={usuario?.rol === 'admin'}
       />
 
       <ModalReportarDesercion

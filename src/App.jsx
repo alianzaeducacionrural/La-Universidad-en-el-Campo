@@ -130,6 +130,7 @@ function PanelModales({
         onGuardar={handleActualizarEstudiantePanel}
         estudiante={estudianteSeleccionado}
         puedeGestionar={true}
+        esAdmin={usuario?.rol === 'admin'}
       />
       <ModalReportarDesercion
         isOpen={modalReportarDesercion}
@@ -240,6 +241,7 @@ function GlobalModales({
         }}
         estudiante={estudiantePerfilGlobal}
         puedeGestionar={true}
+        esAdmin={usuario?.rol === 'admin'}
       />
 
       <ModalReportarDesercion

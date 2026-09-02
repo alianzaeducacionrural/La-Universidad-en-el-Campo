@@ -7,7 +7,7 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
 import CampoDiscapacidadTrastorno from './CampoDiscapacidadTrastorno';
 
-export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estudiante, puedeGestionar }) {
+export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estudiante, puedeGestionar, esAdmin = false }) {
   const notificacion = useNotificacion();
   const [cargando, setCargando] = useState(false);
   const [municipios, setMunicipios] = useState([]);
@@ -110,6 +110,12 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
       datos.discapacidad_tipo = discapacidadTipo || null;
       datos.trastorno_tipo = trastornoTipo || null;
     }
+    // El número de documento solo lo puede cambiar el admin — el resto de
+    // roles de gestión (coordinadores, asistente administrativo) puede ver
+    // el campo pero no editarlo.
+    if (esAdmin) {
+      datos.documento = formData.get('documento')?.trim() || null;
+    }
     
     const resultado = await onGuardar(estudiante.id, datos);
     setCargando(false);
@@ -137,6 +143,18 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo *</label>
               <input type="text" name="nombre_completo" required defaultValue={estudiante.nombre_completo} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Documento {!esAdmin && <span className="text-xs text-gray-400 font-normal">(solo el administrador puede cambiarlo)</span>}
+              </label>
+              <input
+                type="text"
+                name="documento"
+                defaultValue={estudiante.documento || ''}
+                disabled={!esAdmin}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-500"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="text" name="telefono" defaultValue={estudiante.telefono || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>

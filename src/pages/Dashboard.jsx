@@ -340,6 +340,7 @@ export default function Dashboard({ padrinoForzado = null }) {
         onGuardar={actualizarEstudiante}
         estudiante={estudianteSeleccionado}
         puedeGestionar={puedeGestionarGrupo}
+        esAdmin={padrino?.rol === 'admin'}
       />
 
       <ModalPerfilEstudiante
