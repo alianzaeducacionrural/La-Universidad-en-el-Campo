@@ -24,7 +24,8 @@ const CATEGORIA_A_GETTER = {
   programas: 'programa',
   cohortes: 'cohorte',
   grupoIds: 'grupoId',
-  instituciones: 'institucion'
+  instituciones: 'institucion',
+  estados: 'estado'
 };
 
 const LABELS_CATEGORIA = {
@@ -124,6 +125,13 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
   }
 
   const alcanzables = disponibles ? opciones.filter(o => disponibles.has(o.valor)) : opciones;
+  // Con los demás filtros activos, solo se muestran las opciones que siguen
+  // teniendo resultados — salvo las ya seleccionadas, que se mantienen
+  // visibles (marcadas) aunque hayan dejado de coincidir, para no ocultar
+  // algo que el usuario ya eligió y no pueda deseleccionar.
+  const opcionesVisibles = disponibles
+    ? opciones.filter(o => disponibles.has(o.valor) || seleccionados.includes(o.valor))
+    : opciones;
   const hayActivos = seleccionados.length > 0;
 
   return (
@@ -149,33 +157,34 @@ function MultiSelect({ label, icon, opciones, seleccionados, onChange, disponibl
 
       {abierto && (
         <div className="absolute z-20 mt-1.5 w-64 bg-white border border-gray-200 rounded-xl shadow-lg shadow-gray-900/10 max-h-72 overflow-y-auto py-1">
-          {opciones.length > 0 && (
+          {alcanzables.length > 0 && (
             <button
               type="button"
               onClick={toggleTodos}
               className="w-full text-left px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/5 border-b border-gray-100 sticky top-0 bg-white"
             >
-              {seleccionados.length === alcanzables.length && alcanzables.length > 0 ? '☐ Deseleccionar todos' : '☑ Seleccionar los disponibles'}
+              {seleccionados.length === alcanzables.length ? '☐ Deseleccionar todos' : '☑ Seleccionar los disponibles'}
             </button>
           )}
-          {opciones.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-gray-400">Sin opciones</p>
+          {opcionesVisibles.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-gray-400">
+              {opciones.length === 0 ? 'Sin opciones' : 'Sin resultados con los demás filtros activos'}
+            </p>
           ) : (
-            opciones.map(o => {
+            opcionesVisibles.map(o => {
               const marcado = seleccionados.includes(o.valor);
-              const alcanzable = !disponibles || disponibles.has(o.valor) || marcado;
+              const yaNoCoincide = disponibles && !disponibles.has(o.valor) && marcado;
               return (
                 <label
                   key={o.valor}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-sm ${alcanzable ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
-                  title={alcanzable ? undefined : 'Sin resultados con los demás filtros activos'}
+                  className={`flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer ${yaNoCoincide ? 'opacity-50' : ''}`}
+                  title={yaNoCoincide ? 'Ya no coincide con los demás filtros activos' : undefined}
                 >
                   <input
                     type="checkbox"
                     checked={marcado}
-                    disabled={!alcanzable}
                     onChange={() => toggle(o.valor)}
-                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0 disabled:cursor-not-allowed"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary focus:ring-offset-0"
                   />
                   <span className="truncate">{o.label ?? o.valor}</span>
                 </label>
@@ -286,7 +295,7 @@ export default function FiltrosReportes({
           <MultiSelect label="Institución" icon={ICONOS_CATEGORIA.instituciones} opciones={opciones.instituciones} seleccionados={filtros.instituciones} onChange={v => set('instituciones', v)} disponibles={disponiblesPara('instituciones')} />
         )}
         {mostrarEstado && (
-          <MultiSelect label="Estado" icon={ICONOS_CATEGORIA.estados} opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} />
+          <MultiSelect label="Estado" icon={ICONOS_CATEGORIA.estados} opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} disponibles={disponiblesPara('estados')} />
         )}
         {mostrarNecesidadesEspeciales && (
           <ToggleFiltro label="Necesidades Especiales" icon="🧩" activo={filtros.necesidadesEspeciales} onChange={v => set('necesidadesEspeciales', v)} />

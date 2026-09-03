@@ -99,6 +99,13 @@ export const puedeGestionar = (rol) => {
   return ROLES_GESTION.includes(rol);
 };
 
+// Quién puede editar/eliminar un seguimiento registrado por la universidad:
+// el propio coordinador de universidad (quien los registra) y los roles
+// administrativos internos (supervisión/corrección de datos).
+export const puedeGestionarSeguimientoUniversidad = (rol) => {
+  return rol === 'coordinador_universidad' || ROLES_GESTION.includes(rol);
+};
+
 // El aliado es un rol de solo lectura con acceso limitado a sus municipios
 export const esAliado = (rol) => rol === ROLES.ALIADO;
 

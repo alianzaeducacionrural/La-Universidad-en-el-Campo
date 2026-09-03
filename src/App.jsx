@@ -7,7 +7,7 @@ import { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificacionProvider } from './context/NotificacionContext';
 import { supabase } from './lib/supabaseClient';
-import { puedeGestionar } from './utils/helpers';
+import { puedeGestionar, puedeGestionarSeguimientoUniversidad } from './utils/helpers';
 import useCartasCobro from './hooks/useCartasCobro';
 import ModalAlertaCartasCobro from './components/admin/ModalAlertaCartasCobro';
 import { emitirEstudianteActualizado } from './hooks/useEstudianteActualizado';
@@ -124,6 +124,7 @@ function PanelModales({
         onEstadoChange={handleCambiarEstadoPanel}
         esAdmin={usuario?.rol === 'admin'}
         onEstudianteEliminado={() => setEstudianteSeleccionado(null)}
+        puedeGestionarSeguimientoUniversidad={puedeGestionarSeguimientoUniversidad(usuario?.rol)}
       />
       <ModalEditarEstudiante
         isOpen={modalEditarEstudiante}
@@ -210,6 +211,7 @@ function GlobalModales({
         }}
         esAdmin={usuario?.rol === 'admin'}
         onEstudianteEliminado={() => setEstudiantePerfilGlobal(null)}
+        puedeGestionarSeguimientoUniversidad={puedeGestionarSeguimientoUniversidad(usuario?.rol)}
       />
 
       <ModalSeguimiento

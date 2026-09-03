@@ -17,6 +17,8 @@ import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 import PasosDesercion from './PasosDesercion';
 import BadgeDiscapacidad from './BadgeDiscapacidad';
 import AvisoDiscapacidadPerfil from './AvisoDiscapacidadPerfil';
+import ModalEditarSeguimientoUniversidad from '../universidad/ModalEditarSeguimientoUniversidad';
+import { eliminarSeguimientoUniversidad } from '../../utils/seguimientosUniversidad';
 
 const ESTADO_MULTA_COLOR = {
   pendiente: 'bg-red-100 text-red-700',
@@ -47,7 +49,8 @@ export default function ModalPerfilEstudiante({
   onEstadoChange,
   onTrasladoCompletado,
   esAdmin = false,
-  onEstudianteEliminado
+  onEstudianteEliminado,
+  puedeGestionarSeguimientoUniversidad = false
 }) {
   const { perfil: usuario } = useAuth();
   const notificacion = useNotificacion();
@@ -69,6 +72,26 @@ export default function ModalPerfilEstudiante({
   const [cargandoTraslados, setCargandoTraslados] = useState(false);
   const [seguimientosUniv, setSeguimientosUniv] = useState([]);
   const [cargandoSeguimientosUniv, setCargandoSeguimientosUniv] = useState(false);
+  const [modalEditarSeguimientoUniv, setModalEditarSeguimientoUniv] = useState(false);
+  const [seguimientoUnivEditando, setSeguimientoUnivEditando] = useState(null);
+
+  async function handleGuardarEdicionSeguimientoUniv(id, datos) {
+    const { error } = await supabase.from('seguimientos_universidad').update(datos).eq('id', id);
+    if (error) return { success: false, error: error.message };
+    await cargarSeguimientosUniversidad(estudiante.id);
+    return { success: true };
+  }
+
+  async function handleEliminarSeguimientoUniv(seguimiento) {
+    if (!confirm('¿Eliminar este seguimiento de universidad? Esta acción no se puede deshacer.')) return;
+    const resultado = await eliminarSeguimientoUniversidad(seguimiento);
+    if (resultado.success) {
+      notificacion.success('Seguimiento eliminado');
+      setSeguimientosUniv(prev => prev.filter(s => s.id !== seguimiento.id));
+    } else {
+      notificacion.error(resultado.error, 'Error al eliminar');
+    }
+  }
 
   async function cargarTraslados(estudianteId) {
     setCargandoTraslados(true);
@@ -767,8 +790,30 @@ export default function ModalPerfilEstudiante({
                   {seguimientosUniv.map(s => {
                     const info = getTipoSeguimientoUniversidadInfo(s.tipo);
                     return (
-                      <div key={s.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div key={s.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200 relative">
+                        {puedeGestionarSeguimientoUniversidad && (
+                          <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
+                            <button
+                              onClick={() => { setSeguimientoUnivEditando({ ...s, estudiante }); setModalEditarSeguimientoUniv(true); }}
+                              className="text-gray-400 hover:text-primary transition p-1.5 bg-white rounded-full shadow-sm border border-gray-200"
+                              title="Editar seguimiento"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleEliminarSeguimientoUniv(s)}
+                              className="text-gray-400 hover:text-red-600 transition p-1.5 bg-white rounded-full shadow-sm border border-gray-200"
+                              title="Eliminar seguimiento"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        <div className={`flex flex-wrap items-center justify-between gap-2 mb-2 ${puedeGestionarSeguimientoUniversidad ? 'pr-16' : ''}`}>
                           <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${info.color}`}>
                             {info.icon} {info.label}
                           </span>
@@ -916,6 +961,13 @@ export default function ModalPerfilEstudiante({
         cargando={eliminando}
         titulo={`Eliminar a "${estudiante.nombre_completo}"`}
         mensaje="Esta acción borra al estudiante y TODO su historial (seguimientos, notas, inasistencias, deserción, multas). No se puede deshacer."
+      />
+
+      <ModalEditarSeguimientoUniversidad
+        isOpen={modalEditarSeguimientoUniv}
+        onClose={() => { setModalEditarSeguimientoUniv(false); setSeguimientoUnivEditando(null); }}
+        onGuardar={handleGuardarEdicionSeguimientoUniv}
+        seguimiento={seguimientoUnivEditando}
       />
     </>
   );

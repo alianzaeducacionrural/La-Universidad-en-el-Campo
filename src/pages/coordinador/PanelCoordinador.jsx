@@ -12,6 +12,7 @@ import GestionPadrinos from '../../components/coordinador/GestionPadrinos';
 import GestionUniversidades from '../../components/coordinador/GestionUniversidades';
 import PanelMonitoreoAcciones from '../../components/coordinador/PanelMonitoreoAcciones';
 import GestionInstituciones from '../../components/coordinador/GestionInstituciones';
+import ConsolidadoSeguimientosUniversidad from '../../components/coordinador/ConsolidadoSeguimientosUniversidad';
 
 export default function PanelCoordinador({ onSeguimiento, onVerPerfil, usuarioForzado = null }) {
   const { perfil: usuarioAuth } = useAuth();
@@ -92,6 +93,16 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil, usuarioFo
               >
                 🏫 Instituciones Educativas
               </button>
+              <button
+                onClick={() => setVistaActiva('seguimientos-universidad')}
+                className={`pb-3 px-1 font-medium text-sm border-b-2 transition whitespace-nowrap ${
+                  vistaActiva === 'seguimientos-universidad'
+                    ? 'border-green-600 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                🎓 Seguim. Universidad
+              </button>
             </nav>
           </div>
           
@@ -115,6 +126,9 @@ export default function PanelCoordinador({ onSeguimiento, onVerPerfil, usuarioFo
           )}
           {vistaActiva === 'instituciones' && (
             <GestionInstituciones />
+          )}
+          {vistaActiva === 'seguimientos-universidad' && (
+            <ConsolidadoSeguimientosUniversidad onVerPerfil={onVerPerfil} />
           )}
         </div>
       </div>
