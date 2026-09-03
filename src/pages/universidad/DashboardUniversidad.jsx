@@ -29,6 +29,7 @@ import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoIn
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
 import ModalRegistrarSeguimientoUniversidad from '../../components/universidad/ModalRegistrarSeguimientoUniversidad';
+import ConsolidadoSeguimientosUniversidad from '../../components/coordinador/ConsolidadoSeguimientosUniversidad';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
 import { ContenidoHomologacionGrupo } from '../../components/grupos/ModalHomologacionGrupo';
 
@@ -1717,6 +1718,14 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* VISTA: SEGUIMIENTOS DE UNIVERSIDAD (historial + gestión) */}
+        {seccionActiva === 'seguimientosUniversidad' && esCoordinadorUniversidad && (
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">📝 Seguimientos</h1>
+            <ConsolidadoSeguimientosUniversidad onVerPerfil={onVerPerfil} soloUniversidad={usuario.universidad} />
           </div>
         )}
 

@@ -4,7 +4,9 @@
 // Cuántos y cuáles seguimientos han registrado los coordinadores de
 // universidad sobre los estudiantes (tabla `seguimientos_universidad`).
 // Reutilizado como página completa (SeguimientosUniversidad.jsx, con su
-// propio Header/Sidebar) y como pestaña dentro de PanelCoordinador.jsx.
+// propio Header/Sidebar), como pestaña dentro de PanelCoordinador.jsx (vista
+// de todas las universidades) y dentro de DashboardUniversidad.jsx (un
+// coordinador de universidad viendo solo la suya, vía `soloUniversidad`).
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -17,7 +19,7 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import VisorImagen from '../common/VisorImagen';
 import ModalEditarSeguimientoUniversidad from '../universidad/ModalEditarSeguimientoUniversidad';
 
-export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil }) {
+export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil, soloUniversidad = null }) {
   const notificacion = useNotificacion();
   const [cargando, setCargando] = useState(true);
   const [seguimientos, setSeguimientos] = useState([]);
@@ -28,18 +30,23 @@ export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil }) {
   const [modalEditar, setModalEditar] = useState(false);
   const [seguimientoEditando, setSeguimientoEditando] = useState(null);
 
-  useEffect(() => { cargarSeguimientos(); }, []);
+  useEffect(() => { cargarSeguimientos(); }, [soloUniversidad]);
 
   async function cargarSeguimientos() {
     setCargando(true);
-    const { data } = await supabase
+    // `!inner` en el embed es necesario para poder filtrar por una columna
+    // de la tabla embebida (`estudiante.universidad`) — sin `soloUniversidad`
+    // se deja el join normal (izquierdo), igual que antes.
+    let query = supabase
       .from('seguimientos_universidad')
       .select(`
         *,
-        estudiante:estudiante_id (*),
+        estudiante:estudiante_id${soloUniversidad ? '!inner' : ''} (*),
         grupo:grupo_id (nombre)
       `)
       .order('fecha', { ascending: false });
+    if (soloUniversidad) query = query.eq('estudiante.universidad', soloUniversidad);
+    const { data } = await query;
     if (data) setSeguimientos(data);
     setCargando(false);
   }
@@ -83,9 +90,10 @@ export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil }) {
   const kpis = useMemo(() => {
     const estudiantesDistintos = new Set(filtrados.map(s => s.estudiante_id)).size;
     const universidadesActivas = new Set(filtrados.map(s => s.estudiante?.universidad).filter(Boolean)).size;
+    const personasDistintas = new Set(filtrados.map(s => s.persona_nombre).filter(Boolean)).size;
     const porTipo = {};
     TIPOS_SEGUIMIENTO_UNIVERSIDAD.forEach(t => { porTipo[t.value] = filtrados.filter(s => s.tipo === t.value).length; });
-    return { total: filtrados.length, estudiantesDistintos, universidadesActivas, porTipo };
+    return { total: filtrados.length, estudiantesDistintos, universidadesActivas, personasDistintas, porTipo };
   }, [filtrados]);
 
   if (cargando) {
@@ -100,7 +108,11 @@ export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil }) {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <p className="text-gray-600 text-sm">Seguimientos registrados por los coordinadores de las universidades sobre los estudiantes</p>
+        <p className="text-gray-600 text-sm">
+          {soloUniversidad
+            ? 'Historial de seguimientos registrados a los estudiantes de tu universidad'
+            : 'Seguimientos registrados por los coordinadores de las universidades sobre los estudiantes'}
+        </p>
         {filtrados.length > 0 && (
           <button
             onClick={() => exportarSeguimientosUniversidadExcel(filtrados, 'todos')}
@@ -115,7 +127,11 @@ export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <TarjetaKPI titulo="Total Seguimientos" valor={kpis.total} color="from-primary to-primary-dark" />
         <TarjetaKPI titulo="Estudiantes Atendidos" valor={kpis.estudiantesDistintos} color="from-sky-400 to-sky-500" />
-        <TarjetaKPI titulo="Universidades Activas" valor={kpis.universidadesActivas} color="from-purple-400 to-purple-500" />
+        {soloUniversidad ? (
+          <TarjetaKPI titulo="Personas que Registran" valor={kpis.personasDistintas} color="from-purple-400 to-purple-500" />
+        ) : (
+          <TarjetaKPI titulo="Universidades Activas" valor={kpis.universidadesActivas} color="from-purple-400 to-purple-500" />
+        )}
         <TarjetaKPI titulo="Con Evidencias" valor={filtrados.filter(s => s.evidencias?.length > 0).length} color="from-emerald-400 to-emerald-500" />
       </div>
 
@@ -138,14 +154,16 @@ export default function ConsolidadoSeguimientosUniversidad({ onVerPerfil }) {
           onChange={e => setBusqueda(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]"
         />
-        <select
-          value={filtroUniversidad}
-          onChange={e => setFiltroUniversidad(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-        >
-          <option value="">Todas las universidades</option>
-          {universidadesDisponibles.map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
+        {!soloUniversidad && (
+          <select
+            value={filtroUniversidad}
+            onChange={e => setFiltroUniversidad(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="">Todas las universidades</option>
+            {universidadesDisponibles.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        )}
         <select
           value={filtroTipo}
           onChange={e => setFiltroTipo(e.target.value)}
