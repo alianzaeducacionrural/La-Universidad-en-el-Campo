@@ -149,7 +149,6 @@ export default function ModalRegistrarSeguimientoUniversidad({ isOpen, onClose, 
                 type="text"
                 name="persona_nombre"
                 required
-                defaultValue={usuario?.nombre_completo || ''}
                 placeholder="Nombre de quien realizó el seguimiento"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"
               />
@@ -163,12 +162,15 @@ export default function ModalRegistrarSeguimientoUniversidad({ isOpen, onClose, 
                     key={t.value}
                     type="button"
                     onClick={() => setTipo(t.value)}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition text-center ${
+                    className={`relative p-3 rounded-lg border-2 text-sm font-semibold transition-all text-center ${
                       tipo === t.value
-                        ? 'border-primary bg-primary/5 text-primary-dark'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                        ? 'border-primary bg-primary text-white shadow-md ring-2 ring-primary/30 scale-[1.03]'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
+                    {tipo === t.value && (
+                      <span className="absolute -top-2 -right-2 bg-white text-primary rounded-full w-5 h-5 flex items-center justify-center text-xs shadow border border-primary">✓</span>
+                    )}
                     {t.icon} {t.label}
                   </button>
                 ))}
