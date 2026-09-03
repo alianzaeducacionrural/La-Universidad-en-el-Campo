@@ -84,6 +84,16 @@ export const TIPOS_SEGUIMIENTO = [
   { value: 'rendimiento_academico', label: '📚 Rendimiento Académico' }
 ];
 
+// Tipos de seguimiento que los coordinadores de universidad registran sobre
+// un estudiante (independiente de TIPOS_SEGUIMIENTO, que es del padrino).
+export const TIPOS_SEGUIMIENTO_UNIVERSIDAD = [
+  { value: 'Rendimiento académico', label: 'Rendimiento académico', icon: '📚', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  { value: 'Bienestar', label: 'Bienestar', icon: '🌱', color: 'bg-green-100 text-green-700 border-green-300' },
+  { value: 'Psicosocial', label: 'Psicosocial', icon: '🧠', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  { value: 'Socioemocional', label: 'Socioemocional', icon: '💛', color: 'bg-amber-100 text-amber-700 border-amber-300' },
+  { value: 'Administrativo', label: 'Administrativo', icon: '🗂️', color: 'bg-gray-100 text-gray-700 border-gray-300' }
+];
+
 // Causas de ausencia
 export const CAUSAS_AUSENCIA = [
   { value: '📡 Conectividad', label: '📡 Conectividad / Sin Señal' },

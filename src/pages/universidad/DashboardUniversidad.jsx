@@ -28,6 +28,7 @@ import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCaus
 import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
+import ModalRegistrarSeguimientoUniversidad from '../../components/universidad/ModalRegistrarSeguimientoUniversidad';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
 import { ContenidoHomologacionGrupo } from '../../components/grupos/ModalHomologacionGrupo';
 
@@ -92,6 +93,10 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   // AVISO DE DISCAPACIDAD/TRASTORNO (una vez por grupo por día, ver helpers.js)
   const [modalAvisoDiscapacidad, setModalAvisoDiscapacidad] = useState(false);
   const [estudiantesConEtiqueta, setEstudiantesConEtiqueta] = useState([]);
+
+  // SEGUIMIENTOS DE UNIVERSIDAD (solo coordinador_universidad los registra)
+  const [modalSeguimientoUniversidad, setModalSeguimientoUniversidad] = useState(false);
+  const [estudianteSeguimientoUniversidad, setEstudianteSeguimientoUniversidad] = useState(null);
 
   // ESTADOS PARA LA PESTAÑA DE ESTADÍSTICAS (SOLO COORDINADOR_UNIVERSIDAD)
   const [filtrosEstadisticasUniversidad, setFiltrosEstadisticasUniversidad] = useState(FILTROS_VACIOS);
@@ -665,6 +670,20 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       necesidadesEspeciales: estudiantesUniversidadFiltrados.filter(tieneEtiquetaEspecial).length
     };
   }, [estudiantesUniversidadFiltrados]);
+
+  function abrirModalSeguimientoUniversidad(est) {
+    setEstudianteSeguimientoUniversidad(est);
+    setModalSeguimientoUniversidad(true);
+  }
+
+  // usuario.id no existe cuando el admin está "viendo como" (usuarioForzado
+  // solo trae universidad/rol/nombre_completo) — en ese caso el seguimiento
+  // igual queda registrado, solo que sin vínculo a una cuenta real.
+  async function registrarSeguimientoUniversidad(datos) {
+    const { data, error } = await supabase.from('seguimientos_universidad').insert([datos]).select().single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, data };
+  }
 
   if (!usuario) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -1252,12 +1271,22 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                           </td>
                           {onVerPerfil && (
                             <td className="py-3 px-4 text-center">
-                              <button
-                                onClick={() => onVerPerfil(est)}
-                                className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
-                              >
-                                👁️ Ver Perfil
-                              </button>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => onVerPerfil(est)}
+                                  className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                >
+                                  👁️ Ver Perfil
+                                </button>
+                                {esCoordinadorUniversidad && (
+                                  <button
+                                    onClick={() => abrirModalSeguimientoUniversidad(est)}
+                                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                  >
+                                    📝 Seguimiento
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -1294,12 +1323,22 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                         </span>
                       </div>
                       {onVerPerfil && (
-                        <button
-                          onClick={() => onVerPerfil(est)}
-                          className="mt-3 w-full bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-xs font-medium transition"
-                        >
-                          👁️ Ver Perfil
-                        </button>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => onVerPerfil(est)}
+                            className="flex-1 bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-xs font-medium transition"
+                          >
+                            👁️ Ver Perfil
+                          </button>
+                          {esCoordinadorUniversidad && (
+                            <button
+                              onClick={() => abrirModalSeguimientoUniversidad(est)}
+                              className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-2 rounded-lg text-xs font-medium transition"
+                            >
+                              📝 Seguimiento
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -1603,12 +1642,22 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                             </td>
                             {onVerPerfil && (
                               <td className="py-3 px-4 text-center">
-                                <button
-                                  onClick={() => onVerPerfil(est)}
-                                  className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
-                                >
-                                  👁️ Ver Perfil
-                                </button>
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => onVerPerfil(est)}
+                                    className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                  >
+                                    👁️ Ver Perfil
+                                  </button>
+                                  {esCoordinadorUniversidad && (
+                                    <button
+                                      onClick={() => abrirModalSeguimientoUniversidad(est)}
+                                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                    >
+                                      📝 Seguimiento
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             )}
                           </tr>
@@ -1645,12 +1694,22 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
                           <span className="col-span-2 truncate">📚 {gruposReportesMap.get(est.grupo_id) || 'Sin grupo'}</span>
                         </div>
                         {onVerPerfil && (
-                          <button
-                            onClick={() => onVerPerfil(est)}
-                            className="mt-3 w-full bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-xs font-medium transition"
-                          >
-                            👁️ Ver Perfil
-                          </button>
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={() => onVerPerfil(est)}
+                              className="flex-1 bg-primary hover:bg-primary-dark text-white px-3 py-2 rounded-lg text-xs font-medium transition"
+                            >
+                              👁️ Ver Perfil
+                            </button>
+                            {esCoordinadorUniversidad && (
+                              <button
+                                onClick={() => abrirModalSeguimientoUniversidad(est)}
+                                className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-2 rounded-lg text-xs font-medium transition"
+                              >
+                                📝 Seguimiento
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -1668,6 +1727,14 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         isOpen={modalAvisoDiscapacidad}
         onClose={() => setModalAvisoDiscapacidad(false)}
         estudiantes={estudiantesConEtiqueta}
+      />
+
+      <ModalRegistrarSeguimientoUniversidad
+        isOpen={modalSeguimientoUniversidad}
+        onClose={() => { setModalSeguimientoUniversidad(false); setEstudianteSeguimientoUniversidad(null); }}
+        onGuardar={registrarSeguimientoUniversidad}
+        estudiante={estudianteSeguimientoUniversidad}
+        usuario={usuario}
       />
 
       <ModalIngresarNotas

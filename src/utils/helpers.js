@@ -9,11 +9,17 @@ import {
   ROLES,
   NOMBRES_ROLES,
   NOMBRES_ROLES_UNIVERSIDAD,
-  COLORES_ROL_UNIVERSIDAD
+  COLORES_ROL_UNIVERSIDAD,
+  TIPOS_SEGUIMIENTO_UNIVERSIDAD
 } from './constants';
 
 export const getEstadoColor = (estado) => {
   return COLORES_ESTADO[estado] || 'bg-gray-100 text-gray-700 border-gray-300';
+};
+
+export const getTipoSeguimientoUniversidadInfo = (tipo) => {
+  return TIPOS_SEGUIMIENTO_UNIVERSIDAD.find(t => t.value === tipo)
+    || { value: tipo, label: tipo || 'Sin tipo', icon: '📝', color: 'bg-gray-100 text-gray-700 border-gray-300' };
 };
 
 // 'NO APLICA' y vacío/null cuentan como "sin etiqueta" para badges y alertas —

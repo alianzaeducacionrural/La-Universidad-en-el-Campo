@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
-import { getEstadoColor, formatearFecha, calcularPasosDesercion } from '../../utils/helpers';
+import { getEstadoColor, formatearFecha, calcularPasosDesercion, getTipoSeguimientoUniversidadInfo } from '../../utils/helpers';
 import { ESTADOS_ESTUDIANTE, TIPOS_DOCUMENTO_DESERCION } from '../../utils/constants';
-import { exportarSeguimientosExcel, exportarNotasEstudianteExcel, exportarInasistenciasExcel } from '../../utils/exportUtils';
+import { exportarSeguimientosExcel, exportarNotasEstudianteExcel, exportarInasistenciasExcel, exportarSeguimientosUniversidadExcel } from '../../utils/exportUtils';
 import VisorImagen from '../common/VisorImagen';
 import BotonWhatsApp from '../common/BotonWhatsApp';
 import ModalEditarDesercion from './ModalEditarDesercion';
@@ -67,6 +67,8 @@ export default function ModalPerfilEstudiante({
   const [cargandoInasistencias, setCargandoInasistencias] = useState(false);
   const [traslados, setTraslados] = useState([]);
   const [cargandoTraslados, setCargandoTraslados] = useState(false);
+  const [seguimientosUniv, setSeguimientosUniv] = useState([]);
+  const [cargandoSeguimientosUniv, setCargandoSeguimientosUniv] = useState(false);
 
   async function cargarTraslados(estudianteId) {
     setCargandoTraslados(true);
@@ -99,6 +101,17 @@ export default function ModalPerfilEstudiante({
       .order('created_at', { ascending: false });
     if (data) setInasistenciasEst(data);
     setCargandoInasistencias(false);
+  }
+
+  async function cargarSeguimientosUniversidad(estudianteId) {
+    setCargandoSeguimientosUniv(true);
+    const { data } = await supabase
+      .from('seguimientos_universidad')
+      .select('*')
+      .eq('estudiante_id', estudianteId)
+      .order('fecha', { ascending: false });
+    if (data) setSeguimientosUniv(data);
+    setCargandoSeguimientosUniv(false);
   }
 
   async function cargarNotasEstudiante(estudianteId) {
@@ -200,6 +213,7 @@ export default function ModalPerfilEstudiante({
       cargarNotasEstudiante(estudiante.id);
       cargarInasistenciasEstudiante(estudiante.id);
       cargarTraslados(estudiante.id);
+      cargarSeguimientosUniversidad(estudiante.id);
       if (estudiante.estado === 'Desertor') {
         cargarDatosDesercion(estudiante.id);
       } else {
@@ -718,6 +732,65 @@ export default function ModalPerfilEstudiante({
                       · {inasistenciasEst.filter(i => i.estado_seguimiento === 'pendiente').length} pendiente(s)
                     </p>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* SEGUIMIENTOS DE LA UNIVERSIDAD */}
+            <div className="mb-6">
+              <h3 className="font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                <span className="flex items-center">
+                  <span className="mr-2 text-xl">🎓</span> Seguimientos de la Universidad
+                </span>
+                {seguimientosUniv.length > 0 && (
+                  <button
+                    onClick={() => exportarSeguimientosUniversidadExcel(seguimientosUniv, estudiante.nombre_completo)}
+                    className="bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-green-200 flex items-center space-x-1"
+                  >
+                    <span>📥</span>
+                    <span>Descargar</span>
+                  </button>
+                )}
+              </h3>
+
+              {cargandoSeguimientosUniv ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  <p className="text-sm text-gray-500 mt-2">Cargando seguimientos...</p>
+                </div>
+              ) : seguimientosUniv.length === 0 ? (
+                <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-gray-400 text-sm">La universidad aún no ha registrado seguimientos para este estudiante</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {seguimientosUniv.map(s => {
+                    const info = getTipoSeguimientoUniversidadInfo(s.tipo);
+                    return (
+                      <div key={s.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${info.color}`}>
+                            {info.icon} {info.label}
+                          </span>
+                          <span className="text-sm text-gray-500 bg-white px-2 py-1 rounded-full">{formatearFecha(s.fecha)}</span>
+                        </div>
+                        <p className="text-gray-700 text-sm mb-2 bg-white p-3 rounded-lg">{s.resultado}</p>
+                        {s.evidencias && s.evidencias.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {s.evidencias.map((url, idx) => (
+                              <button key={idx} onClick={() => setImagenSeleccionada(url)}
+                                className="block w-16 h-16 rounded-lg border border-gray-200 overflow-hidden hover:border-primary transition cursor-pointer">
+                                <img src={url} alt={`Evidencia ${idx + 1}`} className="w-full h-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400 flex items-center">
+                          <span className="mr-1">👤</span> Registrado por: {s.persona_nombre}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

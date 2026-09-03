@@ -282,6 +282,27 @@ export function exportarNotasEstudianteExcel(notas, estudianteNombre) {
 }
 
 /**
+ * Exporta seguimientos de universidad (rendimiento académico, bienestar,
+ * psicosocial, socioemocional, administrativo) a Excel. Sirve tanto para el
+ * historial de un solo estudiante como para el listado completo del admin
+ * (en ese caso `seguimientos` trae también `estudiante`/`grupo` embebidos).
+ */
+export function exportarSeguimientosUniversidadExcel(seguimientos, nombreArchivo) {
+  const datos = seguimientos.map(s => ({
+    ...(s.estudiante ? { 'Estudiante': s.estudiante.nombre_completo, 'Universidad': s.estudiante.universidad } : {}),
+    'Fecha': formatearFecha(s.fecha),
+    'Tipo': s.tipo,
+    'Realizado por': s.persona_nombre,
+    'Resultado': s.resultado
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(datos);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Seguimientos Universidad');
+  XLSX.writeFile(wb, `Seguimientos_Universidad_${nombreArchivo?.replace(/\s+/g, '_') || 'reporte'}.xlsx`);
+}
+
+/**
  * Exporta historial de seguimientos a PDF
  */
 export function exportarSeguimientosPDF(seguimientos, estudianteNombre) {

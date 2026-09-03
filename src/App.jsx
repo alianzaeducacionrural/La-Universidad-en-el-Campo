@@ -33,6 +33,7 @@ const GestionAliados = lazy(() => import('./pages/admin/GestionAliados'));
 const GestionEquipo = lazy(() => import('./pages/admin/GestionEquipo'));
 const GestionDesertores = lazy(() => import('./pages/admin/GestionDesertores'));
 const ListadoEstudiantes = lazy(() => import('./pages/admin/ListadoEstudiantes'));
+const SeguimientosUniversidad = lazy(() => import('./pages/admin/SeguimientosUniversidad'));
 const PortalInstitucion = lazy(() => import('./pages/PortalInstitucion'));
 const VerComo = lazy(() => import('./pages/admin/VerComo'));
 
@@ -458,6 +459,7 @@ function AppContent() {
             <Route path="/multas" element={<ProtectedRoute><GestionMultas onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/desertores" element={<ProtectedRoute><GestionDesertores onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/estudiantes" element={<ProtectedRoute><ListadoEstudiantes onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
+            <Route path="/seguimientos-universidad" element={<ProtectedRoute><SeguimientosUniversidad onVerPerfil={handleVerPerfilGlobal} /></ProtectedRoute>} />
             <Route path="/aliados" element={<AdminRoute><GestionAliados onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
             <Route path="/equipo" element={<AdminRoute><GestionEquipo onVerPerfil={handleVerPerfilGlobal} /></AdminRoute>} />
             <Route path="/ver-como" element={<AdminRoute><VerComo /></AdminRoute>} />

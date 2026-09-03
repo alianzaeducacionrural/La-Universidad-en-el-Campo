@@ -58,6 +58,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     if (path === '/grupos') return 'grupos-admin';
     if (path === '/desertores') return 'desertores';
     if (path === '/estudiantes') return 'estudiantes';
+    if (path === '/seguimientos-universidad') return 'seguimientos-universidad';
     if (path === '/aliados') return 'aliados';
     if (path === '/equipo') return 'equipo';
     if (path === '/ver-como') return 'ver-como';
@@ -96,6 +97,7 @@ export default function Sidebar({ vistaActiva, setVistaActiva, rol, totalPendien
     { id: 'grupos-admin',        label: 'Grupos',              mobileLabel: 'Grupos',    icon: '📚', visible: esCoordinador || esAliado, badge: 0,                   action: () => irA('/grupos') },
     { id: 'desertores',          label: 'Desertores',          mobileLabel: 'Desert.',   icon: '🚨', visible: esCoordinador, badge: 0,                   action: () => irA('/desertores') },
     { id: 'estudiantes',         label: 'Estudiantes',         mobileLabel: 'Estud.',    icon: '👥', visible: esCoordinador, badge: 0,                   action: () => irA('/estudiantes') },
+    { id: 'seguimientos-universidad', label: 'Seguim. Universidad', mobileLabel: 'Seguim. U.', icon: '🎓', visible: esCoordinador, badge: 0,             action: () => irA('/seguimientos-universidad') },
     { id: 'historial-reportes', label: 'Historial Reportes',  mobileLabel: 'Hist.',     icon: '📅', visible: esCoordinador, badge: 0,                   action: () => irA('/historial-reportes') },
     { id: 'multas',              label: 'Multas',              mobileLabel: 'Multas',    icon: '💰', visible: esCoordinador, badge: 0,                   action: () => irA('/multas') },
     { id: 'aliados',             label: 'Aliados',             mobileLabel: 'Aliados',   icon: '🤝', visible: esAdmin, badge: 0,                          action: () => irA('/aliados') },
