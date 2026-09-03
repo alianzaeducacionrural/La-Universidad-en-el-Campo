@@ -19,6 +19,7 @@ import ModalEditarEstudiante from '../estudiantes/ModalEditarEstudiante';
 import ModalReportarDesercion from '../estudiantes/ModalReportarDesercion';
 import ModalEditarSeguimiento from '../seguimientos/ModalEditarSeguimiento';
 import ModalHistorialAcciones from '../grupos/ModalHistorialAcciones';
+import ModalRegistrarAccion from '../grupos/ModalRegistrarAccion';
 import ModalNotasGrupo from '../notas/ModalNotasGrupo';
 import ModalCronogramaGrupo from '../coordinador/ModalCronogramaGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
@@ -45,6 +46,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   const [eliminandoGrupo, setEliminandoGrupo] = useState(false);
   const [modalEliminarGrupo, setModalEliminarGrupo] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
+  const [modalRegistrarAccion, setModalRegistrarAccion] = useState(false);
   const [modalNotas, setModalNotas] = useState(false);
   const [modalCronograma, setModalCronograma] = useState(false);
   const [modalHomologacion, setModalHomologacion] = useState(false);
@@ -307,29 +309,52 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
       {expandido && (
         <div className="border-t border-gray-200 bg-gray-50 p-5">
           {!soloLectura && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              <button onClick={(e) => { e.stopPropagation(); setModalEditar(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">✏️ Editar</button>
-              <button onClick={(e) => { e.stopPropagation(); setModalPadrinos(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">👥 Gestionar Padrinos</button>
-              <button onClick={(e) => { e.stopPropagation(); setModalInstituciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🏫 Asignar Instituciones</button>
-              <button onClick={(e) => { e.stopPropagation(); setModalImportar(true); }} disabled={importando} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">{importando ? '⏳ Importando...' : '📥 Importar Estudiantes'}</button>
-              <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
-              <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarroladas</button>
-              <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
-              {puedeGestionar(usuario?.rol) && (
-                <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`px-3 py-1.5 rounded-lg text-sm text-white transition ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🎓 Finalizar Periodo Académico' : '↩️ Reactivar Periodo Académico'}</button>
-              )}
-              {usuario?.rol === 'admin' && (
-                <button onClick={(e) => { e.stopPropagation(); setModalEliminarGrupo(true); }} className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm transition">
-                  🗑️ Eliminar Grupo
-                </button>
+            <div className="mb-4 space-y-3">
+              <div>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Gestión del grupo</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  <button onClick={(e) => { e.stopPropagation(); setModalEditar(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">✏️ Editar</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalPadrinos(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">👥 Gestionar Padrinos</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalInstituciones(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">🏫 Asignar Instituciones</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalImportar(true); }} disabled={importando} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">{importando ? '⏳ Importando...' : '📥 Importar Estudiantes'}</button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Seguimiento y registro</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  <button onClick={(e) => { e.stopPropagation(); setModalHistorial(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">📊 Ver Historial</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalRegistrarAccion(true); }} className="w-full bg-primary/10 border border-primary/30 text-primary-dark px-3 py-2 rounded-lg text-sm hover:bg-primary/20 transition font-medium">➕ Registrar Acción</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarrolladas</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="w-full bg-white border border-indigo-300 text-indigo-700 px-3 py-2 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
+                </div>
+              </div>
+
+              {(puedeGestionar(usuario?.rol) || usuario?.rol === 'admin') && (
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Estado del grupo</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {puedeGestionar(usuario?.rol) && (
+                      <button onClick={(e) => { e.stopPropagation(); handleCambiarEstadoGrupo(); }} disabled={cambiandoEstado} className={`w-full px-3 py-2 rounded-lg text-sm text-white transition disabled:opacity-50 ${grupo.activo ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}>{grupo.activo ? '🎓 Finalizar Periodo Académico' : '↩️ Reactivar Periodo Académico'}</button>
+                    )}
+                    {usuario?.rol === 'admin' && (
+                      <button onClick={(e) => { e.stopPropagation(); setModalEliminarGrupo(true); }} className="w-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-2 rounded-lg text-sm transition">
+                        🗑️ Eliminar Grupo
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button onClick={(e) => { e.stopPropagation(); setModalEnlaces(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🔗 Enlaces de Instituciones</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalCronograma(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🗓️ Ver Cronograma</button>
-            <button onClick={(e) => { e.stopPropagation(); setModalHomologacion(true); }} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-50 transition">🎓 Reconocimiento de Aprendizajes</button>
+          <div className="mb-4">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Recursos</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              <button onClick={(e) => { e.stopPropagation(); setModalEnlaces(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">🔗 Enlaces de Instituciones</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalCronograma(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">🗓️ Ver Cronograma</button>
+              <button onClick={(e) => { e.stopPropagation(); setModalHomologacion(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">🎓 Reconocimiento de Aprendizajes</button>
+            </div>
           </div>
 
           <div>
@@ -382,6 +407,13 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
       <ModalEditarGrupo isOpen={modalEditar} onClose={() => setModalEditar(false)} grupo={grupo} onRecargar={onRecargar} />
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo}/>
+      <ModalRegistrarAccion
+        isOpen={modalRegistrarAccion}
+        onClose={() => setModalRegistrarAccion(false)}
+        grupo={grupo}
+        nombreRegistrador={usuario?.nombre_completo}
+        onAccionRegistrada={() => setModalAcciones(false)}
+      />
       <ModalNotasGrupo isOpen={modalNotas} onClose={() => setModalNotas(false)} grupo={grupo} />
       <ModalCronogramaGrupo isOpen={modalCronograma} onClose={() => setModalCronograma(false)} grupo={grupo} puedeGestionar={!soloLectura} onActualizado={onRecargar} />
 
