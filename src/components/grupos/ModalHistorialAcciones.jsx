@@ -13,6 +13,7 @@ const LABELS_ACCION = {
   practica_academica: { label: 'Práctica Académica', icono: '🎓' },
   comite_calidad: { label: 'Comité de Calidad', icono: '📋' },
   bienestar_universitario: { label: 'Bienestar Universitario', icono: '🎯' },
+  mesa_dialogo: { label: 'Mesas de Diálogo', icono: '🗣️' },
   otra: { label: 'Otra Actividad', icono: '📝' },
   asistencia_completa: { label: 'Asistencia Completa', icono: '✅' }
 };
@@ -141,7 +142,7 @@ export default function ModalHistorialAcciones({ isOpen, onClose, grupo }) {
                           )}
                           
                           <p className="text-xs text-gray-400 mt-2 ml-7">
-                            👤 Registrado por: {accion.padrino?.nombre_completo || 'Sistema'}
+                            👤 Registrado por: {accion.padrino?.nombre_completo || accion.registrado_por || 'Sistema'}
                           </p>
                         </div>
                       </div>

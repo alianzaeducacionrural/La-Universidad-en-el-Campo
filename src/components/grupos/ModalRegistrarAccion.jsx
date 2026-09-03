@@ -12,10 +12,11 @@ const TIPOS_ACCION = [
   { id: 'practica_academica', label: 'Práctica Académica', icono: '🎓', numerable: false },
   { id: 'comite_calidad', label: 'Comité de Calidad', icono: '📋', numerable: false },
   { id: 'bienestar_universitario', label: 'Bienestar Universitario', icono: '🎯', numerable: false },
+  { id: 'mesa_dialogo', label: 'Mesas de Diálogo', icono: '🗣️', numerable: false },
   { id: 'otra', label: 'Otra Actividad', icono: '📝', numerable: false }
 ];
 
-export default function ModalRegistrarAccion({ isOpen, onClose, grupo, padrino, onAccionRegistrada }) {
+export default function ModalRegistrarAccion({ isOpen, onClose, grupo, padrino, nombreRegistrador, onAccionRegistrada }) {
   const notificacion = useNotificacion();
   const [tipoAccion, setTipoAccion] = useState('');
   const [numeroAccion, setNumeroAccion] = useState(1);
@@ -96,7 +97,8 @@ export default function ModalRegistrarAccion({ isOpen, onClose, grupo, padrino, 
       .from('acciones_grupo')
       .insert([{
         grupo_id: grupo.id,
-        padrino_id: padrino?.id,
+        padrino_id: padrino?.id || null,
+        registrado_por: padrino ? null : (nombreRegistrador || null),
         tipo_accion: tipoAccion,
         numero_accion: tipoConfig?.numerable ? numeroAccion : 1,
         fecha,
