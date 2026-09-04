@@ -28,8 +28,6 @@ import GraficoCausasInasistencia from '../../components/estadisticas/GraficoCaus
 import GraficoInasistenciasMensual from '../../components/estadisticas/GraficoInasistenciasMensual';
 import ModalCronogramaGrupo from '../../components/coordinador/ModalCronogramaGrupo';
 import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditarFechaCronograma';
-import ModalRegistrarAccion from '../../components/grupos/ModalRegistrarAccion';
-import ModalHistorialAcciones from '../../components/grupos/ModalHistorialAcciones';
 import ModalRegistrarSeguimientoUniversidad from '../../components/universidad/ModalRegistrarSeguimientoUniversidad';
 import ConsolidadoSeguimientosUniversidad from '../../components/coordinador/ConsolidadoSeguimientosUniversidad';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
@@ -68,8 +66,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   const [institucionesGrupo, setInstitucionesGrupo] = useState([]);
   const [cronogramaGrupo, setCronogramaGrupo] = useState([]);
   const [modalCronograma, setModalCronograma] = useState(false);
-  const [modalRegistrarAccion, setModalRegistrarAccion] = useState(false);
-  const [modalVerAcciones, setModalVerAcciones] = useState(false);
   const [fechaCronogramaSeleccionadaId, setFechaCronogramaSeleccionadaId] = useState(null);
   const { modulos: modulosDisponibles, docentes: docentesDisponibles, docentePorModulo } = useMemo(
     () => derivarModulosYDocentes(cronogramaGrupo),
@@ -825,22 +821,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
             </div>
           </div>
         )}
-
-        {/* ACCIONES DEL GRUPO (visitas, comités, mesas de diálogo, etc.) */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button
-            onClick={() => setModalRegistrarAccion(true)}
-            className="bg-primary hover:bg-primary-dark text-white px-4 py-2.5 rounded-lg text-sm font-medium transition shadow-sm"
-          >
-            ➕ Registrar Acción
-          </button>
-          <button
-            onClick={() => setModalVerAcciones(true)}
-            className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm"
-          >
-            📋 Ver Acciones
-          </button>
-        </div>
 
         {/* PESTAÑAS */}
         <div className="border-b border-gray-200 mb-6 -mx-4 md:mx-0 px-4 md:px-0">
@@ -1781,19 +1761,6 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         grupo={grupoSeleccionado}
         onActualizado={() => cargarCronogramaGrupo(grupoSeleccionado.id)}
         puedeGestionar
-      />
-
-      <ModalRegistrarAccion
-        isOpen={modalRegistrarAccion}
-        onClose={() => setModalRegistrarAccion(false)}
-        grupo={grupoSeleccionado}
-        nombreRegistrador={usuario.nombre_completo}
-        onAccionRegistrada={() => setModalVerAcciones(false)}
-      />
-      <ModalHistorialAcciones
-        isOpen={modalVerAcciones}
-        onClose={() => setModalVerAcciones(false)}
-        grupo={grupoSeleccionado}
       />
 
       <ModalEditarFechaCronograma
