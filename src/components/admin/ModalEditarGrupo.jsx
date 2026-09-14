@@ -40,10 +40,24 @@ export default function ModalEditarGrupo({ isOpen, onClose, grupo, onRecargar })
       .update({ nombre, universidad, programa, cohorte })
       .eq('id', grupo.id);
 
+    if (error) {
+      setCargando(false);
+      notificacion.error(error.message, 'Error al actualizar');
+      return;
+    }
+
+    // universidad/programa/cohorte también viven copiados en cada estudiante
+    // (para exportes y reportes que no hacen join con grupos) — sin este
+    // paso, corregir el grupo deja a sus estudiantes con el dato viejo.
+    const { error: errorEstudiantes } = await supabase
+      .from('estudiantes')
+      .update({ universidad, programa, cohorte })
+      .eq('grupo_id', grupo.id);
+
     setCargando(false);
 
-    if (error) {
-      notificacion.error(error.message, 'Error al actualizar');
+    if (errorEstudiantes) {
+      notificacion.error(errorEstudiantes.message, 'Grupo actualizado, pero no se pudo sincronizar a sus estudiantes');
     } else {
       notificacion.success('Grupo actualizado correctamente');
       onRecargar();
