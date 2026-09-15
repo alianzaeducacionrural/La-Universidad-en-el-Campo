@@ -38,6 +38,21 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
       if (filtros.universidades && filtros.universidades.length > 0) {
         query = query.in('estudiantes.universidad', filtros.universidades);
       }
+      if (filtros.programas && filtros.programas.length > 0) {
+        query = query.in('estudiantes.programa', filtros.programas);
+      }
+      if (filtros.instituciones && filtros.instituciones.length > 0) {
+        query = query.in('estudiantes.institucion_educativa', filtros.instituciones);
+      }
+      if (filtros.grupoIds && filtros.grupoIds.length > 0) {
+        query = query.in('estudiantes.grupo_id', filtros.grupoIds);
+      }
+      if (filtros.necesidadesEspeciales) {
+        query = query.or(
+          'and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)',
+          { foreignTable: 'estudiantes' }
+        );
+      }
 
       const { data, error } = await query;
 
@@ -109,6 +124,8 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
         <h3 className="font-semibold text-gray-800 mb-4">🔍 Causas de Inasistencia</h3>
         <p className="text-gray-500 text-center py-8">
           {filtros.municipios?.length > 0 || filtros.cohortes?.length > 0 || filtros.universidades?.length > 0
+            || filtros.programas?.length > 0 || filtros.instituciones?.length > 0 || filtros.grupoIds?.length > 0
+            || filtros.necesidadesEspeciales
             ? 'No hay inasistencias con causa especificada para los filtros seleccionados.'
             : 'Aún no hay registros de inasistencias con causa especificada.'}
         </p>

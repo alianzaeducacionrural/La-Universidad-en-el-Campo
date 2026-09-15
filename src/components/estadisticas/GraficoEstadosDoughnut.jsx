@@ -28,12 +28,18 @@ export default function GraficoEstadosDoughnut({ filtros = {} }) {
     let hasMore = true;
 
     while (hasMore) {
-      let query = supabase.from('estudiantes').select('estado');
-      
+      let query = supabase.from('estudiantes').select('estado, discapacidad_tipo, trastorno_tipo');
+
       // Aplicar filtros
       if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
       if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
       if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
+      if (filtros.programas?.length > 0) query = query.in('programa', filtros.programas);
+      if (filtros.instituciones?.length > 0) query = query.in('institucion_educativa', filtros.instituciones);
+      if (filtros.grupoIds?.length > 0) query = query.in('grupo_id', filtros.grupoIds);
+      if (filtros.necesidadesEspeciales) {
+        query = query.or('and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)');
+      }
       
       const { data, error } = await query.range(from, from + limit - 1);
 

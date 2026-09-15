@@ -30,21 +30,31 @@ export default function GraficoInasistenciasMensual({ filtros = {} }) {
       .from('inasistencias')
       .select(`id, registros_asistencia!inner(fecha)`);
     
-    if (filtros.municipios?.length > 0 || filtros.cohortes?.length > 0 || 
-        filtros.universidades?.length > 0 || filtros.estados?.length > 0) {
-      
+    const hayFiltrosDeEstudiante = filtros.municipios?.length > 0 || filtros.cohortes?.length > 0 ||
+      filtros.universidades?.length > 0 || filtros.estados?.length > 0 || filtros.programas?.length > 0 ||
+      filtros.instituciones?.length > 0 || filtros.grupoIds?.length > 0 || filtros.necesidadesEspeciales;
+
+    if (hayFiltrosDeEstudiante) {
       let queryEstudiantes = supabase.from('estudiantes').select('id');
       if (filtros.municipios?.length > 0) queryEstudiantes = queryEstudiantes.in('municipio', filtros.municipios);
       if (filtros.cohortes?.length > 0) queryEstudiantes = queryEstudiantes.in('cohorte', filtros.cohortes);
       if (filtros.universidades?.length > 0) queryEstudiantes = queryEstudiantes.in('universidad', filtros.universidades);
       if (filtros.estados?.length > 0) queryEstudiantes = queryEstudiantes.in('estado', filtros.estados);
-      
+      if (filtros.programas?.length > 0) queryEstudiantes = queryEstudiantes.in('programa', filtros.programas);
+      if (filtros.instituciones?.length > 0) queryEstudiantes = queryEstudiantes.in('institucion_educativa', filtros.instituciones);
+      if (filtros.grupoIds?.length > 0) queryEstudiantes = queryEstudiantes.in('grupo_id', filtros.grupoIds);
+      if (filtros.necesidadesEspeciales) {
+        queryEstudiantes = queryEstudiantes.or('and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)');
+      }
+
       const { data: estudiantesFiltrados } = await queryEstudiantes;
       const idsEstudiantes = estudiantesFiltrados?.map(e => e.id) || [];
-      
-      if (idsEstudiantes.length > 0) {
-        query = query.in('estudiante_id', idsEstudiantes);
-      }
+
+      // Filtrar siempre que haya filtros de estudiante activos, incluso si
+      // no matchea ningún estudiante: `.in(..., [])` devuelve cero filas,
+      // que es el resultado correcto — antes se omitía este caso y el
+      // gráfico mostraba TODAS las inasistencias sin filtrar.
+      query = query.in('estudiante_id', idsEstudiantes);
     }
     
     const { data } = await query;
