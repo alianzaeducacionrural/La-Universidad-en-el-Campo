@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { crearNormalizadorUbicacion } from '../../utils/normalizarUbicacion';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { useAuth } from '../../context/AuthContext';
 import { puedeGestionar } from '../../utils/helpers';
@@ -191,6 +192,16 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+          let normalizarUbicacion;
+          try {
+            normalizarUbicacion = await crearNormalizadorUbicacion();
+          } catch (error) {
+            setImportando(false);
+            notificacion.error('No se pudo cargar el catálogo de municipios e instituciones. Intenta de nuevo.', 'Error al importar');
+            resolve({ success: false, error: error.message });
+            return;
+          }
+
           let insertados = 0;
           let errores = 0;
 
@@ -212,6 +223,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
               estado: 'Activo',
               total_faltas: 0
             };
+            Object.assign(estudiante, normalizarUbicacion(estudiante.municipio, estudiante.institucion_educativa));
 
             if (!estudiante.nombre_completo || !estudiante.municipio || !estudiante.institucion_educativa) {
               errores++;

@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { crearNormalizadorUbicacion } from '../utils/normalizarUbicacion';
 import * as XLSX from 'xlsx';
 
 export function useEstudiantes(grupoSeleccionado) {
@@ -58,6 +59,15 @@ export function useEstudiantes(grupoSeleccionado) {
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+          let normalizarUbicacion;
+          try {
+            normalizarUbicacion = await crearNormalizadorUbicacion();
+          } catch (error) {
+            setCargando(false);
+            resolve({ success: false, error: 'No se pudo cargar el catálogo de municipios e instituciones: ' + error.message });
+            return;
+          }
           
           let insertados = 0;
           let errores = 0;
@@ -80,6 +90,7 @@ export function useEstudiantes(grupoSeleccionado) {
               estado: 'Activo',
               total_faltas: 0
             };
+            Object.assign(estudiante, normalizarUbicacion(estudiante.municipio, estudiante.institucion_educativa));
             
             if (!estudiante.nombre_completo || !estudiante.municipio || !estudiante.institucion_educativa) {
               errores++;
