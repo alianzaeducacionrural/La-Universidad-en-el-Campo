@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { formatearFecha, interpretarError } from '../../utils/helpers';
 import ModalCrearInstitucion from './ModalCrearInstitucion';
@@ -32,30 +33,23 @@ export default function GestionInstituciones() {
   // PostgREST), así que hay que paginar o el conteo por institución queda
   // truncado silenciosamente.
   async function obtenerTodosLosEstudiantesBasico() {
-    let todos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-    while (hasMore) {
-      const { data } = await supabase
-        .from('estudiantes')
-        .select('id, institucion_educativa, municipio, estado')
-        .range(from, from + limit - 1);
-      if (data && data.length > 0) {
-        todos = [...todos, ...data];
-        from += limit;
-      }
-      if (!data || data.length < limit) hasMore = false;
-    }
-    return todos;
+    return obtenerTodasLasFilas(() => supabase.from('estudiantes').select('id, institucion_educativa, municipio, estado'));
   }
 
   async function cargarDatos() {
     setCargando(true);
-    const [instRes, filasEstudiantes] = await Promise.all([
-      supabase.from('instituciones').select('*, municipios:municipio_id (nombre)').order('nombre'),
-      obtenerTodosLosEstudiantesBasico()
-    ]);
+    let instRes, filasEstudiantes;
+    try {
+      [instRes, filasEstudiantes] = await Promise.all([
+        supabase.from('instituciones').select('*, municipios:municipio_id (nombre)').order('nombre'),
+        obtenerTodosLosEstudiantesBasico()
+      ]);
+    } catch (error) {
+      console.error('Error cargando instituciones:', error);
+      notificacion.error('No se pudo cargar el conteo completo de estudiantes por institución. Intenta de nuevo.', 'Error de carga');
+      setCargando(false);
+      return;
+    }
 
     const listaInstituciones = instRes.data || [];
 

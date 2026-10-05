@@ -8,15 +8,17 @@ import { supabase } from '../lib/supabaseClient';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
-import * as XLSX from 'xlsx';
-import { formatearFecha, limpiarEmojis, getMunicipiosPermitidos, esAliado } from '../utils/helpers';
+import { formatearFecha, limpiarEmojis, getMunicipiosPermitidos, esAliado, etiquetaTipoSeguimiento } from '../utils/helpers';
 import { ESTADOS_ESTUDIANTE } from '../utils/constants';
+import { descargarExcelCompleto, descargarExcelAgrupado } from '../utils/excel';
+import { obtenerTodasLasFilas } from '../utils/supabasePaginado';
 
 export default function Reportes({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const [vistaActiva, setVistaActiva] = useState('reportes');
 
   const [cargandoDatos, setCargandoDatos] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(null);
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
 
   // Datos crudos (una sola carga; el filtrado ocurre en cliente)
@@ -55,43 +57,14 @@ export default function Reportes({ onVerPerfil }) {
   };
 
   // =============================================
-  // FUNCIONES DE DESCARGA
-  // =============================================
-
-  function descargarExcelCompleto(datos, nombreArchivo) {
-    const ws = XLSX.utils.json_to_sheet(datos);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Datos');
-    XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
-  }
-
-  function descargarExcelAgrupado(datos, campoAgrupacion, nombreArchivo) {
-    const wb = XLSX.utils.book_new();
-
-    const agrupado = {};
-    datos.forEach(item => {
-      const valor = item[campoAgrupacion] || 'Sin especificar';
-      if (!agrupado[valor]) agrupado[valor] = [];
-      agrupado[valor].push(item);
-    });
-
-    Object.entries(agrupado).sort().forEach(([nombreHoja, items]) => {
-      const nombreCorto = nombreHoja.substring(0, 31).replace(/[\\\[\]\*\?\/]/g, '-');
-      const ws = XLSX.utils.json_to_sheet(items);
-      XLSX.utils.book_append_sheet(wb, ws, nombreCorto);
-    });
-
-    XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
-  }
-
-  // =============================================
   // 1. LISTADO GENERAL DE ESTUDIANTES
   // =============================================
 
   const COLUMNAS_ESTUDIANTES = [
     'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
     'municipio', 'institucion_educativa', 'universidad', 'programa',
-    'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono'
+    'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono',
+    'discapacidad_tipo', 'trastorno_tipo'
   ];
 
   const LABELS_ESTUDIANTES = {
@@ -109,47 +82,17 @@ export default function Reportes({ onVerPerfil }) {
     estado: 'Estado',
     total_faltas: 'Faltas',
     acudiente_nombre: 'Acudiente',
-    acudiente_telefono: 'Tel. Acudiente'
+    acudiente_telefono: 'Tel. Acudiente',
+    discapacidad_tipo: 'Discapacidad',
+    trastorno_tipo: 'Trastorno'
   };
 
   async function obtenerEstudiantesCrudo() {
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      let query = supabase
-        .from('estudiantes')
-        .select('*')
-        .order('nombre_completo')
-        .range(from, from + limit - 1);
-
+    return obtenerTodasLasFilas(() => {
+      let query = supabase.from('estudiantes').select('*').order('nombre_completo');
       if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error:', error);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        todosLosDatos = [...todosLosDatos, ...data];
-        from += limit;
-      }
-
-      if (!data || data.length < limit) {
-        hasMore = false;
-      }
-    }
-
-    // Garantizar un único registro por estudiante (por id)
-    const unicos = new Map();
-    for (const est of todosLosDatos) {
-      if (!unicos.has(est.id)) unicos.set(est.id, est);
-    }
-    return Array.from(unicos.values());
+      return query;
+    });
   }
 
   const gettersEstudiantes = { ...gettersComunes, estado: r => r.estado };
@@ -162,7 +105,7 @@ export default function Reportes({ onVerPerfil }) {
     return data.map(e => {
       const obj = {};
       COLUMNAS_ESTUDIANTES.forEach(col => {
-        obj[LABELS_ESTUDIANTES[col] || col] = e[col] || '';
+        obj[LABELS_ESTUDIANTES[col] || col] = e[col] ?? '';
       });
       return obj;
     });
@@ -204,33 +147,11 @@ export default function Reportes({ onVerPerfil }) {
   };
 
   async function obtenerDesercionesCrudo() {
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('registros_desercion')
-        .select(`*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`)
-        .order('fecha_reporte', { ascending: false })
-        .order('created_at', { ascending: false })
-        .range(from, from + limit - 1);
-
-      if (error) {
-        console.error('Error:', error);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        todosLosDatos = [...todosLosDatos, ...data];
-        from += limit;
-      }
-
-      if (!data || data.length < limit) {
-        hasMore = false;
-      }
-    }
+    const todosLosDatos = await obtenerTodasLasFilas(() => supabase
+      .from('registros_desercion')
+      .select(`*, estudiante:estudiante_id (*), usuario:usuario_id (nombre_completo)`)
+      .order('fecha_reporte', { ascending: false })
+      .order('created_at', { ascending: false }));
 
     // Los datos vienen ordenados por fecha_reporte DESC. Se deja un único
     // registro por estudiante: el más reciente (evita duplicados por ediciones).
@@ -260,7 +181,7 @@ export default function Reportes({ onVerPerfil }) {
     return data.map(d => {
       const obj = {};
       COLUMNAS_DESERCION.forEach(col => {
-        obj[LABELS_DESERCION[col] || col] = d[col] || '';
+        obj[LABELS_DESERCION[col] || col] = d[col] ?? '';
       });
       return obj;
     });
@@ -281,7 +202,7 @@ export default function Reportes({ onVerPerfil }) {
   const COLUMNAS_INASISTENCIAS = [
     'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
     'universidad', 'programa', 'cohorte', 'grupo_nombre', 'fecha', 'modulo', 'docente_nombre',
-    'estado_seguimiento'
+    'estado_seguimiento', 'observacion_docente'
   ];
 
   const LABELS_INASISTENCIAS = {
@@ -296,36 +217,15 @@ export default function Reportes({ onVerPerfil }) {
     fecha: 'Fecha',
     modulo: 'Módulo',
     docente_nombre: 'Docente',
-    estado_seguimiento: 'Estado Seguimiento'
+    estado_seguimiento: 'Estado Seguimiento',
+    observacion_docente: 'Observación Docente'
   };
 
   async function obtenerInasistenciasCrudo() {
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('inasistencias')
-        .select(`*, estudiante:estudiante_id (*), registros_asistencia (fecha, modulo, docente_nombre)`)
-        .order('created_at', { ascending: false })
-        .range(from, from + limit - 1);
-
-      if (error) {
-        console.error('Error:', error);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        todosLosDatos = [...todosLosDatos, ...data];
-        from += limit;
-      }
-
-      if (!data || data.length < limit) {
-        hasMore = false;
-      }
-    }
+    const todosLosDatos = await obtenerTodasLasFilas(() => supabase
+      .from('inasistencias')
+      .select(`*, estudiante:estudiante_id (*), registros_asistencia (fecha, modulo, docente_nombre)`)
+      .order('created_at', { ascending: false }));
 
     return todosLosDatos.map(i => ({
       ...i,
@@ -349,7 +249,7 @@ export default function Reportes({ onVerPerfil }) {
     return data.map(i => {
       const obj = {};
       COLUMNAS_INASISTENCIAS.forEach(col => {
-        obj[LABELS_INASISTENCIAS[col] || col] = i[col] || '';
+        obj[LABELS_INASISTENCIAS[col] || col] = i[col] ?? '';
       });
       return obj;
     });
@@ -370,7 +270,7 @@ export default function Reportes({ onVerPerfil }) {
   const COLUMNAS_SEGUIMIENTOS = [
     'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
     'universidad', 'programa', 'cohorte', 'grupo_nombre', 'fecha_contacto', 'tipo_gestion',
-    'causa_ausencia', 'resultado', 'padrino_nombre'
+    'causa_ausencia', 'tipo_seguimiento', 'resultado', 'padrino_nombre', 'evidencias'
   ];
 
   const LABELS_SEGUIMIENTOS = {
@@ -385,37 +285,17 @@ export default function Reportes({ onVerPerfil }) {
     fecha_contacto: 'Fecha',
     tipo_gestion: 'Tipo Gestión',
     causa_ausencia: 'Causa',
+    tipo_seguimiento: 'Tipo Seguimiento',
     resultado: 'Resultado',
-    padrino_nombre: 'Padrino'
+    padrino_nombre: 'Padrino',
+    evidencias: 'Evidencias (enlaces)'
   };
 
   async function obtenerSeguimientosCrudo() {
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('seguimientos')
-        .select(`*, estudiante:estudiante_id (*), padrino:padrino_id (nombre_completo)`)
-        .order('created_at', { ascending: false })
-        .range(from, from + limit - 1);
-
-      if (error) {
-        console.error('Error:', error);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        todosLosDatos = [...todosLosDatos, ...data];
-        from += limit;
-      }
-
-      if (!data || data.length < limit) {
-        hasMore = false;
-      }
-    }
+    const todosLosDatos = await obtenerTodasLasFilas(() => supabase
+      .from('seguimientos')
+      .select(`*, estudiante:estudiante_id (*), padrino:padrino_id (nombre_completo)`)
+      .order('created_at', { ascending: false }));
 
     // Se aplana el estudiante al nivel superior, igual que en Deserciones,
     // para poder usar el mismo formateador dirigido por columnas.
@@ -424,7 +304,9 @@ export default function Reportes({ onVerPerfil }) {
       ...s.estudiante,
       tipo_gestion: limpiarEmojis(s.tipo_gestion),
       causa_ausencia: limpiarEmojis(s.causa_ausencia) || '',
-      padrino_nombre: s.padrino?.nombre_completo || 'N/A'
+      tipo_seguimiento: etiquetaTipoSeguimiento(s.tipo_seguimiento),
+      padrino_nombre: s.padrino?.nombre_completo || 'N/A',
+      evidencias: (s.evidencias || []).join(' | ')
     }));
   }
 
@@ -442,7 +324,7 @@ export default function Reportes({ onVerPerfil }) {
           obj[LABELS_SEGUIMIENTOS[col]] = formatearFecha(s.fecha_contacto);
           return;
         }
-        obj[LABELS_SEGUIMIENTOS[col] || col] = s[col] || '';
+        obj[LABELS_SEGUIMIENTOS[col] || col] = s[col] ?? '';
       });
       return obj;
     });
@@ -463,25 +345,36 @@ export default function Reportes({ onVerPerfil }) {
   useEffect(() => {
     async function cargarTodo() {
       setCargandoDatos(true);
-      const [est, des, ina, seg, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
-        obtenerEstudiantesCrudo(),
-        obtenerDesercionesCrudo(),
-        obtenerInasistenciasCrudo(),
-        obtenerSeguimientosCrudo(),
-        supabase.from('grupos').select('id, nombre, universidad, programa, cohorte').eq('activo', true).order('nombre'),
-        supabase.from('municipios').select('nombre').order('nombre'),
-        supabase.from('universidades').select('nombre').order('nombre'),
-        supabase.from('programas').select('nombre').order('nombre')
-      ]);
-      setRawEstudiantes(est);
-      setRawDeserciones(des);
-      setRawInasistencias(ina);
-      setRawSeguimientos(seg);
-      setGrupos(gruposRes.data || []);
-      setMunicipiosDb(municipiosRes.data || []);
-      setUniversidadesDb(universidadesRes.data || []);
-      setProgramasDb(programasRes.data || []);
-      setCargandoDatos(false);
+      setErrorCarga(null);
+      try {
+        // Todos los grupos (no solo activos): los estudiantes de grupos con
+        // periodo finalizado deben seguir apareciendo con su grupo en los informes.
+        const [est, des, ina, seg, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
+          obtenerEstudiantesCrudo(),
+          obtenerDesercionesCrudo(),
+          obtenerInasistenciasCrudo(),
+          obtenerSeguimientosCrudo(),
+          supabase.from('grupos').select('id, nombre, universidad, programa, cohorte, activo').order('nombre'),
+          supabase.from('municipios').select('nombre').order('nombre'),
+          supabase.from('universidades').select('nombre').order('nombre'),
+          supabase.from('programas').select('nombre').order('nombre')
+        ]);
+        const errorCatalogo = [gruposRes, municipiosRes, universidadesRes, programasRes].find(r => r.error)?.error;
+        if (errorCatalogo) throw errorCatalogo;
+        setRawEstudiantes(est);
+        setRawDeserciones(des);
+        setRawInasistencias(ina);
+        setRawSeguimientos(seg);
+        setGrupos(gruposRes.data);
+        setMunicipiosDb(municipiosRes.data);
+        setUniversidadesDb(universidadesRes.data);
+        setProgramasDb(programasRes.data);
+      } catch (error) {
+        console.error('Error cargando reportes:', error);
+        setErrorCarga(error.message || 'Error desconocido');
+      } finally {
+        setCargandoDatos(false);
+      }
     }
     cargarTodo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -499,7 +392,7 @@ export default function Reportes({ onVerPerfil }) {
     universidades: universidadesDb.map(u => ({ valor: u.nombre, label: u.nombre })),
     programas: programasDb.map(p => ({ valor: p.nombre, label: p.nombre })),
     cohortes: cohortesDisponibles.map(c => ({ valor: c, label: c })),
-    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}` })),
+    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}${g.activo ? '' : ' (finalizado)'}` })),
     estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
   }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, municipiosPermitidos]);
 
@@ -614,6 +507,14 @@ export default function Reportes({ onVerPerfil }) {
             <div className="text-center py-16">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-gray-500 mt-4">Cargando datos del sistema...</p>
+            </div>
+          ) : errorCarga ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+              <p className="text-red-700 font-medium">No se pudo cargar toda la información, así que no se muestran reportes incompletos.</p>
+              <p className="text-red-600 text-sm mt-1">{errorCarga}</p>
+              <button onClick={() => window.location.reload()} className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                Reintentar
+              </button>
             </div>
           ) : (
             <div className="space-y-6">

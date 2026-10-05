@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../utils/supabasePaginado';
 import { getMunicipiosPermitidos, tieneEtiquetaEspecial } from '../utils/helpers';
 import { useEstudianteActualizado } from '../hooks/useEstudianteActualizado';
 import { exportarEstudiantesExcel } from '../utils/exportUtils';
@@ -28,6 +29,7 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
   // desde VerComo.jsx, sin necesidad de iniciar sesión con esa cuenta.
   const usuario = usuarioForzado || usuarioAuth;
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('estadisticas');
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
 
@@ -53,39 +55,37 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
   }, []));
 
   async function obtenerEstudiantesCrudo() {
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      let query = supabase.from('estudiantes').select('*').order('nombre_completo').range(from, from + limit - 1);
+    return obtenerTodasLasFilas(() => {
+      let query = supabase.from('estudiantes').select('*').order('nombre_completo');
       if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
-
-      const { data, error } = await query;
-      if (error) { console.error('Error:', error); break; }
-      if (data && data.length > 0) { todosLosDatos = [...todosLosDatos, ...data]; from += limit; }
-      if (!data || data.length < limit) hasMore = false;
-    }
-
-    return todosLosDatos;
+      return query;
+    });
   }
 
   async function cargarTodo() {
     setCargando(true);
-    const [est, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
-      obtenerEstudiantesCrudo(),
-      supabase.from('grupos').select('id, nombre, universidad, programa, cohorte').eq('activo', true).order('nombre'),
-      supabase.from('municipios').select('nombre').order('nombre'),
-      supabase.from('universidades').select('nombre').order('nombre'),
-      supabase.from('programas').select('nombre').order('nombre')
-    ]);
-    setRawEstudiantes(est);
-    setGrupos(gruposRes.data || []);
-    setMunicipiosDb(municipiosRes.data || []);
-    setUniversidadesDb(universidadesRes.data || []);
-    setProgramasDb(programasRes.data || []);
-    setCargando(false);
+    setErrorCarga(null);
+    try {
+      const [est, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
+        obtenerEstudiantesCrudo(),
+        supabase.from('grupos').select('id, nombre, universidad, programa, cohorte, activo').order('nombre'),
+        supabase.from('municipios').select('nombre').order('nombre'),
+        supabase.from('universidades').select('nombre').order('nombre'),
+        supabase.from('programas').select('nombre').order('nombre')
+      ]);
+      const errorCatalogo = [gruposRes, municipiosRes, universidadesRes, programasRes].find(r => r.error)?.error;
+      if (errorCatalogo) throw errorCatalogo;
+      setRawEstudiantes(est);
+      setGrupos(gruposRes.data);
+      setMunicipiosDb(municipiosRes.data);
+      setUniversidadesDb(universidadesRes.data);
+      setProgramasDb(programasRes.data);
+    } catch (error) {
+      console.error('Error cargando estadísticas:', error);
+      setErrorCarga(error.message || 'Error desconocido');
+    } finally {
+      setCargando(false);
+    }
   }
 
   const getters = {
@@ -122,7 +122,7 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
     universidades: universidadesDb.map(u => ({ valor: u.nombre, label: u.nombre })),
     programas: programasDb.map(p => ({ valor: p.nombre, label: p.nombre })),
     cohortes: cohortesDisponibles.map(c => ({ valor: c, label: c })),
-    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}` })),
+    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}${g.activo ? '' : ' (finalizado)'}` })),
     instituciones: institucionesDisponibles.map(i => ({ valor: i, label: i })),
     estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
   }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, institucionesDisponibles, municipiosPermitidos]);
@@ -217,6 +217,14 @@ export default function Estadisticas({ onVerPerfil, usuarioForzado = null, simul
           {cargando ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12">
               <LoadingSpinner mensaje="Cargando estadísticas..." />
+            </div>
+          ) : errorCarga ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+              <p className="text-red-700 font-medium">No se pudo cargar toda la información, así que no se muestran estadísticas incompletas.</p>
+              <p className="text-red-600 text-sm mt-1">{errorCarga}</p>
+              <button onClick={cargarTodo} className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                Reintentar
+              </button>
             </div>
           ) : (
             <div className="space-y-6">

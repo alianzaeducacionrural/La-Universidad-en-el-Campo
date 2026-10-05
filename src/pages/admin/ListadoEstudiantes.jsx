@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
 import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -18,6 +19,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
   const { perfil: usuario } = useAuth();
   const [vistaActiva, setVistaActiva] = useState('estudiantes');
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
 
@@ -42,49 +44,33 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
   }, []));
 
   async function obtenerEstudiantesCrudo() {
-    let todosLosDatos = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      let query = supabase
-        .from('estudiantes')
-        .select('*, grupos:grupo_id (nombre)')
-        .order('nombre_completo')
-        .range(from, from + limit - 1);
-
+    const todosLosDatos = await obtenerTodasLasFilas(() => {
+      let query = supabase.from('estudiantes').select('*, grupos:grupo_id (nombre)').order('nombre_completo');
       if (municipiosPermitidos) query = query.in('municipio', municipiosPermitidos);
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error:', error);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        todosLosDatos = [...todosLosDatos, ...data];
-        from += limit;
-      }
-
-      if (!data || data.length < limit) {
-        hasMore = false;
-      }
-    }
+      return query;
+    });
 
     return todosLosDatos.map(e => ({ ...e, grupo_nombre: e.grupos?.nombre || 'Sin grupo' }));
   }
 
   async function cargarTodo() {
     setCargando(true);
-    const [est, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
+    let est, gruposRes, municipiosRes, universidadesRes, programasRes;
+    try {
+      [est, gruposRes, municipiosRes, universidadesRes, programasRes] = await Promise.all([
       obtenerEstudiantesCrudo(),
-      supabase.from('grupos').select('id, nombre, universidad, programa, cohorte').eq('activo', true).order('nombre'),
+      supabase.from('grupos').select('id, nombre, universidad, programa, cohorte, activo').order('nombre'),
       supabase.from('municipios').select('nombre').order('nombre'),
       supabase.from('universidades').select('nombre').order('nombre'),
       supabase.from('programas').select('nombre').order('nombre')
-    ]);
+      ]);
+    } catch (error) {
+      console.error('Error cargando estudiantes:', error);
+      setErrorCarga(error.message || 'Error desconocido');
+      setCargando(false);
+      return;
+    }
+    setErrorCarga(null);
     setRawEstudiantes(est);
     setGrupos(gruposRes.data || []);
     setMunicipiosDb(municipiosRes.data || []);
@@ -133,7 +119,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     universidades: universidadesDb.map(u => ({ valor: u.nombre, label: u.nombre })),
     programas: programasDb.map(p => ({ valor: p.nombre, label: p.nombre })),
     cohortes: cohortesDisponibles.map(c => ({ valor: c, label: c })),
-    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}` })),
+    grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}${g.activo ? '' : ' (finalizado)'}` })),
     instituciones: institucionesDisponibles.map(i => ({ valor: i, label: i })),
     estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e }))
   }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, institucionesDisponibles, municipiosPermitidos]);
@@ -215,6 +201,14 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
           {cargando ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <LoadingSpinner mensaje="Cargando estudiantes..." />
+            </div>
+          ) : errorCarga ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+              <p className="text-red-700 font-medium">No se pudo cargar el listado completo de estudiantes.</p>
+              <p className="text-red-600 text-sm mt-1">{errorCarga}</p>
+              <button onClick={cargarTodo} className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                Reintentar
+              </button>
             </div>
           ) : estudiantesFiltrados.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">

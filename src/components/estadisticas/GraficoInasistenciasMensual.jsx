@@ -4,6 +4,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
+import { aplicarFiltrosEstudiante, hayFiltrosEstudiante } from '../../utils/filtrosConsulta';
+import ErrorGrafico from './ErrorGrafico';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -14,6 +17,7 @@ export default function GraficoInasistenciasMensual({ filtros = {} }) {
   const [datos, setDatos] = useState(null);
   const [total, setTotal] = useState(0);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -21,72 +25,54 @@ export default function GraficoInasistenciasMensual({ filtros = {} }) {
 
   async function cargarDatos() {
     setCargando(true);
-    
-    const fechaLimite = new Date();
-    fechaLimite.setMonth(fechaLimite.getMonth() - 6);
-    const fechaLimiteStr = fechaLimite.toISOString().split('T')[0];
-    
-    let query = supabase
-      .from('inasistencias')
-      .select(`id, registros_asistencia!inner(fecha)`);
-    
-    const hayFiltrosDeEstudiante = filtros.municipios?.length > 0 || filtros.cohortes?.length > 0 ||
-      filtros.universidades?.length > 0 || filtros.estados?.length > 0 || filtros.programas?.length > 0 ||
-      filtros.instituciones?.length > 0 || filtros.grupoIds?.length > 0 || filtros.necesidadesEspeciales;
+    setErrorCarga(false);
 
-    if (hayFiltrosDeEstudiante) {
-      let queryEstudiantes = supabase.from('estudiantes').select('id');
-      if (filtros.municipios?.length > 0) queryEstudiantes = queryEstudiantes.in('municipio', filtros.municipios);
-      if (filtros.cohortes?.length > 0) queryEstudiantes = queryEstudiantes.in('cohorte', filtros.cohortes);
-      if (filtros.universidades?.length > 0) queryEstudiantes = queryEstudiantes.in('universidad', filtros.universidades);
-      if (filtros.estados?.length > 0) queryEstudiantes = queryEstudiantes.in('estado', filtros.estados);
-      if (filtros.programas?.length > 0) queryEstudiantes = queryEstudiantes.in('programa', filtros.programas);
-      if (filtros.instituciones?.length > 0) queryEstudiantes = queryEstudiantes.in('institucion_educativa', filtros.instituciones);
-      if (filtros.grupoIds?.length > 0) queryEstudiantes = queryEstudiantes.in('grupo_id', filtros.grupoIds);
-      if (filtros.necesidadesEspeciales) {
-        queryEstudiantes = queryEstudiantes.or('and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)');
-      }
+    const hoy = new Date();
+    const inicioVentana = new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1);
+    const inicioVentanaStr = `${inicioVentana.getFullYear()}-${String(inicioVentana.getMonth() + 1).padStart(2, '0')}-01`;
 
-      const { data: estudiantesFiltrados } = await queryEstudiantes;
-      const idsEstudiantes = estudiantesFiltrados?.map(e => e.id) || [];
-
-      // Filtrar siempre que haya filtros de estudiante activos, incluso si
-      // no matchea ningún estudiante: `.in(..., [])` devuelve cero filas,
-      // que es el resultado correcto — antes se omitía este caso y el
-      // gráfico mostraba TODAS las inasistencias sin filtrar.
-      query = query.in('estudiante_id', idsEstudiantes);
-    }
-    
-    const { data } = await query;
-    
-    if (data && data.length > 0) {
-      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const conteoMensual = Array(6).fill(0);
-      const labels = [];
-      
-      const hoy = new Date();
-      for (let i = 5; i >= 0; i--) {
-        const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
-        labels.push(meses[fecha.getMonth()]);
-      }
-      
-      let totalInasistencias = 0;
-      data.forEach(item => {
-        const fecha = item.registros_asistencia?.fecha;
-        if (!fecha) return;
-        
-        const fechaInasistencia = new Date(fecha);
-        const diffMeses = (hoy.getFullYear() - fechaInasistencia.getFullYear()) * 12 + 
-                         hoy.getMonth() - fechaInasistencia.getMonth();
-        
-        if (diffMeses >= 0 && diffMeses < 6) {
-          conteoMensual[5 - diffMeses]++;
-          totalInasistencias++;
-        }
+    // El join con estudiantes solo se agrega si hay filtros: con !inner
+    // excluiría inasistencias sin estudiante asociado.
+    const conFiltros = hayFiltrosEstudiante(filtros);
+    let data;
+    try {
+      data = await obtenerTodasLasFilas(() => {
+        const query = supabase
+          .from('inasistencias')
+          .select(`id, registros_asistencia!inner(fecha)${conFiltros ? ', estudiantes!inner(id)' : ''}`)
+          .gte('registros_asistencia.fecha', inicioVentanaStr);
+        return conFiltros ? aplicarFiltrosEstudiante(query, filtros, 'estudiantes') : query;
       });
-      
+    } catch (error) {
+      console.error('Error cargando inasistencias mensuales:', error);
+      setErrorCarga(true);
+      setCargando(false);
+      return;
+    }
+
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const conteoMensual = Array(6).fill(0);
+    const labels = [];
+    for (let i = 5; i >= 0; i--) {
+      labels.push(meses[new Date(hoy.getFullYear(), hoy.getMonth() - i, 1).getMonth()]);
+    }
+
+    let totalInasistencias = 0;
+    data.forEach(item => {
+      const fecha = item.registros_asistencia?.fecha;
+      if (!fecha) return;
+      // Año/mes leídos del texto: new Date('YYYY-MM-DD') es UTC y en Colombia
+      // corre el día 1 de cada mes al mes anterior.
+      const [anio, mes] = fecha.split('-').map(Number);
+      const diffMeses = (hoy.getFullYear() - anio) * 12 + (hoy.getMonth() + 1 - mes);
+      if (diffMeses >= 0 && diffMeses < 6) {
+        conteoMensual[5 - diffMeses]++;
+        totalInasistencias++;
+      }
+    });
+
+    if (totalInasistencias > 0) {
       setTotal(totalInasistencias);
-      
       setDatos({
         labels,
         datasets: [{
@@ -102,7 +88,7 @@ export default function GraficoInasistenciasMensual({ filtros = {} }) {
       setDatos(null);
       setTotal(0);
     }
-    
+
     setCargando(false);
   }
 
@@ -114,6 +100,8 @@ export default function GraficoInasistenciasMensual({ filtros = {} }) {
       </div>
     );
   }
+
+  if (errorCarga) return <ErrorGrafico titulo="📈 Inasistencias por Mes" />;
 
   if (!datos || total === 0) {
     return (

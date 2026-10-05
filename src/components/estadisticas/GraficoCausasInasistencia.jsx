@@ -5,6 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
+import { aplicarFiltrosEstudiante, hayFiltrosEstudiante } from '../../utils/filtrosConsulta';
+import ErrorGrafico from './ErrorGrafico';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
@@ -14,6 +17,7 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
   const [datos, setDatos] = useState(null);
   const [total, setTotal] = useState(0);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -21,48 +25,18 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
 
   async function cargarDatos() {
     setCargando(true);
+    setErrorCarga(false);
 
     try {
-      let query = supabase
-        .from('seguimientos')
-        .select('causa_ausencia, estudiantes!inner(municipio, cohorte, universidad)')
-        .not('causa_ausencia', 'is', null)
-        .eq('tipo_seguimiento', 'inasistencia');
-
-      if (filtros.municipios && filtros.municipios.length > 0) {
-        query = query.in('estudiantes.municipio', filtros.municipios);
-      }
-      if (filtros.cohortes && filtros.cohortes.length > 0) {
-        query = query.in('estudiantes.cohorte', filtros.cohortes);
-      }
-      if (filtros.universidades && filtros.universidades.length > 0) {
-        query = query.in('estudiantes.universidad', filtros.universidades);
-      }
-      if (filtros.programas && filtros.programas.length > 0) {
-        query = query.in('estudiantes.programa', filtros.programas);
-      }
-      if (filtros.instituciones && filtros.instituciones.length > 0) {
-        query = query.in('estudiantes.institucion_educativa', filtros.instituciones);
-      }
-      if (filtros.grupoIds && filtros.grupoIds.length > 0) {
-        query = query.in('estudiantes.grupo_id', filtros.grupoIds);
-      }
-      if (filtros.necesidadesEspeciales) {
-        query = query.or(
-          'and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)',
-          { foreignTable: 'estudiantes' }
-        );
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error al obtener datos:', error);
-        setDatos(null);
-        setTotal(0);
-        setCargando(false);
-        return;
-      }
+      const data = await obtenerTodasLasFilas(() => aplicarFiltrosEstudiante(
+        supabase
+          .from('seguimientos')
+          .select('causa_ausencia, estudiantes!inner(id)')
+          .not('causa_ausencia', 'is', null)
+          .eq('tipo_seguimiento', 'inasistencia'),
+        filtros,
+        'estudiantes'
+      ));
 
       if (data && data.length > 0) {
         const conteo = {};
@@ -101,9 +75,10 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
         setTotal(0);
       }
     } catch (error) {
-      console.error('Error general:', error);
+      console.error('Error cargando causas de inasistencia:', error);
       setDatos(null);
       setTotal(0);
+      setErrorCarga(true);
     }
 
     setCargando(false);
@@ -118,14 +93,14 @@ export default function GraficoCausasInasistencia({ filtros = {} }) {
     );
   }
 
+  if (errorCarga) return <ErrorGrafico titulo="🔍 Causas de Inasistencia" />;
+
   if (!datos || total === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
         <h3 className="font-semibold text-gray-800 mb-4">🔍 Causas de Inasistencia</h3>
         <p className="text-gray-500 text-center py-8">
-          {filtros.municipios?.length > 0 || filtros.cohortes?.length > 0 || filtros.universidades?.length > 0
-            || filtros.programas?.length > 0 || filtros.instituciones?.length > 0 || filtros.grupoIds?.length > 0
-            || filtros.necesidadesEspeciales
+          {hayFiltrosEstudiante(filtros)
             ? 'No hay inasistencias con causa especificada para los filtros seleccionados.'
             : 'Aún no hay registros de inasistencias con causa especificada.'}
         </p>

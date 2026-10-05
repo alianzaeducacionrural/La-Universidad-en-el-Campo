@@ -9,20 +9,22 @@
 // Reportes.jsx para que ambos se mantengan consistentes.
 
 import { useState, useMemo } from 'react';
-import * as XLSX from 'xlsx';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from './FiltrosReportes';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
+import { descargarExcelCompleto, descargarExcelAgrupado } from '../../utils/excel';
 
 const COLUMNAS_ESTUDIANTES = [
   'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
   'municipio', 'institucion_educativa', 'universidad', 'programa',
-  'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono'
+  'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono',
+  'discapacidad_tipo', 'trastorno_tipo'
 ];
 const LABELS_ESTUDIANTES = {
   nombre_completo: 'Nombre Completo', documento: 'Documento', genero: 'Género', telefono: 'Teléfono',
   correo: 'Correo', municipio: 'Municipio', institucion_educativa: 'Institución Educativa',
   universidad: 'Universidad', programa: 'Programa', cohorte: 'Cohorte', grupo_nombre: 'Grupo',
-  estado: 'Estado', total_faltas: 'Faltas', acudiente_nombre: 'Acudiente', acudiente_telefono: 'Tel. Acudiente'
+  estado: 'Estado', total_faltas: 'Faltas', acudiente_nombre: 'Acudiente', acudiente_telefono: 'Tel. Acudiente',
+  discapacidad_tipo: 'Discapacidad', trastorno_tipo: 'Trastorno'
 };
 
 const COLUMNAS_DESERCION = [
@@ -41,25 +43,26 @@ const LABELS_DESERCION = {
 const COLUMNAS_INASISTENCIAS = [
   'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
   'universidad', 'programa', 'cohorte', 'grupo_nombre', 'fecha', 'modulo', 'docente_nombre',
-  'estado_seguimiento'
+  'estado_seguimiento', 'observacion_docente'
 ];
 const LABELS_INASISTENCIAS = {
   nombre_completo: 'Estudiante', documento: 'Documento', municipio: 'Municipio',
   institucion_educativa: 'Institución Educativa', universidad: 'Universidad', programa: 'Programa',
   cohorte: 'Cohorte', grupo_nombre: 'Grupo', fecha: 'Fecha', modulo: 'Módulo',
-  docente_nombre: 'Docente', estado_seguimiento: 'Estado Seguimiento'
+  docente_nombre: 'Docente', estado_seguimiento: 'Estado Seguimiento', observacion_docente: 'Observación Docente'
 };
 
 const COLUMNAS_SEGUIMIENTOS = [
   'nombre_completo', 'documento', 'municipio', 'institucion_educativa',
   'universidad', 'programa', 'cohorte', 'grupo_nombre', 'fecha_contacto', 'tipo_gestion',
-  'causa_ausencia', 'resultado', 'padrino_nombre'
+  'causa_ausencia', 'tipo_seguimiento', 'resultado', 'padrino_nombre', 'evidencias'
 ];
 const LABELS_SEGUIMIENTOS = {
   nombre_completo: 'Estudiante', documento: 'Documento', municipio: 'Municipio',
   institucion_educativa: 'Institución Educativa', universidad: 'Universidad', programa: 'Programa',
   cohorte: 'Cohorte', grupo_nombre: 'Grupo', fecha_contacto: 'Fecha', tipo_gestion: 'Tipo Gestión',
-  causa_ausencia: 'Causa', resultado: 'Resultado', padrino_nombre: 'Padrino'
+  causa_ausencia: 'Causa', tipo_seguimiento: 'Tipo Seguimiento', resultado: 'Resultado', padrino_nombre: 'Padrino',
+  evidencias: 'Evidencias (enlaces)'
 };
 
 const COLUMNAS_HOMOLOGACION = [
@@ -86,33 +89,10 @@ function formatearFilas(data, columnas, labels) {
     const obj = {};
     columnas.forEach(col => {
       if (col === 'total_faltas') { obj[labels[col]] = fila.total_faltas ?? fila.total_inasistencias ?? 0; return; }
-      obj[labels[col] || col] = fila[col] || '';
+      obj[labels[col] || col] = fila[col] ?? '';
     });
     return obj;
   });
-}
-
-function descargarExcelCompleto(datos, nombreArchivo) {
-  const ws = XLSX.utils.json_to_sheet(datos);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Datos');
-  XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
-}
-
-function descargarExcelAgrupado(datos, campoAgrupacion, nombreArchivo) {
-  const wb = XLSX.utils.book_new();
-  const agrupado = {};
-  datos.forEach(item => {
-    const valor = item[campoAgrupacion] || 'Sin especificar';
-    if (!agrupado[valor]) agrupado[valor] = [];
-    agrupado[valor].push(item);
-  });
-  Object.entries(agrupado).sort().forEach(([nombreHoja, items]) => {
-    const nombreCorto = nombreHoja.substring(0, 31).replace(/[\\[\]*?/]/g, '-');
-    const ws = XLSX.utils.json_to_sheet(items);
-    XLSX.utils.book_append_sheet(wb, ws, nombreCorto);
-  });
-  XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
 }
 
 export default function ReportesPanel({

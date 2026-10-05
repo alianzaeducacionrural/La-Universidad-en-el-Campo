@@ -13,6 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
 import { NOMBRE_CERTIFICADO_HOMOLOGACION } from '../../utils/constants';
 import { formatearFecha } from '../../utils/helpers';
 import { exportarNotasHomologacionExcel } from '../../utils/exportUtils';
@@ -31,9 +32,17 @@ export function ContenidoHomologacionGrupo({ grupo }) {
   const [notasPorClave, setNotasPorClave] = useState({});
   const [certificados, setCertificados] = useState([]);
   const [sinPrograma, setSinPrograma] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   useEffect(() => {
-    if (grupo) cargarDatos();
+    if (grupo) {
+      setErrorCarga(false);
+      cargarDatos().catch(error => {
+        console.error('Error cargando reconocimiento de aprendizajes:', error);
+        setErrorCarga(true);
+        setCargando(false);
+      });
+    }
     else { setMalla([]); setEstudiantes([]); setNotasPorClave({}); setCertificados([]); setSinPrograma(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grupo?.id]);
@@ -67,9 +76,10 @@ export function ContenidoHomologacionGrupo({ grupo }) {
       .order('nombre_completo');
 
     const idsEstudiantes = (estudiantesData || []).map(e => e.id);
-    const { data: notasData } = idsEstudiantes.length > 0
-      ? await supabase.from('notas_homologacion').select('malla_item_id, estudiante_id, nota').in('estudiante_id', idsEstudiantes)
-      : { data: [] };
+    // Un solo grupo ya supera las 1000 notas (35 estudiantes x ~30 materias).
+    const notasData = idsEstudiantes.length > 0
+      ? await obtenerTodasLasFilas(() => supabase.from('notas_homologacion').select('malla_item_id, estudiante_id, nota').in('estudiante_id', idsEstudiantes))
+      : [];
 
     const notas = {};
     for (const n of notasData || []) notas[`${n.malla_item_id}::${n.estudiante_id}`] = n.nota;
@@ -107,6 +117,9 @@ export function ContenidoHomologacionGrupo({ grupo }) {
 
   if (cargando) {
     return <div className="text-center py-8"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>;
+  }
+  if (errorCarga) {
+    return <p className="text-sm text-red-600 text-center py-8">No se pudieron cargar todas las notas. Cierra y vuelve a abrir para intentar de nuevo.</p>;
   }
   if (sinPrograma) {
     return <p className="text-sm text-gray-400 text-center py-8">No se encontró el técnico de este grupo en el catálogo de programas.</p>;

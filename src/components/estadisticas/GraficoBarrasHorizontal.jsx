@@ -4,6 +4,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
+import { aplicarFiltrosEstudiante } from '../../utils/filtrosConsulta';
+import ErrorGrafico from './ErrorGrafico';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -21,6 +24,7 @@ export default function GraficoBarrasHorizontal({
   const [todosLosDatos, setTodosLosDatos] = useState([]);
   const [total, setTotal] = useState(0);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [limite, setLimite] = useState(limiteInicial);
   const [mostrarTodos, setMostrarTodos] = useState(false);
 
@@ -31,32 +35,16 @@ export default function GraficoBarrasHorizontal({
   async function cargarDatos() {
     setCargando(true);
     
-    // 🔥 Obtener TODOS los estudiantes con paginación + filtros
-    let todosLosEstudiantes = [];
-    let from = 0;
-    const limit = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      let query = supabase.from('estudiantes').select(campo);
-      
-      // Aplicar filtros
-      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
-      if (filtros.programas?.length > 0) query = query.in('programa', filtros.programas);
-      if (filtros.instituciones?.length > 0) query = query.in('institucion_educativa', filtros.instituciones);
-      if (filtros.grupoIds?.length > 0) query = query.in('grupo_id', filtros.grupoIds);
-      if (filtros.necesidadesEspeciales) {
-        query = query.or('and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)');
-      }
-
-      const { data, error } = await query.range(from, from + limit - 1);
-
-      if (error) { console.error('Error:', error); break; }
-      if (data && data.length > 0) { todosLosEstudiantes = [...todosLosEstudiantes, ...data]; from += limit; }
-      if (!data || data.length < limit) hasMore = false;
+    setErrorCarga(false);
+    let todosLosEstudiantes;
+    try {
+      todosLosEstudiantes = await obtenerTodasLasFilas(() =>
+        aplicarFiltrosEstudiante(supabase.from('estudiantes').select(campo), filtros));
+    } catch (error) {
+      console.error('Error cargando gráfico:', error);
+      setErrorCarga(true);
+      setCargando(false);
+      return;
     }
     
     if (todosLosEstudiantes.length > 0) {
@@ -120,6 +108,8 @@ export default function GraficoBarrasHorizontal({
       </div>
     );
   }
+
+  if (errorCarga) return <ErrorGrafico titulo={`${icono} ${titulo}`} />;
 
   if (!datos || total === 0) {
     return (

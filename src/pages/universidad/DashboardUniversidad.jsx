@@ -10,7 +10,7 @@ import Header from '../../components/common/Header';
 import BotonWhatsApp from '../../components/common/BotonWhatsApp';
 import ModalIngresarNotas from '../../components/notas/ModalIngresarNotas';
 import SelectConOtro from '../../components/common/SelectConOtro';
-import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis, tieneEtiquetaEspecial, debeMostrarAvisoDiscapacidad, registrarAvisoDiscapacidadMostrado } from '../../utils/helpers';
+import { formatearFecha, interpretarError, derivarModulosYDocentes, cruzarCronogramaConAsistencia, limpiarEmojis, etiquetaTipoSeguimiento, tieneEtiquetaEspecial, debeMostrarAvisoDiscapacidad, registrarAvisoDiscapacidadMostrado } from '../../utils/helpers';
 import BadgeDiscapacidad from '../../components/estudiantes/BadgeDiscapacidad';
 import ModalAvisoDiscapacidad from '../../components/universidad/ModalAvisoDiscapacidad';
 import { useEstudianteActualizado } from '../../hooks/useEstudianteActualizado';
@@ -31,6 +31,7 @@ import ModalEditarFechaCronograma from '../../components/coordinador/ModalEditar
 import ModalRegistrarSeguimientoUniversidad from '../../components/universidad/ModalRegistrarSeguimientoUniversidad';
 import ConsolidadoSeguimientosUniversidad from '../../components/coordinador/ConsolidadoSeguimientosUniversidad';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
 import { ContenidoHomologacionGrupo } from '../../components/grupos/ModalHomologacionGrupo';
 
 export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
@@ -134,28 +135,17 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
   async function cargarReportesUniversidad() {
     setCargandoReportes(true);
 
-    async function paginar(tabla, select, aplicarFiltro) {
-      let todos = [];
-      let from = 0;
-      const limit = 1000;
-      let hasMore = true;
-      while (hasMore) {
-        let query = supabase.from(tabla).select(select).range(from, from + limit - 1);
-        if (aplicarFiltro) query = aplicarFiltro(query);
-        const { data, error } = await query;
-        if (error) { console.error('Error:', error); break; }
-        if (data && data.length > 0) { todos = [...todos, ...data]; from += limit; }
-        if (!data || data.length < limit) hasMore = false;
-      }
-      return todos;
-    }
+    const paginar = (tabla, select, aplicarFiltro) =>
+      obtenerTodasLasFilas(() => aplicarFiltro(supabase.from(tabla).select(select)));
 
     // Nota: filtrar por .in('estudiante_id', idsEstudiantes) con universidades
     // grandes (700+ estudiantes) genera una URL demasiado larga y la consulta
     // falla silenciosamente (0 resultados). En su lugar se filtra con un join
     // interno directo sobre estudiante.universidad — sin importar cuántos
     // estudiantes tenga la universidad.
-    const [estudiantesUni, gruposUni, desData, inaData, segData, homData] = await Promise.all([
+    let estudiantesUni, gruposUni, desData, inaData, segData, homData;
+    try {
+    [estudiantesUni, gruposUni, desData, inaData, segData, homData] = await Promise.all([
       paginar('estudiantes', '*', q => q.eq('universidad', usuario.universidad).order('nombre_completo')),
       supabase.from('grupos').select('id, nombre').eq('universidad', usuario.universidad).then(r => r.data || []),
       paginar('registros_desercion', `*, estudiante:estudiante_id!inner (*), usuario:usuario_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad).order('fecha_reporte', { ascending: false })),
@@ -163,6 +153,12 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       paginar('seguimientos', `*, estudiante:estudiante_id!inner (*), padrino:padrino_id (nombre_completo)`, q => q.eq('estudiante.universidad', usuario.universidad)),
       paginar('notas_homologacion', `*, estudiante:estudiante_id!inner (*), malla_item:malla_item_id (materia, grado)`, q => q.eq('estudiante.universidad', usuario.universidad))
     ]);
+    } catch (error) {
+      console.error('Error cargando reportes de la universidad:', error);
+      notificacion.error('No se pudo cargar toda la información de la universidad. Intenta de nuevo.', 'Error de carga');
+      setCargandoReportes(false);
+      return;
+    }
     setGruposReportes(gruposUni);
 
     const vistos = new Set();
@@ -189,7 +185,9 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       ...s.estudiante,
       tipo_gestion: limpiarEmojis(s.tipo_gestion),
       causa_ausencia: limpiarEmojis(s.causa_ausencia) || '',
-      padrino_nombre: s.padrino?.nombre_completo || 'N/A'
+      tipo_seguimiento: etiquetaTipoSeguimiento(s.tipo_seguimiento),
+      padrino_nombre: s.padrino?.nombre_completo || 'N/A',
+      evidencias: (s.evidencias || []).join(' | ')
     }));
 
     const homologacion = homData.map(n => ({

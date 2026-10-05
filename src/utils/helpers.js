@@ -307,3 +307,7 @@ export const interpretarError = (error) => {
     return 'Tu sesión expiró. Recarga la página e inicia sesión nuevamente.';
   return 'No se pudo completar la operación. Intenta de nuevo.';
 };
+export const etiquetaTipoSeguimiento = (tipo) =>
+  tipo === 'rendimiento_academico' ? 'Rendimiento Académico'
+    : tipo === 'inasistencia' ? 'Inasistencia'
+    : (tipo || '');

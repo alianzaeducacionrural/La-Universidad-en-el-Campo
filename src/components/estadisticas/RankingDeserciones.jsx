@@ -4,6 +4,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
+import { aplicarFiltrosEstudiante } from '../../utils/filtrosConsulta';
+import ErrorGrafico from './ErrorGrafico';
 
 export default function RankingDeserciones({ filtros = {} }) {
   const [municipios, setMunicipios] = useState([]);
@@ -11,6 +14,7 @@ export default function RankingDeserciones({ filtros = {} }) {
   const [universidades, setUniversidades] = useState([]);
   const [programas, setProgramas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [vistaActiva, setVistaActiva] = useState('municipios');
 
   useEffect(() => {
@@ -20,29 +24,18 @@ export default function RankingDeserciones({ filtros = {} }) {
   async function cargarDatos() {
     setCargando(true);
 
-    // Paginar para superar el límite de 1000 filas de Supabase
-    let data = [];
-    let from = 0;
-    const limit = 1000;
-
-    while (true) {
-      let query = supabase.from('estudiantes').select('*');
-      if (filtros.municipios?.length > 0) query = query.in('municipio', filtros.municipios);
-      if (filtros.cohortes?.length > 0) query = query.in('cohorte', filtros.cohortes);
-      if (filtros.universidades?.length > 0) query = query.in('universidad', filtros.universidades);
-      if (filtros.estados?.length > 0) query = query.in('estado', filtros.estados);
-      if (filtros.programas?.length > 0) query = query.in('programa', filtros.programas);
-      if (filtros.instituciones?.length > 0) query = query.in('institucion_educativa', filtros.instituciones);
-      if (filtros.grupoIds?.length > 0) query = query.in('grupo_id', filtros.grupoIds);
-      if (filtros.necesidadesEspeciales) {
-        query = query.or('and(discapacidad_tipo.not.is.null,discapacidad_tipo.neq.NO APLICA),and(trastorno_tipo.not.is.null,trastorno_tipo.neq.NO APLICA)');
-      }
-
-      const { data: lote } = await query.range(from, from + limit - 1);
-      if (!lote || lote.length === 0) break;
-      data = [...data, ...lote];
-      if (lote.length < limit) break;
-      from += limit;
+    setErrorCarga(false);
+    let data;
+    try {
+      data = await obtenerTodasLasFilas(() => aplicarFiltrosEstudiante(
+        supabase.from('estudiantes').select('municipio, institucion_educativa, universidad, programa, estado'),
+        filtros
+      ));
+    } catch (error) {
+      console.error('Error cargando ranking de deserciones:', error);
+      setErrorCarga(true);
+      setCargando(false);
+      return;
     }
 
     if (data.length > 0) {
@@ -145,6 +138,8 @@ export default function RankingDeserciones({ filtros = {} }) {
       </div>
     );
   }
+
+  if (errorCarga) return <ErrorGrafico titulo="🚨 Ranking de Deserciones" />;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
