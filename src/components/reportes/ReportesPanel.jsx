@@ -12,19 +12,21 @@ import { useState, useMemo } from 'react';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from './FiltrosReportes';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
 import { descargarExcelCompleto, descargarExcelAgrupado } from '../../utils/excel';
+import { estadoSaberTyt } from '../../utils/helpers';
 
 const COLUMNAS_ESTUDIANTES = [
   'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
   'municipio', 'institucion_educativa', 'universidad', 'programa',
   'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono',
-  'discapacidad_tipo', 'trastorno_tipo'
+  'discapacidad_tipo', 'trastorno_tipo', 'saber_tyt', 'saber_tyt_motivo'
 ];
 const LABELS_ESTUDIANTES = {
   nombre_completo: 'Nombre Completo', documento: 'Documento', genero: 'Género', telefono: 'Teléfono',
   correo: 'Correo', municipio: 'Municipio', institucion_educativa: 'Institución Educativa',
   universidad: 'Universidad', programa: 'Programa', cohorte: 'Cohorte', grupo_nombre: 'Grupo',
   estado: 'Estado', total_faltas: 'Faltas', acudiente_nombre: 'Acudiente', acudiente_telefono: 'Tel. Acudiente',
-  discapacidad_tipo: 'Discapacidad', trastorno_tipo: 'Trastorno'
+  discapacidad_tipo: 'Discapacidad', trastorno_tipo: 'Trastorno',
+  saber_tyt: 'Saber TyT', saber_tyt_motivo: 'Motivo no presentó TyT'
 };
 
 const COLUMNAS_DESERCION = [
@@ -89,6 +91,7 @@ function formatearFilas(data, columnas, labels) {
     const obj = {};
     columnas.forEach(col => {
       if (col === 'total_faltas') { obj[labels[col]] = fila.total_faltas ?? fila.total_inasistencias ?? 0; return; }
+      if (col === 'saber_tyt') { obj[labels[col]] = estadoSaberTyt(fila); return; }
       obj[labels[col] || col] = fila[col] ?? '';
     });
     return obj;

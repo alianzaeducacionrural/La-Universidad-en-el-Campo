@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
-import { getEstadoColor, formatearFecha, calcularPasosDesercion, getTipoSeguimientoUniversidadInfo } from '../../utils/helpers';
+import { getEstadoColor, formatearFecha, calcularPasosDesercion, getTipoSeguimientoUniversidadInfo, estadoSaberTyt, SABER_TYT } from '../../utils/helpers';
 import { ESTADOS_ESTUDIANTE, TIPOS_DOCUMENTO_DESERCION } from '../../utils/constants';
 import { exportarSeguimientosExcel, exportarNotasEstudianteExcel, exportarInasistenciasExcel, exportarSeguimientosUniversidadExcel } from '../../utils/exportUtils';
 import VisorImagen from '../common/VisorImagen';
@@ -73,6 +73,15 @@ export default function ModalPerfilEstudiante({
   const [seguimientosUniv, setSeguimientosUniv] = useState([]);
   const [cargandoSeguimientosUniv, setCargandoSeguimientosUniv] = useState(false);
   const [modalEditarSeguimientoUniv, setModalEditarSeguimientoUniv] = useState(false);
+  const [saberTyt, setSaberTyt] = useState(null);
+
+  // Se consulta aparte: no todas las listas que abren el perfil traen estas columnas.
+  useEffect(() => {
+    if (!isOpen || !estudiante?.id) return;
+    setSaberTyt(null);
+    supabase.from('estudiantes').select('saber_tyt_presento, saber_tyt_motivo').eq('id', estudiante.id).maybeSingle()
+      .then(({ data }) => setSaberTyt(data));
+  }, [isOpen, estudiante?.id]);
   const [seguimientoUnivEditando, setSeguimientoUnivEditando] = useState(null);
 
   async function handleGuardarEdicionSeguimientoUniv(id, datos) {
@@ -409,6 +418,19 @@ export default function ModalPerfilEstudiante({
                 <p><strong>Universidad:</strong> {estudiante.universidad}</p>
                 <p><strong>Programa:</strong> {estudiante.programa}</p>
                 <p><strong>Cohorte:</strong> {estudiante.cohorte}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <strong>Pruebas Saber TyT:</strong>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    estadoSaberTyt(saberTyt) === SABER_TYT.PRESENTO ? 'bg-green-100 text-green-700'
+                      : estadoSaberTyt(saberTyt) === SABER_TYT.NO_PRESENTO ? 'bg-red-100 text-red-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {saberTyt ? estadoSaberTyt(saberTyt) : 'Cargando...'}
+                  </span>
+                  {saberTyt?.saber_tyt_presento === false && saberTyt.saber_tyt_motivo && (
+                    <span className="text-gray-700">— Motivo: {saberTyt.saber_tyt_motivo}</span>
+                  )}
+                </div>
               </div>
             </div>
 

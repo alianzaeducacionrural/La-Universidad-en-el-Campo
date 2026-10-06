@@ -311,3 +311,12 @@ export const etiquetaTipoSeguimiento = (tipo) =>
   tipo === 'rendimiento_academico' ? 'Rendimiento Académico'
     : tipo === 'inasistencia' ? 'Inasistencia'
     : (tipo || '');
+
+export const MOTIVO_TYT_REPITENTE = 'Repitente';
+
+export const SABER_TYT = { PRESENTO: 'Presentó', NO_PRESENTO: 'No presentó', SIN_REGISTRO: 'Sin registrar' };
+
+export const estadoSaberTyt = (estudiante) =>
+  estudiante?.saber_tyt_presento === true ? SABER_TYT.PRESENTO
+    : estudiante?.saber_tyt_presento === false ? SABER_TYT.NO_PRESENTO
+    : SABER_TYT.SIN_REGISTRO;

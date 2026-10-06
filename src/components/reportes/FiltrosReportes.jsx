@@ -13,6 +13,7 @@ export const FILTROS_VACIOS = {
   grupoIds: [],
   instituciones: [],
   estados: [],
+  saberTyt: [],
   fechaInicio: '',
   fechaFin: '',
   necesidadesEspeciales: false
@@ -25,7 +26,8 @@ const CATEGORIA_A_GETTER = {
   cohortes: 'cohorte',
   grupoIds: 'grupoId',
   instituciones: 'institucion',
-  estados: 'estado'
+  estados: 'estado',
+  saberTyt: 'saberTyt'
 };
 
 const LABELS_CATEGORIA = {
@@ -35,7 +37,8 @@ const LABELS_CATEGORIA = {
   cohortes: 'Cohorte',
   grupoIds: 'Grupo',
   instituciones: 'Institución',
-  estados: 'Estado'
+  estados: 'Estado',
+  saberTyt: 'Saber TyT'
 };
 
 const ICONOS_CATEGORIA = {
@@ -45,7 +48,8 @@ const ICONOS_CATEGORIA = {
   cohortes: '📅',
   grupoIds: '👥',
   instituciones: '🏫',
-  estados: '📊'
+  estados: '📊',
+  saberTyt: '📝'
 };
 
 /**
@@ -82,6 +86,9 @@ export function aplicarFiltrosGenerico(filas, getters, filtros, municipiosPermit
   }
   if (getters.estado && filtros.estados.length > 0) {
     resultado = resultado.filter(r => filtros.estados.includes(getters.estado(r)));
+  }
+  if (getters.saberTyt && filtros.saberTyt?.length > 0) {
+    resultado = resultado.filter(r => filtros.saberTyt.includes(getters.saberTyt(r)));
   }
   if (getters.necesidadesEspeciales && filtros.necesidadesEspeciales) {
     resultado = resultado.filter(r => getters.necesidadesEspeciales(r));
@@ -227,14 +234,15 @@ export default function FiltrosReportes({
   mostrarFecha = true,
   mostrarInstitucion = false,
   mostrarUniversidad = true,
-  mostrarNecesidadesEspeciales = false
+  mostrarNecesidadesEspeciales = false,
+  mostrarSaberTyt = false
 }) {
   const categorias = ['municipios', 'universidades', 'programas', 'cohortes', 'grupoIds', 'instituciones'];
   const hayFiltros = Object.entries(filtros).some(([, v]) =>
     Array.isArray(v) ? v.length > 0 : Boolean(v)
   );
   const totalActivos = categorias.reduce((acc, c) => acc + filtros[c].length, 0)
-    + filtros.estados.length + (filtros.fechaInicio ? 1 : 0) + (filtros.fechaFin ? 1 : 0)
+    + filtros.estados.length + (filtros.saberTyt?.length || 0) + (filtros.fechaInicio ? 1 : 0) + (filtros.fechaFin ? 1 : 0)
     + (filtros.necesidadesEspeciales ? 1 : 0);
 
   function set(campo, valor) {
@@ -297,6 +305,9 @@ export default function FiltrosReportes({
         {mostrarEstado && (
           <MultiSelect label="Estado" icon={ICONOS_CATEGORIA.estados} opciones={opciones.estados} seleccionados={filtros.estados} onChange={v => set('estados', v)} disponibles={disponiblesPara('estados')} />
         )}
+        {mostrarSaberTyt && (
+          <MultiSelect label="Saber TyT" icon={ICONOS_CATEGORIA.saberTyt} opciones={opciones.saberTyt || []} seleccionados={filtros.saberTyt || []} onChange={v => set('saberTyt', v)} disponibles={disponiblesPara('saberTyt')} />
+        )}
         {mostrarNecesidadesEspeciales && (
           <ToggleFiltro label="Necesidades Especiales" icon="🧩" activo={filtros.necesidadesEspeciales} onChange={v => set('necesidadesEspeciales', v)} />
         )}
@@ -341,8 +352,8 @@ export default function FiltrosReportes({
       {/* Chips de filtros activos — visibilidad inmediata sin abrir cada dropdown */}
       {hayFiltros && (
         <div className="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-gray-100">
-          {categorias.concat('estados').flatMap(campo =>
-            filtros[campo].map(valor => (
+          {categorias.concat('estados', 'saberTyt').flatMap(campo =>
+            (filtros[campo] || []).map(valor => (
               <span key={`${campo}-${valor}`} className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">
                 <span>{ICONOS_CATEGORIA[campo]}</span>
                 <span className="font-semibold">{LABELS_CATEGORIA[campo]}:</span>

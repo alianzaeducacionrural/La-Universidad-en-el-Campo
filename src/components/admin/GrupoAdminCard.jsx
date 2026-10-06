@@ -21,6 +21,7 @@ import ModalReportarDesercion from '../estudiantes/ModalReportarDesercion';
 import ModalEditarSeguimiento from '../seguimientos/ModalEditarSeguimiento';
 import ModalHistorialAcciones from '../grupos/ModalHistorialAcciones';
 import ModalRegistrarAccion from '../grupos/ModalRegistrarAccion';
+import ModalSaberTyT from '../grupos/ModalSaberTyT';
 import ModalNotasGrupo from '../notas/ModalNotasGrupo';
 import ModalCronogramaGrupo from '../coordinador/ModalCronogramaGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
@@ -48,6 +49,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
   const [modalEliminarGrupo, setModalEliminarGrupo] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
   const [modalRegistrarAccion, setModalRegistrarAccion] = useState(false);
+  const [modalSaberTyT, setModalSaberTyT] = useState(false);
   const [modalNotas, setModalNotas] = useState(false);
   const [modalCronograma, setModalCronograma] = useState(false);
   const [modalHomologacion, setModalHomologacion] = useState(false);
@@ -339,6 +341,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
                   <button onClick={(e) => { e.stopPropagation(); setModalRegistrarAccion(true); }} className="w-full bg-primary/10 border border-primary/30 text-primary-dark px-3 py-2 rounded-lg text-sm hover:bg-primary/20 transition font-medium">➕ Registrar Acción</button>
                   <button onClick={(e) => { e.stopPropagation(); setModalAcciones(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">📋 Acciones Desarrolladas</button>
                   <button onClick={(e) => { e.stopPropagation(); setModalNotas(true); }} className="w-full bg-white border border-indigo-300 text-indigo-700 px-3 py-2 rounded-lg text-sm hover:bg-indigo-50 transition">📊 Ver Notas</button>
+                  <button onClick={(e) => { e.stopPropagation(); setModalSaberTyT(true); }} className="w-full bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">📝 Saber TyT</button>
                 </div>
               </div>
 
@@ -419,6 +422,7 @@ export default function GrupoAdminCard({ grupo, onRecargar, municipiosPermitidos
       <ModalEditarGrupo isOpen={modalEditar} onClose={() => setModalEditar(false)} grupo={grupo} onRecargar={onRecargar} />
       <ModalHistorialAsistencia isOpen={modalHistorial} onClose={() => setModalHistorial(false)} grupo={grupo} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo}/>
+      <ModalSaberTyT isOpen={modalSaberTyT} onClose={() => setModalSaberTyT(false)} grupo={grupo} />
       <ModalRegistrarAccion
         isOpen={modalRegistrarAccion}
         onClose={() => setModalRegistrarAccion(false)}

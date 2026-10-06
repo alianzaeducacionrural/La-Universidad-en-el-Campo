@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { exportarEstudiantesExcel } from '../../utils/exportUtils';
 import ModalWhatsAppGrupos from './ModalWhatsAppGrupos';
 import ModalRegistrarAccion from './ModalRegistrarAccion';
+import ModalSaberTyT from './ModalSaberTyT';
 import ModalHistorialAcciones from './ModalHistorialAcciones';
 import ModalEnlacesInstituciones from './ModalEnlacesInstituciones';
 import ModalCronogramaGrupo from '../coordinador/ModalCronogramaGrupo';
@@ -24,6 +25,7 @@ export default function GrupoInfo({
   const [modalWhatsApp, setModalWhatsApp] = useState(false);
   const [modalRegistrarAccion, setModalRegistrarAccion] = useState(false);
   const [modalAcciones, setModalAcciones] = useState(false);
+  const [modalSaberTyT, setModalSaberTyT] = useState(false);
   const [modalEnlaces, setModalEnlaces] = useState(false);
   const [modalCronograma, setModalCronograma] = useState(false);
   const [modalHomologacion, setModalHomologacion] = useState(false);
@@ -98,6 +100,12 @@ export default function GrupoInfo({
             >
               📋 Ver Acciones
             </button>
+            <button
+              onClick={() => setModalSaberTyT(true)}
+              className="w-full lg:w-auto text-center bg-white hover:bg-gray-50 text-gray-700 px-2 py-2 lg:px-4 lg:py-2.5 rounded-lg text-xs lg:text-sm font-medium transition border-2 border-gray-300 shadow-sm"
+            >
+              📝 Saber TyT
+            </button>
           </>
         )}
 
@@ -157,6 +165,12 @@ export default function GrupoInfo({
       <ModalWhatsAppGrupos isOpen={modalWhatsApp} onClose={() => setModalWhatsApp(false)} grupo={grupo} padrino={padrino} />
       <ModalRegistrarAccion isOpen={modalRegistrarAccion} onClose={() => setModalRegistrarAccion(false)} grupo={grupo} padrino={padrino} onAccionRegistrada={() => setModalAcciones(false)} />
       <ModalHistorialAcciones isOpen={modalAcciones} onClose={() => setModalAcciones(false)} grupo={grupo} />
+      <ModalSaberTyT
+        isOpen={modalSaberTyT}
+        onClose={() => setModalSaberTyT(false)}
+        grupo={grupo}
+        institucionesPermitidas={grupo.instituciones_asignadas}
+      />
       <ModalEnlacesInstituciones
         isOpen={modalEnlaces}
         onClose={() => setModalEnlaces(false)}

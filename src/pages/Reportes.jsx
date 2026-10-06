@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../components/reportes/FiltrosReportes';
-import { formatearFecha, limpiarEmojis, getMunicipiosPermitidos, esAliado, etiquetaTipoSeguimiento } from '../utils/helpers';
+import { formatearFecha, limpiarEmojis, getMunicipiosPermitidos, esAliado, etiquetaTipoSeguimiento, estadoSaberTyt } from '../utils/helpers';
 import { ESTADOS_ESTUDIANTE } from '../utils/constants';
 import { descargarExcelCompleto, descargarExcelAgrupado } from '../utils/excel';
 import { obtenerTodasLasFilas } from '../utils/supabasePaginado';
@@ -64,7 +64,7 @@ export default function Reportes({ onVerPerfil }) {
     'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
     'municipio', 'institucion_educativa', 'universidad', 'programa',
     'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono',
-    'discapacidad_tipo', 'trastorno_tipo'
+    'discapacidad_tipo', 'trastorno_tipo', 'saber_tyt', 'saber_tyt_motivo'
   ];
 
   const LABELS_ESTUDIANTES = {
@@ -84,7 +84,9 @@ export default function Reportes({ onVerPerfil }) {
     acudiente_nombre: 'Acudiente',
     acudiente_telefono: 'Tel. Acudiente',
     discapacidad_tipo: 'Discapacidad',
-    trastorno_tipo: 'Trastorno'
+    trastorno_tipo: 'Trastorno',
+    saber_tyt: 'Saber TyT',
+    saber_tyt_motivo: 'Motivo no presentó TyT'
   };
 
   async function obtenerEstudiantesCrudo() {
@@ -105,7 +107,7 @@ export default function Reportes({ onVerPerfil }) {
     return data.map(e => {
       const obj = {};
       COLUMNAS_ESTUDIANTES.forEach(col => {
-        obj[LABELS_ESTUDIANTES[col] || col] = e[col] ?? '';
+        obj[LABELS_ESTUDIANTES[col] || col] = col === 'saber_tyt' ? estadoSaberTyt(e) : (e[col] ?? '');
       });
       return obj;
     });
