@@ -32,6 +32,8 @@ import ModalRegistrarSeguimientoUniversidad from '../../components/universidad/M
 import ConsolidadoSeguimientosUniversidad from '../../components/coordinador/ConsolidadoSeguimientosUniversidad';
 import SidebarUniversidad from '../../components/universidad/SidebarUniversidad';
 import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
+
+const noRegistraAsistencia = (estudiante) => estudiante.estado === 'Desertor' || estudiante.estado === 'Graduado';
 import { ContenidoHomologacionGrupo } from '../../components/grupos/ModalHomologacionGrupo';
 
 export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = null }) {
@@ -518,7 +520,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
   function toggleInasistencia(id) {
     const estudiante = estudiantes.find(e => e.id === id);
-    if (estudiante && (estudiante.estado === 'Desertor' || estudiante.estado === 'Graduado')) return;
+    if (estudiante && noRegistraAsistencia(estudiante)) return;
     setInasistencias(prev => {
       const estaAusente = prev.includes(id);
       if (estaAusente) {
@@ -528,7 +530,9 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       return [...prev, id];
     });
   }
-  function marcarTodosAusentes() { setInasistencias(estudiantes.map(e => e.id)); }
+  // Antes marcaba también a desertores/graduados, que luego no se podían
+  // desmarcar (su casilla está bloqueada) y quedaban como inasistencia pendiente.
+  function marcarTodosAusentes() { setInasistencias(estudiantes.filter(e => !noRegistraAsistencia(e)).map(e => e.id)); }
   function marcarTodosPresentes() { setInasistencias([]); setObservacionesInd({}); }
 
   async function guardarAsistencia() {
@@ -538,6 +542,17 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
     
     setCargando(true);
     try {
+      // El estado en pantalla puede estar desactualizado (p. ej. el estudiante
+      // fue reportado como desertor con la página abierta): se revalida.
+      let ausentes = inasistencias;
+      if (ausentes.length > 0) {
+        const { data: estadosActuales, error: errorEstados } = await supabase
+          .from('estudiantes').select('id, estado').in('id', ausentes);
+        if (errorEstados) throw errorEstados;
+        const noActivos = new Set(estadosActuales.filter(noRegistraAsistencia).map(e => e.id));
+        ausentes = ausentes.filter(id => !noActivos.has(id));
+      }
+
       const { data: existente } = await supabase
         .from('registros_asistencia')
         .select('id')
@@ -559,7 +574,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         docente_telefono: docenteTelefono.trim() || null,
         docente_correo: docenteCorreo.trim() || null,
         fecha: fechaAsistencia,
-        observaciones: observaciones || (inasistencias.length === 0 ? 'Asistencia Completa' : null)
+        observaciones: observaciones || (ausentes.length === 0 ? 'Asistencia Completa' : null)
       };
 
       const { data: registro, error: errorRegistro } = await supabase
@@ -570,9 +585,9 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       
       if (errorRegistro) throw errorRegistro;
       
-      if (inasistencias.length > 0 && registro) {
+      if (ausentes.length > 0 && registro) {
         const { error: errorInasistencias } = await supabase.from('inasistencias').insert(
-          inasistencias.map(estudianteId => ({
+          ausentes.map(estudianteId => ({
             registro_id: registro.id,
             estudiante_id: estudianteId,
             estado_seguimiento: 'pendiente',
@@ -587,7 +602,7 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
       }
 
       // Armar resumen para el modal
-      const ausentesResumen = inasistencias.map(id => ({
+      const ausentesResumen = ausentes.map(id => ({
         estudiante: estudiantes.find(e => e.id === id),
         observacion: observacionesInd[id] || null
       }));
@@ -595,8 +610,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
         modulo: modulo.trim(),
         fecha: fechaAsistencia,
         docente: docenteNombre.trim(),
-        totalPresentes: estudiantes.length - inasistencias.length,
-        totalAusentes: inasistencias.length,
+        totalPresentes: estudiantes.filter(e => !noRegistraAsistencia(e)).length - ausentes.length,
+        totalAusentes: ausentes.length,
         ausentes: ausentesResumen
       });
       setModalResumen(true);
