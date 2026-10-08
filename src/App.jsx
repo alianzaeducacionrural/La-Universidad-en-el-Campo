@@ -38,7 +38,7 @@ const PortalInstitucion = lazy(() => import('./pages/PortalInstitucion'));
 const VerComo = lazy(() => import('./pages/admin/VerComo'));
 
 // Rutas a las que un aliado (solo lectura) tiene acceso
-const RUTAS_ALIADO = ['/estadisticas', '/reportes', '/grupos'];
+const RUTAS_ALIADO = ['/estadisticas', '/reportes', '/grupos', '/estudiantes'];
 
 function ProtectedRoute({ children }) {
   const { user, perfil, loading } = useAuth();
@@ -53,7 +53,7 @@ function ProtectedRoute({ children }) {
     </div>
   );
   if (!user) return <Navigate to="/login" replace />;
-  // Los aliados solo pueden entrar a Estadísticas, Reportes y Grupos
+  // Los aliados solo pueden entrar a Estadísticas, Reportes, Grupos y Estudiantes
   if (perfil?.rol === 'aliado' && !RUTAS_ALIADO.includes(location.pathname)) {
     return <Navigate to="/estadisticas" replace />;
   }
