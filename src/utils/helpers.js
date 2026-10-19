@@ -316,6 +316,19 @@ export const MOTIVO_TYT_REPITENTE = 'Repitente';
 
 export const SABER_TYT = { PRESENTO: 'Presentó', NO_PRESENTO: 'No presentó', SIN_REGISTRO: 'Sin registrar' };
 
+export const SABER_TYT_FILTRO = {
+  PRESENTO_CON_CERTIFICADO: 'Presentó con certificado',
+  PRESENTO_SIN_CERTIFICADO: 'Presentó sin certificado',
+  NO_PRESENTO: SABER_TYT.NO_PRESENTO,
+  SIN_REGISTRO: SABER_TYT.SIN_REGISTRO
+};
+
+// Como estadoSaberTyt, pero separa a quienes presentaron según tengan o no el certificado adjunto.
+export const estadoSaberTytFiltro = (estudiante) =>
+  estudiante?.saber_tyt_presento === true
+    ? (estudiante.saber_tyt_certificado_url ? SABER_TYT_FILTRO.PRESENTO_CON_CERTIFICADO : SABER_TYT_FILTRO.PRESENTO_SIN_CERTIFICADO)
+    : estadoSaberTyt(estudiante);
+
 export const estadoSaberTyt = (estudiante) =>
   estudiante?.saber_tyt_presento === true ? SABER_TYT.PRESENTO
     : estudiante?.saber_tyt_presento === false ? SABER_TYT.NO_PRESENTO

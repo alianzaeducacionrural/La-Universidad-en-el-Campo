@@ -10,7 +10,7 @@ import Header from '../../components/common/Header';
 import Sidebar from '../../components/common/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import FiltrosReportes, { FILTROS_VACIOS, aplicarFiltrosGenerico } from '../../components/reportes/FiltrosReportes';
-import { getMunicipiosPermitidos, getEstadoColor, tieneEtiquetaEspecial, estadoSaberTyt, SABER_TYT } from '../../utils/helpers';
+import { getMunicipiosPermitidos, getEstadoColor, tieneEtiquetaEspecial, estadoSaberTytFiltro, SABER_TYT_FILTRO } from '../../utils/helpers';
 import BadgeDiscapacidad from '../../components/estudiantes/BadgeDiscapacidad';
 import { ESTADOS_ESTUDIANTE } from '../../utils/constants';
 import { useEstudianteActualizado } from '../../hooks/useEstudianteActualizado';
@@ -88,7 +88,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     institucion: e => e.institucion_educativa,
     estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO,
     necesidadesEspeciales: e => tieneEtiquetaEspecial(e),
-    saberTyt: e => estadoSaberTyt(e)
+    saberTyt: e => estadoSaberTytFiltro(e)
   };
 
   const estudiantesFiltrados = useMemo(() => {
@@ -123,7 +123,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     grupos: grupos.map(g => ({ valor: g.id, label: `${g.nombre} — ${g.universidad}${g.activo ? '' : ' (finalizado)'}` })),
     instituciones: institucionesDisponibles.map(i => ({ valor: i, label: i })),
     estados: Object.values(ESTADOS_ESTUDIANTE).map(e => ({ valor: e, label: e })),
-    saberTyt: Object.values(SABER_TYT).map(v => ({ valor: v, label: v }))
+    saberTyt: Object.values(SABER_TYT_FILTRO).map(v => ({ valor: v, label: v }))
   }), [municipiosDb, universidadesDb, programasDb, grupos, cohortesDisponibles, institucionesDisponibles, municipiosPermitidos]);
 
   const kpis = useMemo(() => ({
