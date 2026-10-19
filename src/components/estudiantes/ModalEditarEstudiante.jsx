@@ -7,7 +7,7 @@ import { useNotificacion } from '../../context/NotificacionContext';
 import { supabase } from '../../lib/supabaseClient';
 import CampoDiscapacidadTrastorno from './CampoDiscapacidadTrastorno';
 
-export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estudiante, puedeGestionar, esAdmin = false }) {
+export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estudiante, puedeGestionar, esAdmin = false, soloContacto = false }) {
   const notificacion = useNotificacion();
   const [cargando, setCargando] = useState(false);
   const [municipios, setMunicipios] = useState([]);
@@ -74,8 +74,30 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
     setCargandoInstituciones(false);
   }
 
+  async function guardar(datos) {
+    setCargando(true);
+    const resultado = await onGuardar(estudiante.id, datos);
+    setCargando(false);
+
+    if (resultado.success) {
+      notificacion.success('Información actualizada correctamente');
+      onClose();
+    } else {
+      notificacion.error(resultado.error, 'Error al actualizar');
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+
+    // El padrino solo actualiza teléfonos: no se envía ningún otro campo.
+    if (soloContacto) {
+      const formData = new FormData(e.target);
+      return guardar({
+        telefono: formData.get('telefono') || null,
+        acudiente_telefono: formData.get('acudiente_telefono') || null
+      });
+    }
 
     // La institución tarda dos consultas encadenadas en cargar (municipios ->
     // instituciones del municipio). Mientras carga, el <select> queda
@@ -92,7 +114,6 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
       return;
     }
 
-    setCargando(true);
     const formData = new FormData(e.target);
     const municipioNombre = municipios.find(m => m.id === municipioSeleccionado)?.nombre || '';
 
@@ -116,16 +137,8 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
     if (esAdmin) {
       datos.documento = formData.get('documento')?.trim() || null;
     }
-    
-    const resultado = await onGuardar(estudiante.id, datos);
-    setCargando(false);
-    
-    if (resultado.success) {
-      notificacion.success('Información actualizada correctamente');
-      onClose();
-    } else {
-      notificacion.error(resultado.error, 'Error al actualizar');
-    }
+
+    return guardar(datos);
   }
 
   if (!isOpen || !estudiante) return null;
@@ -140,6 +153,15 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
         
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
+            {soloContacto ? (
+              <>
+                <p className="text-sm text-gray-500">Puedes actualizar los teléfonos de contacto del estudiante y de su acudiente.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="text" name="telefono" defaultValue={estudiante.telefono || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Acudiente</label><input type="text" name="acudiente_telefono" defaultValue={estudiante.acudiente_telefono || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
+                </div>
+              </>
+            ) : (<>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo *</label>
               <input type="text" name="nombre_completo" required defaultValue={estudiante.nombre_completo} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary" />
@@ -209,6 +231,7 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
                 />
               </div>
             )}
+            </>)}
           </div>
 
           <div className="p-6 bg-gray-50 border-t flex justify-end space-x-3 rounded-b-xl">

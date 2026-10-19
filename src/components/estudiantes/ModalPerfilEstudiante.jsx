@@ -50,7 +50,8 @@ export default function ModalPerfilEstudiante({
   onTrasladoCompletado,
   esAdmin = false,
   onEstudianteEliminado,
-  puedeGestionarSeguimientoUniversidad = false
+  puedeGestionarSeguimientoUniversidad = false,
+  puedeEditarContacto = false
 }) {
   const { perfil: usuario } = useAuth();
   const notificacion = useNotificacion();
@@ -357,6 +358,12 @@ export default function ModalPerfilEstudiante({
                     🔄 Cambiar de Grupo
                   </button>
                 </>
+              )}
+              {!puedeGestionar && puedeEditarContacto && (
+                <button onClick={() => onEditar(estudiante)}
+                  className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
+                  📞 Editar teléfonos de contacto
+                </button>
               )}
 
               {esAdmin && (

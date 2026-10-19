@@ -340,6 +340,7 @@ export default function Dashboard({ padrinoForzado = null }) {
         onGuardar={actualizarEstudiante}
         estudiante={estudianteSeleccionado}
         puedeGestionar={puedeGestionarGrupo}
+        soloContacto={!puedeGestionarGrupo}
         esAdmin={padrino?.rol === 'admin'}
       />
 
@@ -355,6 +356,7 @@ export default function Dashboard({ padrinoForzado = null }) {
         onCargarHistorial={cargarHistorial}
         onSeguimiento={handleSeguimiento}
         onEditar={handleEditar}
+        puedeEditarContacto
         onEditarSeguimiento={handleEditarSeguimiento}
         onReportarDesercion={handleReportarDesercion}
         puedeGestionar={puedeGestionarGrupo}
