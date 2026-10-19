@@ -80,7 +80,7 @@ export default function ModalPerfilEstudiante({
   useEffect(() => {
     if (!isOpen || !estudiante?.id) return;
     setSaberTyt(null);
-    supabase.from('estudiantes').select('saber_tyt_presento, saber_tyt_motivo').eq('id', estudiante.id).maybeSingle()
+    supabase.from('estudiantes').select('saber_tyt_presento, saber_tyt_motivo, saber_tyt_certificado_url').eq('id', estudiante.id).maybeSingle()
       .then(({ data }) => setSaberTyt(data));
   }, [isOpen, estudiante?.id]);
   const [seguimientoUnivEditando, setSeguimientoUnivEditando] = useState(null);
@@ -434,6 +434,9 @@ export default function ModalPerfilEstudiante({
                   }`}>
                     {saberTyt ? estadoSaberTyt(saberTyt) : 'Cargando...'}
                   </span>
+                  {saberTyt?.saber_tyt_certificado_url && (
+                    <a href={saberTyt.saber_tyt_certificado_url} target="_blank" rel="noopener noreferrer" className="text-primary underline text-xs">📎 Ver certificado</a>
+                  )}
                   {saberTyt?.saber_tyt_presento === false && saberTyt.saber_tyt_motivo && (
                     <span className="text-gray-700">— Motivo: {saberTyt.saber_tyt_motivo}</span>
                   )}

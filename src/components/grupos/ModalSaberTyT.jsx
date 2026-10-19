@@ -6,9 +6,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNotificacion } from '../../context/NotificacionContext';
 import { emitirEstudianteActualizado } from '../../hooks/useEstudianteActualizado';
+import { comprimirImagen } from '../../utils/imagen';
 import { MOTIVO_TYT_REPITENTE, SABER_TYT, estadoSaberTyt, interpretarError } from '../../utils/helpers';
 
 const OTRA = 'otra';
+const BUCKET = 'evidencias';
+const MAX_MB = 10;
+
+// Ruta del archivo dentro del bucket a partir de su URL pública.
+const rutaDeUrl = (url) => (url ? decodeURIComponent(url.split(`/${BUCKET}/`)[1] || '') : '');
 
 const OPCIONES_PRESENTO = [
   { valor: true, etiqueta: SABER_TYT.PRESENTO, activo: 'bg-green-600 border-green-600' },
@@ -26,17 +32,21 @@ function aFormulario(estudiante) {
   const motivo = estudiante.saber_tyt_motivo || '';
   return {
     presento: estudiante.saber_tyt_presento ?? null,
+    archivo: null,
     tipoMotivo: motivo === MOTIVO_TYT_REPITENTE ? MOTIVO_TYT_REPITENTE : (motivo ? OTRA : ''),
     motivoLibre: motivo === MOTIVO_TYT_REPITENTE ? '' : motivo
   };
 }
 
-function aDatos(formulario) {
-  if (formulario.presento !== false) return { saber_tyt_presento: formulario.presento, saber_tyt_motivo: null };
+// El certificado solo existe si presentó; la URL se completa al subir el archivo.
+function aDatos(formulario, urlCertificado) {
+  if (formulario.presento === true) return { saber_tyt_presento: true, saber_tyt_motivo: null, saber_tyt_certificado_url: urlCertificado ?? null };
+  if (formulario.presento === null) return { saber_tyt_presento: null, saber_tyt_motivo: null, saber_tyt_certificado_url: null };
   const motivo = formulario.tipoMotivo === MOTIVO_TYT_REPITENTE ? MOTIVO_TYT_REPITENTE : formulario.motivoLibre.trim();
-  return { saber_tyt_presento: false, saber_tyt_motivo: motivo || null };
+  return { saber_tyt_presento: false, saber_tyt_motivo: motivo || null, saber_tyt_certificado_url: null };
 }
 
+const faltaCertificado = (f, e) => f.presento === true && !f.archivo && !e.saber_tyt_certificado_url;
 const faltaMotivo = (f) => f.presento === false && (!f.tipoMotivo || (f.tipoMotivo === OTRA && !f.motivoLibre.trim()));
 
 export default function ModalSaberTyT({ isOpen, onClose, grupo, institucionesPermitidas = null }) {
@@ -55,7 +65,7 @@ export default function ModalSaberTyT({ isOpen, onClose, grupo, institucionesPer
     setCargando(true);
     let query = supabase
       .from('estudiantes')
-      .select('id, nombre_completo, documento, estado, institucion_educativa, saber_tyt_presento, saber_tyt_motivo')
+      .select('id, nombre_completo, documento, estado, institucion_educativa, saber_tyt_presento, saber_tyt_motivo, saber_tyt_certificado_url')
       .eq('grupo_id', grupo.id)
       .order('nombre_completo');
     if (institucionesPermitidas) query = query.in('institucion_educativa', institucionesPermitidas);
@@ -76,8 +86,9 @@ export default function ModalSaberTyT({ isOpen, onClose, grupo, institucionesPer
   const modificados = useMemo(() => estudiantes.filter(e => {
     const f = formularios[e.id];
     if (!f) return false;
-    const nuevo = aDatos(f);
-    return nuevo.saber_tyt_presento !== (e.saber_tyt_presento ?? null) || nuevo.saber_tyt_motivo !== (e.saber_tyt_motivo ?? null);
+    const nuevo = aDatos(f, e.saber_tyt_certificado_url);
+    return nuevo.saber_tyt_presento !== (e.saber_tyt_presento ?? null) || nuevo.saber_tyt_motivo !== (e.saber_tyt_motivo ?? null)
+      || nuevo.saber_tyt_certificado_url !== (e.saber_tyt_certificado_url ?? null) || !!f.archivo;
   }), [estudiantes, formularios]);
 
   const resumen = useMemo(() => {
@@ -93,17 +104,42 @@ export default function ModalSaberTyT({ isOpen, onClose, grupo, institucionesPer
       return;
     }
 
+    const sinCertificado = modificados.filter(e => faltaCertificado(formularios[e.id], e));
+    if (sinCertificado.length > 0) {
+      notificacion.warning(`Adjunta el certificado de: ${sinCertificado.map(e => e.nombre_completo).join(', ')}`, 'Falta el certificado');
+      return;
+    }
+
     setGuardando(true);
     const resultados = await Promise.all(modificados.map(async e => {
-      const datos = aDatos(formularios[e.id]);
+      const f = formularios[e.id];
+      let url = e.saber_tyt_certificado_url;
+      let rutaNueva = null;
+      if (f.archivo) {
+        // Se comprime siempre: el plan Free de Supabase solo incluye 1 GB de almacenamiento.
+        const contenido = await comprimirImagen(f.archivo);
+        rutaNueva = `saber-tyt/${e.id}/${Date.now()}.jpg`;
+        const { error: errSubida } = await supabase.storage.from(BUCKET).upload(rutaNueva, contenido, { contentType: contenido.type || 'image/jpeg' });
+        if (errSubida) return { id: e.id, error: errSubida };
+        url = supabase.storage.from(BUCKET).getPublicUrl(rutaNueva).data.publicUrl;
+      }
+      const datos = aDatos(f, url);
       const { error } = await supabase.from('estudiantes').update(datos).eq('id', e.id);
-      if (!error) emitirEstudianteActualizado(e.id, datos);
-      return { id: e.id, datos, error };
+      if (error) {
+        if (rutaNueva) await supabase.storage.from(BUCKET).remove([rutaNueva]);
+        return { id: e.id, datos, error };
+      }
+      // Se borra el certificado anterior para no acumular archivos.
+      const anterior = rutaDeUrl(e.saber_tyt_certificado_url);
+      if (anterior && e.saber_tyt_certificado_url !== datos.saber_tyt_certificado_url) await supabase.storage.from(BUCKET).remove([anterior]);
+      emitirEstudianteActualizado(e.id, datos);
+      return { id: e.id, datos, error: null };
     }));
     setGuardando(false);
 
     const guardados = new Map(resultados.filter(r => !r.error).map(r => [r.id, r.datos]));
     setEstudiantes(prev => prev.map(e => (guardados.has(e.id) ? { ...e, ...guardados.get(e.id) } : e)));
+    setFormularios(prev => { const n = { ...prev }; guardados.forEach((_, id) => { n[id] = { ...n[id], archivo: null }; }); return n; });
 
     const fallidos = resultados.length - guardados.size;
     if (fallidos > 0) {
@@ -168,6 +204,32 @@ export default function ModalSaberTyT({ isOpen, onClose, grupo, institucionesPer
                         ))}
                       </div>
                     </div>
+
+                    {f.presento === true && (
+                      <div className="mt-3 md:pl-4 flex flex-wrap items-center gap-3 text-sm">
+                        <label className="cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 rounded-lg px-3 py-2 text-gray-700">
+                          📎 {f.archivo || e.saber_tyt_certificado_url ? 'Cambiar foto del certificado' : 'Adjuntar foto del certificado *'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={ev => {
+                              const a = ev.target.files?.[0];
+                              ev.target.value = '';
+                              if (!a) return;
+                              if (!a.type.startsWith('image/')) { notificacion.warning('El certificado debe ser una imagen (foto o captura)'); return; }
+                              if (a.size > MAX_MB * 1024 * 1024) { notificacion.warning(`El archivo supera los ${MAX_MB}MB`); return; }
+                              cambiar(e.id, { archivo: a });
+                            }}
+                          />
+                        </label>
+                        {f.archivo && <span className="text-gray-600">{f.archivo.name}</span>}
+                        {!f.archivo && e.saber_tyt_certificado_url && (
+                          <a href={e.saber_tyt_certificado_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">Ver certificado</a>
+                        )}
+                        {faltaCertificado(f, e) && <span className="text-red-600 text-xs">Obligatorio si presentó la prueba</span>}
+                      </div>
+                    )}
 
                     {f.presento === false && (
                       <div className="mt-3 flex flex-col sm:flex-row gap-2 md:pl-4">

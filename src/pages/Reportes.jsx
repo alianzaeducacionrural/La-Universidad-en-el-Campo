@@ -64,7 +64,7 @@ export default function Reportes({ onVerPerfil }) {
     'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
     'municipio', 'institucion_educativa', 'universidad', 'programa',
     'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono',
-    'discapacidad_tipo', 'trastorno_tipo', 'saber_tyt', 'saber_tyt_motivo'
+    'discapacidad_tipo', 'trastorno_tipo', 'saber_tyt', 'saber_tyt_motivo', 'saber_tyt_certificado_url'
   ];
 
   const LABELS_ESTUDIANTES = {
@@ -86,7 +86,8 @@ export default function Reportes({ onVerPerfil }) {
     discapacidad_tipo: 'Discapacidad',
     trastorno_tipo: 'Trastorno',
     saber_tyt: 'Saber TyT',
-    saber_tyt_motivo: 'Motivo no presentó TyT'
+    saber_tyt_motivo: 'Motivo no presentó TyT',
+    saber_tyt_certificado_url: 'Certificado Saber TyT'
   };
 
   async function obtenerEstudiantesCrudo() {

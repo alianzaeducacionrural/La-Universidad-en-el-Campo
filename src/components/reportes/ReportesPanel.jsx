@@ -18,7 +18,7 @@ const COLUMNAS_ESTUDIANTES = [
   'nombre_completo', 'documento', 'genero', 'telefono', 'correo',
   'municipio', 'institucion_educativa', 'universidad', 'programa',
   'cohorte', 'grupo_nombre', 'estado', 'total_faltas', 'acudiente_nombre', 'acudiente_telefono',
-  'discapacidad_tipo', 'trastorno_tipo', 'saber_tyt', 'saber_tyt_motivo'
+  'discapacidad_tipo', 'trastorno_tipo', 'saber_tyt', 'saber_tyt_motivo', 'saber_tyt_certificado_url'
 ];
 const LABELS_ESTUDIANTES = {
   nombre_completo: 'Nombre Completo', documento: 'Documento', genero: 'Género', telefono: 'Teléfono',
@@ -26,7 +26,7 @@ const LABELS_ESTUDIANTES = {
   universidad: 'Universidad', programa: 'Programa', cohorte: 'Cohorte', grupo_nombre: 'Grupo',
   estado: 'Estado', total_faltas: 'Faltas', acudiente_nombre: 'Acudiente', acudiente_telefono: 'Tel. Acudiente',
   discapacidad_tipo: 'Discapacidad', trastorno_tipo: 'Trastorno',
-  saber_tyt: 'Saber TyT', saber_tyt_motivo: 'Motivo no presentó TyT'
+  saber_tyt: 'Saber TyT', saber_tyt_motivo: 'Motivo no presentó TyT', saber_tyt_certificado_url: 'Certificado Saber TyT'
 };
 
 const COLUMNAS_DESERCION = [
