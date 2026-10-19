@@ -362,7 +362,7 @@ export default function ModalPerfilEstudiante({
               {!puedeGestionar && puedeEditarContacto && (
                 <button onClick={() => onEditar(estudiante)}
                   className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
-                  📞 Editar teléfonos de contacto
+                  📞 Editar datos de contacto
                 </button>
               )}
 

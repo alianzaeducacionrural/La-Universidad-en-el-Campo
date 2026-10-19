@@ -90,11 +90,13 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // El padrino solo actualiza teléfonos: no se envía ningún otro campo.
+    // El padrino solo actualiza datos de contacto: no se envía ningún otro campo.
     if (soloContacto) {
       const formData = new FormData(e.target);
       return guardar({
         telefono: formData.get('telefono') || null,
+        correo: formData.get('correo') || null,
+        acudiente_nombre: formData.get('acudiente_nombre') || null,
         acudiente_telefono: formData.get('acudiente_telefono') || null
       });
     }
@@ -155,9 +157,11 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
           <div className="p-6 space-y-4">
             {soloContacto ? (
               <>
-                <p className="text-sm text-gray-500">Puedes actualizar los teléfonos de contacto del estudiante y de su acudiente.</p>
+                <p className="text-sm text-gray-500">Puedes actualizar los datos de contacto del estudiante y de su acudiente.</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="text" name="telefono" defaultValue={estudiante.telefono || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label><input type="email" name="correo" defaultValue={estudiante.correo || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Acudiente</label><input type="text" name="acudiente_nombre" defaultValue={estudiante.acudiente_nombre || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Acudiente</label><input type="text" name="acudiente_telefono" defaultValue={estudiante.acudiente_telefono || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
                 </div>
               </>
