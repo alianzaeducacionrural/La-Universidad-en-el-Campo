@@ -24,8 +24,10 @@ There are two separate user tables in Supabase:
 
 | Table | Roles |
 |---|---|
-| `padrinos` | `padrino` |
-| `usuarios_universidad` | `admin`, `coord_superior`, `coord_pedagogico`, `asistente_admin`, `docente`, `coordinador_universidad` |
+| `padrinos` | `padrino`, `admin`, `coord_superior`, `coord_pedagogico`, `asistente_admin`, `aliado` |
+| `usuarios_universidad` | `docente`, `coordinador_universidad` |
+
+`aliado` es solo lectura y está limitado a sus `municipios_asignados` (solo en la interfaz; ver `getMunicipiosPermitidos` y `esAliado` en `utils/helpers.js`). El RLS de Supabase es permisivo: cualquier usuario autenticado puede todo y el anónimo queda bloqueado. Más contexto en `HANDOFF.md`.
 
 `AuthContext` (`src/context/AuthContext.jsx`) resolves the logged-in user against both tables to set `perfil`, `tipoUsuario` (`'padrino'` or `'universidad'`), and `rol`. All role-gating logic flows from this context.
 

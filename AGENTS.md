@@ -21,8 +21,10 @@ No test runner. No lint script (ESLint config exists in `eslint.config.js` but n
 ### Auth / Role System
 
 Two separate Supabase tables, resolved in order by `src/context/AuthContext.jsx`:
-1. `padrinos` — role: `padrino`, `tipoUsuario = 'padrino'`
-2. `usuarios_universidad` — roles: `admin`, `coord_superior`, `coord_pedagogico`, `asistente_admin`, `docente`, `coordinador_universidad`, `tipoUsuario = 'universidad'`
+1. `padrinos` — roles: `padrino`, `admin`, `coord_superior`, `coord_pedagogico`, `asistente_admin`, `aliado` (solo lectura por `municipios_asignados`), `tipoUsuario = 'padrino'`
+2. `usuarios_universidad` — roles: `docente`, `coordinador_universidad`, `tipoUsuario = 'universidad'`
+
+RLS de Supabase permisivo: cualquier usuario autenticado puede todo, el anónimo está bloqueado. Ver `HANDOFF.md`.
 
 Auth resolution: queries `padrinos` first via `auth_id`, then `usuarios_universidad`. If no match, signs out. All role-gating flows from `AuthContext`.
 
