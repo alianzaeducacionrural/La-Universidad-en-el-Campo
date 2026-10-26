@@ -97,8 +97,7 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
         telefono: formData.get('telefono') || null,
         correo: formData.get('correo') || null,
         acudiente_nombre: formData.get('acudiente_nombre') || null,
-        acudiente_telefono: formData.get('acudiente_telefono') || null,
-        repitente: formData.get('repitente') === 'on'
+        acudiente_telefono: formData.get('acudiente_telefono') || null
       });
     }
 
@@ -130,9 +129,7 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
       institucion_educativa: institucionSeleccionada
     };
     if (puedeGestionar) {
-      datos.total_faltas = parseInt(formData.get('total_faltas')) || 0;
-      datos.repitente = formData.get('repitente') === 'on';
-      datos.discapacidad_tipo = discapacidadTipo || null;
+      datos.total_faltas = parseInt(formData.get('total_faltas')) || 0;      datos.discapacidad_tipo = discapacidadTipo || null;
       datos.trastorno_tipo = trastornoTipo || null;
     }
     // El número de documento solo lo puede cambiar el admin — el resto de
@@ -159,10 +156,7 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
           <div className="p-6 space-y-4">
             {soloContacto ? (
               <>
-                <p className="text-sm text-gray-500">Puedes actualizar los datos de contacto del estudiante y de su acudiente, y marcar si es repitente.</p>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" name="repitente" defaultChecked={estudiante.repitente === true} className="rounded" /> 🔁 Estudiante repitente
-                </label>
+                <p className="text-sm text-gray-500">Puedes actualizar los datos de contacto del estudiante y de su acudiente.</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="text" name="telefono" defaultValue={estudiante.telefono || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label><input type="email" name="correo" defaultValue={estudiante.correo || ''} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
@@ -228,12 +222,6 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
                 </div>
               </div>
             </div>
-
-            {puedeGestionar && (
-              <label className="flex items-center gap-2 text-sm text-gray-700 border-t pt-4">
-                <input type="checkbox" name="repitente" defaultChecked={estudiante.repitente === true} className="rounded" /> 🔁 Estudiante repitente
-              </label>
-            )}
 
             {puedeGestionar && (
               <div className="border-t pt-4">

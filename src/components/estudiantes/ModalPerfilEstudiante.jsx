@@ -16,6 +16,7 @@ import ModalCambiarGrupo from './ModalCambiarGrupo';
 import ModalConfirmarEliminacion from '../common/ModalConfirmarEliminacion';
 import PasosDesercion from './PasosDesercion';
 import BadgeDiscapacidad from './BadgeDiscapacidad';
+import { emitirEstudianteActualizado } from '../../hooks/useEstudianteActualizado';
 import AvisoDiscapacidadPerfil from './AvisoDiscapacidadPerfil';
 import ModalEditarSeguimientoUniversidad from '../universidad/ModalEditarSeguimientoUniversidad';
 import { eliminarSeguimientoUniversidad } from '../../utils/seguimientosUniversidad';
@@ -75,6 +76,22 @@ export default function ModalPerfilEstudiante({
   const [cargandoSeguimientosUniv, setCargandoSeguimientosUniv] = useState(false);
   const [modalEditarSeguimientoUniv, setModalEditarSeguimientoUniv] = useState(false);
   const [saberTyt, setSaberTyt] = useState(null);
+  const [repitente, setRepitente] = useState(false);
+  const [guardandoRepitente, setGuardandoRepitente] = useState(false);
+
+  useEffect(() => { setRepitente(estudiante?.repitente === true); }, [estudiante?.id, estudiante?.repitente]);
+
+  async function alternarRepitente() {
+    const nuevo = !repitente;
+    setGuardandoRepitente(true);
+    const { error } = await supabase.from('estudiantes').update({ repitente: nuevo }).eq('id', estudiante.id);
+    setGuardandoRepitente(false);
+    if (error) return notificacion.error(error.message, 'Error al actualizar');
+    estudiante.repitente = nuevo; // mismo patrón que el cambio de estado: refleja en las listas ya cargadas
+    setRepitente(nuevo);
+    emitirEstudianteActualizado(estudiante.id, { repitente: nuevo });
+    notificacion.success(nuevo ? 'Marcado como repitente' : 'Ya no figura como repitente');
+  }
 
   // Se consulta aparte: no todas las listas que abren el perfil traen estas columnas.
   useEffect(() => {
@@ -363,6 +380,18 @@ export default function ModalPerfilEstudiante({
                 <button onClick={() => onEditar(estudiante)}
                   className="flex-1 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 border-gray-300 shadow-sm">
                   📞 Editar datos de contacto
+                </button>
+              )}
+
+              {(puedeGestionar || puedeEditarContacto) && (
+                <button
+                  onClick={alternarRepitente}
+                  disabled={guardandoRepitente}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-medium transition border-2 shadow-sm disabled:opacity-50 ${
+                    repitente ? 'bg-sky-100 hover:bg-sky-200 text-sky-800 border-sky-300' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  }`}
+                >
+                  {repitente ? '🔁 Repitente ✓' : '🔁 Marcar repitente'}
                 </button>
               )}
 
