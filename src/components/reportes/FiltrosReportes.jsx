@@ -16,7 +16,8 @@ export const FILTROS_VACIOS = {
   saberTyt: [],
   fechaInicio: '',
   fechaFin: '',
-  necesidadesEspeciales: false
+  necesidadesEspeciales: false,
+  repitentes: false
 };
 
 const CATEGORIA_A_GETTER = {
@@ -92,6 +93,9 @@ export function aplicarFiltrosGenerico(filas, getters, filtros, municipiosPermit
   }
   if (getters.necesidadesEspeciales && filtros.necesidadesEspeciales) {
     resultado = resultado.filter(r => getters.necesidadesEspeciales(r));
+  }
+  if (getters.repitente && filtros.repitentes) {
+    resultado = resultado.filter(r => getters.repitente(r));
   }
   if (getters.fecha && (filtros.fechaInicio || filtros.fechaFin)) {
     resultado = resultado.filter(r => {
@@ -235,7 +239,8 @@ export default function FiltrosReportes({
   mostrarInstitucion = false,
   mostrarUniversidad = true,
   mostrarNecesidadesEspeciales = false,
-  mostrarSaberTyt = false
+  mostrarSaberTyt = false,
+  mostrarRepitentes = false
 }) {
   const categorias = ['municipios', 'universidades', 'programas', 'cohortes', 'grupoIds', 'instituciones'];
   const hayFiltros = Object.entries(filtros).some(([, v]) =>
@@ -243,7 +248,7 @@ export default function FiltrosReportes({
   );
   const totalActivos = categorias.reduce((acc, c) => acc + filtros[c].length, 0)
     + filtros.estados.length + (filtros.saberTyt?.length || 0) + (filtros.fechaInicio ? 1 : 0) + (filtros.fechaFin ? 1 : 0)
-    + (filtros.necesidadesEspeciales ? 1 : 0);
+    + (filtros.necesidadesEspeciales ? 1 : 0) + (filtros.repitentes ? 1 : 0);
 
   function set(campo, valor) {
     onCambio({ ...filtros, [campo]: valor });
@@ -311,6 +316,9 @@ export default function FiltrosReportes({
         {mostrarNecesidadesEspeciales && (
           <ToggleFiltro label="Necesidades Especiales" icon="🧩" activo={filtros.necesidadesEspeciales} onChange={v => set('necesidadesEspeciales', v)} />
         )}
+        {mostrarRepitentes && (
+          <ToggleFiltro label="Repitentes" icon="🔁" activo={filtros.repitentes} onChange={v => set('repitentes', v)} />
+        )}
       </div>
 
       {mostrarFecha && (
@@ -367,6 +375,13 @@ export default function FiltrosReportes({
               <span>🧩</span>
               <span className="font-semibold">Necesidades Especiales</span>
               <button type="button" onClick={() => set('necesidadesEspeciales', false)} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
+            </span>
+          )}
+          {filtros.repitentes && (
+            <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-dark text-xs px-2.5 py-1 rounded-full">
+              <span>🔁</span>
+              <span className="font-semibold">Repitentes</span>
+              <button type="button" onClick={() => set('repitentes', false)} className="text-primary-dark/50 hover:text-red-600 transition-colors">✕</button>
             </span>
           )}
           {filtros.fechaInicio && (

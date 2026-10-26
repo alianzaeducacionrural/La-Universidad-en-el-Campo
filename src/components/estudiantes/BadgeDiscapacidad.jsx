@@ -13,10 +13,21 @@ export default function BadgeDiscapacidad({ estudiante, className = '' }) {
   const discapacidad = ES_ETIQUETA_REAL(estudiante?.discapacidad_tipo) ? estudiante.discapacidad_tipo : null;
   const trastorno = ES_ETIQUETA_REAL(estudiante?.trastorno_tipo) ? estudiante.trastorno_tipo : null;
 
-  if (!discapacidad && !trastorno) return null;
+  const repitente = estudiante?.repitente === true;
+
+  if (!discapacidad && !trastorno && !repitente) return null;
 
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
+      {/* También muestra "Repitente": así aparece en todos los sitios donde ya va este badge. */}
+      {repitente && (
+        <span
+          title="Estudiante repitente"
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-100 text-sky-700 border border-sky-300"
+        >
+          🔁 Repitente
+        </span>
+      )}
       {discapacidad && (
         <span
           title={`Discapacidad: ${discapacidad}`}

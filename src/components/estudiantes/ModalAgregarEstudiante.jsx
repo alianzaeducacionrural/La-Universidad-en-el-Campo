@@ -86,6 +86,7 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
       grupo_id: grupoSeleccionado.id,
       estado: formData.get('estado') || 'Activo',
       total_faltas: parseInt(formData.get('total_faltas')) || 0,
+      repitente: formData.get('repitente') === 'on',
       discapacidad_tipo: discapacidadTipo || null,
       trastorno_tipo: trastornoTipo || null
     };
@@ -152,6 +153,7 @@ export default function ModalAgregarEstudiante({ isOpen, onClose, onGuardar, gru
                 <div><label className="block text-sm mb-1">Estado</label><select name="estado" className="w-full border rounded-lg px-3 py-2.5">{Object.values(ESTADOS_ESTUDIANTE).map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div><label className="block text-sm mb-1">Total Faltas</label><input type="number" name="total_faltas" min="0" defaultValue="0" className="w-full border rounded-lg px-3 py-2.5" /></div>
               </div>
+              <label className="flex items-center gap-2 mt-3 text-sm text-gray-700"><input type="checkbox" name="repitente" className="rounded" /> 🔁 Estudiante repitente</label>
             </div>
             <div><h4 className="font-medium mb-3">🧩 Necesidades Especiales</h4>
               <CampoDiscapacidadTrastorno

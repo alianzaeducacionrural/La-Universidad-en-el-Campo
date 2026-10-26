@@ -130,6 +130,7 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
     };
     if (puedeGestionar) {
       datos.total_faltas = parseInt(formData.get('total_faltas')) || 0;
+      datos.repitente = formData.get('repitente') === 'on';
       datos.discapacidad_tipo = discapacidadTipo || null;
       datos.trastorno_tipo = trastornoTipo || null;
     }
@@ -223,6 +224,12 @@ export default function ModalEditarEstudiante({ isOpen, onClose, onGuardar, estu
                 </div>
               </div>
             </div>
+
+            {puedeGestionar && (
+              <label className="flex items-center gap-2 text-sm text-gray-700 border-t pt-4">
+                <input type="checkbox" name="repitente" defaultChecked={estudiante.repitente === true} className="rounded" /> 🔁 Estudiante repitente
+              </label>
+            )}
 
             {puedeGestionar && (
               <div className="border-t pt-4">

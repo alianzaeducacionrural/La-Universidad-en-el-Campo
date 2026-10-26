@@ -88,7 +88,8 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
     institucion: e => e.institucion_educativa,
     estado: e => e.estado || ESTADOS_ESTUDIANTE.ACTIVO,
     necesidadesEspeciales: e => tieneEtiquetaEspecial(e),
-    saberTyt: e => estadoSaberTytFiltro(e)
+    saberTyt: e => estadoSaberTytFiltro(e),
+    repitente: e => e.repitente === true
   };
 
   const estudiantesFiltrados = useMemo(() => {
@@ -189,6 +190,7 @@ export default function ListadoEstudiantes({ onVerPerfil }) {
             mostrarInstitucion
             mostrarNecesidadesEspeciales
             mostrarSaberTyt
+            mostrarRepitentes
           />
 
           <div className="mb-4">

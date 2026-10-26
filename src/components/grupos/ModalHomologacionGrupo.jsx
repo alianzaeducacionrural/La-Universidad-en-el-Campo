@@ -14,8 +14,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { obtenerTodasLasFilas } from '../../utils/supabasePaginado';
-import { NOMBRE_CERTIFICADO_HOMOLOGACION } from '../../utils/constants';
-import { formatearFecha } from '../../utils/helpers';
+import { NOMBRE_CERTIFICADO_HOMOLOGACION, ESTADOS_ESTUDIANTE } from '../../utils/constants';
+import { formatearFecha, getEstadoColor } from '../../utils/helpers';
+import BadgeDiscapacidad from '../estudiantes/BadgeDiscapacidad';
 import { exportarNotasHomologacionExcel } from '../../utils/exportUtils';
 
 // Orden: alfabético por materia y, dentro de una misma materia, grado de
@@ -71,7 +72,7 @@ export function ContenidoHomologacionGrupo({ grupo }) {
 
     const { data: estudiantesData } = await supabase
       .from('estudiantes')
-      .select('id, nombre_completo, institucion_educativa, municipio')
+      .select('id, nombre_completo, institucion_educativa, municipio, estado, repitente')
       .eq('grupo_id', grupo.id)
       .order('nombre_completo');
 
@@ -162,7 +163,15 @@ export function ContenidoHomologacionGrupo({ grupo }) {
                 const filaBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                 return (
                   <tr key={est.id} className="group border-b border-gray-100 last:border-0">
-                    <td className={`sticky left-0 z-10 ${filaBg} group-hover:bg-primary/20 py-2.5 px-4 font-medium text-gray-700 whitespace-nowrap transition-colors`}>{est.nombre_completo}</td>
+                    <td className={`sticky left-0 z-10 ${filaBg} group-hover:bg-primary/20 py-2.5 px-4 font-medium text-gray-700 whitespace-nowrap transition-colors`}>
+                      <span className="flex items-center gap-1.5">
+                        <span className={est.estado === ESTADOS_ESTUDIANTE.DESERTOR ? 'line-through text-gray-400' : ''}>{est.nombre_completo}</span>
+                        {est.estado === ESTADOS_ESTUDIANTE.DESERTOR && (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${getEstadoColor(est.estado)}`}>Desertor</span>
+                        )}
+                        <BadgeDiscapacidad estudiante={{ repitente: est.repitente }} />
+                      </span>
+                    </td>
                     {malla.map(item => {
                       const nota = notasPorClave[`${item.id}::${est.id}`];
                       return (
