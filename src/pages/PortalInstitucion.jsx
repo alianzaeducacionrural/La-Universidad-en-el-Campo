@@ -219,17 +219,31 @@ export default function PortalInstitucion() {
     if (token) cargarHomologacion();
   }, [token]);
 
-  async function guardarNotaHomologacion(malla_item_id, estudiante_id, valorTexto) {
-    const nota = valorTexto === '' ? null : Number(valorTexto);
-    if (nota !== null && (Number.isNaN(nota) || nota < 0 || nota > 5)) return;
+  // Recibe [{ malla_item_id, estudiante_id, nota }] y las guarda en UNA sola
+  // petición (una por celda superaba el límite de Supabase: error 429).
+  // Devuelve true solo si el servidor confirmó el guardado.
+  async function guardarNotasHomologacion(notas) {
+    if (notas.length === 0) return true;
+    let resp;
+    try {
+      resp = await llamarHomologacion(token, { accion: 'guardar_notas', notas });
+    } catch {
+      return false;
+    }
+    if (!resp?.success) return false;
+    const clave = n => `${n.malla_item_id}::${n.estudiante_id}`;
+    const guardadas = new Map(notas.map(n => [clave(n), n]));
     setHomologacion(prev => prev && ({
       ...prev,
-      estudiantes: prev.estudiantes.map(e => e.id !== estudiante_id ? e : {
+      estudiantes: prev.estudiantes.map(e => ({
         ...e,
-        notas: [...(e.notas || []).filter(n => n.malla_item_id !== malla_item_id), { malla_item_id, estudiante_id, nota }]
-      })
+        notas: [
+          ...(e.notas || []).filter(n => !guardadas.has(clave({ malla_item_id: n.malla_item_id, estudiante_id: e.id }))),
+          ...notas.filter(n => n.estudiante_id === e.id)
+        ]
+      }))
     }));
-    await llamarHomologacion(token, { accion: 'guardar_nota', malla_item_id, estudiante_id, nota });
+    return true;
   }
 
   async function subirCertificadoHomologacion(file) {
@@ -555,7 +569,7 @@ export default function PortalInstitucion() {
               homologacion={homologacion}
               cargandoHomologacion={cargandoHomologacion}
               subiendoCertificadoHomologacion={subiendoCertificadoHomologacion}
-              onGuardarNotaHomologacion={guardarNotaHomologacion}
+              onGuardarNotasHomologacion={guardarNotasHomologacion}
               onSubirCertificadoHomologacion={subirCertificadoHomologacion}
               onEliminarCertificadoHomologacion={eliminarCertificadoHomologacion}
               busqueda={busquedaGrupo}
@@ -921,7 +935,7 @@ function SeccionGrupos({
   gruposOrdenados,
   grupoActivoId, setGrupoActivoId, grupoActivoInfo, temaActivo, estudiantesDeGrupoActivo,
   homologacion, cargandoHomologacion, subiendoCertificadoHomologacion,
-  onGuardarNotaHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion,
+  onGuardarNotasHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion,
   busqueda, setBusqueda, onVerPerfil, onDescargar
 }) {
   const [cohorteFiltro, setCohorteFiltro] = useState(null);
@@ -1003,7 +1017,7 @@ function SeccionGrupos({
           homologacion={homologacion}
           cargandoHomologacion={cargandoHomologacion}
           subiendoCertificadoHomologacion={subiendoCertificadoHomologacion}
-          onGuardarNotaHomologacion={onGuardarNotaHomologacion}
+          onGuardarNotasHomologacion={onGuardarNotasHomologacion}
           onSubirCertificadoHomologacion={onSubirCertificadoHomologacion}
           onEliminarCertificadoHomologacion={onEliminarCertificadoHomologacion}
           busqueda={busqueda}
@@ -1022,7 +1036,7 @@ function SeccionGrupos({
 function VistaGrupo({
   grupo, tema, estudiantes, busqueda, setBusqueda, onVerPerfil, onDescargar,
   homologacion, cargandoHomologacion, subiendoCertificadoHomologacion,
-  onGuardarNotaHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion
+  onGuardarNotasHomologacion, onSubirCertificadoHomologacion, onEliminarCertificadoHomologacion
 }) {
   const [subTab, setSubTab] = useState('estudiantes');
 
@@ -1117,7 +1131,7 @@ function VistaGrupo({
           homologacion={homologacion}
           cargando={cargandoHomologacion}
           subiendoCertificado={subiendoCertificadoHomologacion}
-          onGuardarNota={onGuardarNotaHomologacion}
+          onGuardarNotas={onGuardarNotasHomologacion}
           onSubirCertificado={onSubirCertificadoHomologacion}
           onEliminarCertificado={onEliminarCertificadoHomologacion}
         />
@@ -1828,7 +1842,7 @@ function estiloNotaHomologacion(valor) {
 // institución puede completar la malla de a poco (sin llenar todas las
 // materias de una vez) y guardar todo lo que lleve escrito de una sola vez,
 // en vez de depender de un guardado silencioso al perder el foco de cada celda.
-function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota, tema }) {
+function TablaNotasHomologacion({ estudiantes, malla, onGuardarNotas, tema }) {
   const [valores, setValores] = useState(() => {
     const obj = {};
     estudiantes.forEach(est => {
@@ -1849,15 +1863,32 @@ function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota, tema }) {
   }
 
   async function guardarTodo() {
-    setGuardando(true);
-    const tareas = [];
+    // Solo se envían las celdas que cambiaron respecto a lo ya guardado.
+    const cambios = [];
+    let invalidas = 0;
     estudiantes.forEach(est => {
       malla.forEach(item => {
-        tareas.push(onGuardarNota(item.id, est.id, valores[claveNotaHomologacion(item.id, est.id)] ?? ''));
+        const texto = valores[claveNotaHomologacion(item.id, est.id)] ?? '';
+        const nota = texto === '' ? null : Number(texto);
+        if (nota !== null && (Number.isNaN(nota) || nota < 0 || nota > 5)) { invalidas++; return; }
+        const guardada = est.notas?.find(n => n.malla_item_id === item.id)?.nota ?? null;
+        if (nota !== (guardada === null ? null : Number(guardada))) {
+          cambios.push({ malla_item_id: item.id, estudiante_id: est.id, nota });
+        }
       });
     });
-    await Promise.all(tareas);
+    if (invalidas > 0) {
+      alert(`Hay ${invalidas} nota${invalidas !== 1 ? 's' : ''} fuera de rango. Las notas deben estar entre 0 y 5.`);
+      return;
+    }
+
+    setGuardando(true);
+    const ok = await onGuardarNotas(cambios);
     setGuardando(false);
+    if (!ok) {
+      alert('No se pudieron guardar las notas. Revisa tu conexión e intenta de nuevo.');
+      return;
+    }
     setGuardado(true);
     setTimeout(() => setGuardado(false), 2500);
   }
@@ -1933,7 +1964,7 @@ function TablaNotasHomologacion({ estudiantes, malla, onGuardarNota, tema }) {
   );
 }
 
-function VistaHomologacionGrupo({ grupo, tema, homologacion, cargando, subiendoCertificado, onGuardarNota, onSubirCertificado, onEliminarCertificado }) {
+function VistaHomologacionGrupo({ grupo, tema, homologacion, cargando, subiendoCertificado, onGuardarNotas, onSubirCertificado, onEliminarCertificado }) {
   const [archivoCertificado, setArchivoCertificado] = useState(null);
 
   async function guardarCertificado() {
@@ -1964,7 +1995,7 @@ function VistaHomologacionGrupo({ grupo, tema, homologacion, cargando, subiendoC
             : 'Ninguno de los estudiantes de este grupo tiene un técnico reconocible para homologar.'}
         </div>
       ) : (
-        <TablaNotasHomologacion key={grupo.id} estudiantes={estudiantesGrupo} malla={mallaGrupo} onGuardarNota={onGuardarNota} tema={tema} />
+        <TablaNotasHomologacion key={grupo.id} estudiantes={estudiantesGrupo} malla={mallaGrupo} onGuardarNotas={onGuardarNotas} tema={tema} />
       )}
 
       <div>
