@@ -161,6 +161,9 @@ export default function Reportes({ onVerPerfil }) {
     const vistos = new Set();
     const unicos = [];
     for (const d of todosLosDatos) {
+      // Quien ya no es Desertor (volvió a Activo/En Riesgo) conserva su registro
+      // histórico, pero no debe salir en el reporte de deserciones.
+      if (d.estudiante?.estado !== 'Desertor') continue;
       const clave = d.estudiante_id;
       if (vistos.has(clave)) continue;
       vistos.add(clave);

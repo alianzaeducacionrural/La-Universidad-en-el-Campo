@@ -165,6 +165,8 @@ export default function DashboardUniversidad({ onVerPerfil, usuarioForzado = nul
 
     const vistos = new Set();
     const deserciones = desData.reduce((acc, d) => {
+      // Quien ya no es Desertor (volvió a Activo/En Riesgo) no debe salir en el reporte.
+      if (d.estudiante?.estado !== 'Desertor') return acc;
       if (vistos.has(d.estudiante_id)) return acc;
       vistos.add(d.estudiante_id);
       acc.push({ ...d, ...d.estudiante, reportado_por: d.usuario?.nombre_completo || '' });
